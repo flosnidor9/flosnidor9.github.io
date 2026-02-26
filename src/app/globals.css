@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+/* ─── Design Tokens ─────────────────────────────────────── */
+:root {
+  /* Color — Soft Muted Palette */
+  --color-bg:        #0e0e0f;
+  --color-surface:   #161618;
+  --color-border:    rgba(255, 255, 255, 0.08);
+  --color-text:      #e8e4de;
+  --color-muted:     #7a776f;
+  --color-accent:    #c9b89a;
+
+  /* Liquid Gradient Stop Colors */
+  --liquid-a:        #2a1f3d;
+  --liquid-b:        #1a2a3a;
+  --liquid-c:        #0f2520;
+
+  /* Typography */
+  --font-serif:      "Cormorant Garamond", Georgia, serif;
+  --font-sans:       "Inter", system-ui, sans-serif;
+
+  /* Eraser Effect */
+  --eraser-radius:   12rem;
+
+  /* Animation */
+  --duration-slow:   1.2s;
+  --duration-medium: 0.6s;
+  --ease-out-expo:   cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ─── Base Reset ─────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ─── Tailwind Theme Extension ───────────────────────────── */
+@theme inline {
+  --color-bg:      var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-border:  var(--color-border);
+  --color-text:    var(--color-text);
+  --color-muted:   var(--color-muted);
+  --color-accent:  var(--color-accent);
+
+  --font-serif:    var(--font-serif);
+  --font-sans:     var(--font-sans);
+}
+
+/* ─── Utility ────────────────────────────────────────────── */
+.gpu {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+/* ─── Liquid Background ─────────────────────────────────── */
+/*
+ * 수면 아래에서 물감이 퍼지듯 색상이 천천히 일렁이는 그라데이션.
+ * 세 색상 포인트가 서로 다른 속도로 이동해 유기적인 움직임을 만듦.
+ */
+@keyframes liquid-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.liquid-bg {
+  background: linear-gradient(
+    135deg,
+    var(--liquid-a) 0%,
+    var(--liquid-b) 40%,
+    var(--liquid-c) 70%,
+    var(--liquid-a) 100%
+  );
+  background-size: 300% 300%;
+  animation: liquid-shift 14s ease infinite;
+}
+
+/* ─── Grain Texture ──────────────────────────────────────── */
+/*
+ * SVG feTurbulence 기반 정적 노이즈.
+ * mix-blend-mode: overlay로 블러 레이어 위에 필름 그레인 질감을 더함.
+ */
+.grain-texture {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)' opacity='1'/%3E%3C/svg%3E");
+  background-size: 300px 300px;
+  background-repeat: repeat;
+  mix-blend-mode: overlay;
+  opacity: 0.45;
+}

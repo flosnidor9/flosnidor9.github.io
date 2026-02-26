@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__serena__check_onboarding_performed",
+      "Bash(npx create-next-app@latest:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(NEXT_DISABLE_TURBO=1 npx next:*)",
+      "WebSearch",
+      "Bash(rm:*)"
+    ]
+  }
+}
