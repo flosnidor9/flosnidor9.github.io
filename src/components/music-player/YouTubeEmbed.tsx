@@ -114,6 +114,8 @@ const YouTubeEmbed = forwardRef<YouTubeEmbedRef, Props>(({ videoId, onStateChang
         fs: 0,
         iv_load_policy: 3,  // 주석 숨기기
         playsinline: 1,     // 모바일에서 인라인 재생
+        enablejsapi: 1,     // JS API 활성화 (postMessage 필수)
+        origin: window.location.origin, // postMessage origin 허용
       },
       events: {
         onStateChange: (event) => {
@@ -127,13 +129,20 @@ const YouTubeEmbed = forwardRef<YouTubeEmbedRef, Props>(({ videoId, onStateChang
 
   useEffect(() => {
     // YouTube IFrame API 로드
-    if (!window.YT) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      const firstScript = document.getElementsByTagName('script')[0];
-      firstScript.parentNode?.insertBefore(tag, firstScript);
-
-      window.onYouTubeIframeAPIReady = initPlayer;
+    if (!window.YT || !window.YT.Player) {
+      // API 스크립트가 없으면 추가
+      if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        const firstScript = document.getElementsByTagName('script')[0];
+        firstScript.parentNode?.insertBefore(tag, firstScript);
+      }
+      // 기존 콜백이 있으면 체이닝
+      const prevReady = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        prevReady?.();
+        initPlayer();
+      };
     } else {
       initPlayer();
     }

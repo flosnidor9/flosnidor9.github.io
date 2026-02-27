@@ -1,16 +1,34 @@
 import fs from 'fs';
 import path from 'path';
+import sizeOf from 'image-size';
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif']);
 const EXCLUDED = new Set(['favorites']);
+
+export type ImageOrientation = 'landscape' | 'portrait' | 'square';
 
 export type FolderData = {
   slug: string;
   title: string;
   thumbnail: string | null;
+  orientation: ImageOrientation;
+  aspectRatio: number;        // width / height
   tags: string[];
   count: number;
 };
+
+/** 썸네일 파일에서 방향과 비율을 읽음 */
+function getThumbnailMeta(absPath: string): { orientation: ImageOrientation; aspectRatio: number } {
+  try {
+    const { width = 1, height = 1 } = sizeOf(fs.readFileSync(absPath));
+    const ratio = width / height;
+    const orientation: ImageOrientation =
+      ratio > 1.05 ? 'landscape' : ratio < 0.95 ? 'portrait' : 'square';
+    return { orientation, aspectRatio: ratio };
+  } catch {
+    return { orientation: 'landscape', aspectRatio: 1.5 };
+  }
+}
 
 function formatTitle(slug: string): string {
   return slug
@@ -31,10 +49,18 @@ export function getFolders(): FolderData[] {
         .readdirSync(dir)
         .filter((f) => IMAGE_EXTS.has(path.extname(f).toLowerCase()));
 
+      const thumbnailFile = files.length ? files[0] : null;
+      const thumbnailPath = thumbnailFile ? `/images/${d.name}/${thumbnailFile}` : null;
+      const { orientation, aspectRatio } = thumbnailFile
+        ? getThumbnailMeta(path.join(base, d.name, thumbnailFile))
+        : { orientation: 'landscape' as ImageOrientation, aspectRatio: 1.5 };
+
       return {
         slug: d.name,
         title: formatTitle(d.name),
-        thumbnail: files.length ? `/images/${d.name}/${files[0]}` : null,
+        thumbnail: thumbnailPath,
+        orientation,
+        aspectRatio,
         tags: [d.name],
         count: files.length,
       };

@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Inter } from "next/font/google";
 import "./globals.css";
 import LiquidCursor from "@/components/cursor/LiquidCursor";
+import GNB from "@/components/layout/GNB";
+import PersistentHeroBackground from "@/components/hero/PersistentHeroBackground";
+import { getFavoriteImagePaths } from "@/lib/data/images";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-serif",
@@ -25,9 +28,13 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const imagePaths = getFavoriteImagePaths();
+
   return (
     <html lang="ko">
       <body className={`${cormorant.variable} ${inter.variable} antialiased`}>
+        <PersistentHeroBackground imagePaths={imagePaths} />
+        <GNB />
         <LiquidCursor />
         {children}
       </body>

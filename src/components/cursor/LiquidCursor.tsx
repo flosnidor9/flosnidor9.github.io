@@ -11,7 +11,6 @@ import {
 } from 'framer-motion';
 
 const CURSOR_SIZE = 12;         // 기본 커서 크기 (px)
-const HOVER_SCALE = 2.5;        // 호버 시 확대 배율
 const MAX_STRETCH = 2.0;        // 최대 늘어남 비율
 const VELOCITY_DAMPING = 120;   // 속도 감쇠 계수
 
@@ -25,11 +24,9 @@ const VELOCITY_DAMPING = 120;   // 속도 감쇠 계수
  */
 export default function LiquidCursor() {
   const cursorRef = useRef<HTMLDivElement>(null);
-  const [isHovering, setIsHovering] = useState(false);
   const [isClicking, setIsClicking] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isPointerDevice, setIsPointerDevice] = useState(true);
-  const [isOverHero, setIsOverHero] = useState(false);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const breathingRef = useRef<ReturnType<typeof animate> | null>(null);
 
@@ -70,6 +67,8 @@ export default function LiquidCursor() {
 
   // 심장박동 효과용 스케일
   const breathScale = useMotionValue(1);
+  // 인터랙션 스케일 (hover/click) — MotionValue로 관리해 breathScale과 충돌 방지
+  const interactionScaleMV = useMotionValue(1);
 
   // 심장박동 시작
   const startBreathing = useCallback(() => {
@@ -102,39 +101,29 @@ export default function LiquidCursor() {
     }, 2000);
   }, [startBreathing, stopBreathing]);
 
-  // 히어로 섹션 위인지 체크 (실제로 보이는 최상위 요소 기준)
-  const checkIfOverHero = useCallback((clientX: number, clientY: number) => {
-    // 실제 커서 위치의 최상위 요소 확인
-    const topElement = document.elementFromPoint(clientX, clientY);
-    if (!topElement) {
-      setIsOverHero(false);
-      return;
-    }
-
-    // data-hide-cursor 속성이 있거나 cursor-none 클래스가 있는 요소인지 체크
-    const heroElement =
-      (topElement as HTMLElement).closest?.('[data-hide-cursor]') ||
-      (topElement as HTMLElement).closest?.('.cursor-none');
-
-    // 뮤직 플레이어, 카드, 유리 패널 위에 있으면 커서 표시
-    const isOverInteractive =
-      (topElement as HTMLElement).closest?.('.glass-player-panel') ||
-      (topElement as HTMLElement).closest?.('.featured-card') ||
-      (topElement as HTMLElement).closest?.('.mac-glass-window') ||
-      (topElement as HTMLElement).closest?.('button') ||
-      (topElement as HTMLElement).closest?.('a');
-
-    setIsOverHero(!!heroElement && !isOverInteractive);
-  }, []);
-
   // 마우스 이동 핸들러
   const handleMouseMove = useCallback((e: MouseEvent) => {
     mouseX.set(e.clientX);
     mouseY.set(e.clientY);
     setIsVisible(true);
     resetIdleTimer();
-    checkIfOverHero(e.clientX, e.clientY);
-  }, [mouseX, mouseY, resetIdleTimer, checkIfOverHero]);
+  }, [mouseX, mouseY, resetIdleTimer]);
+
+  // click → interactionScaleMV 업데이트 (breathScale과 분리해 충돌 방지)
+  useEffect(() => {
+    const target = isClicking ? 0.6 : 1;
+    animate(interactionScaleMV, target, {
+      type: 'spring',
+      stiffness: 500,
+      damping: 25,
+    });
+  }, [isClicking, interactionScaleMV]);
+
+  // 최종 스케일 = breathScale × interactionScaleMV (두 값 곱)
+  const finalScale = useTransform(
+    [breathScale, interactionScaleMV],
+    ([bs, is]: number[]) => bs * is
+  );
 
   // 마우스 진입/이탈
   const handleMouseEnter = useCallback(() => setIsVisible(true), []);
@@ -170,25 +159,10 @@ export default function LiquidCursor() {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  // 호버 감지 (클릭 가능한 요소)
   useEffect(() => {
     if (!isPointerDevice) return;
 
-    const checkHover = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      const isClickable =
-        target.tagName === 'BUTTON' ||
-        target.tagName === 'A' ||
-        target.closest('button') ||
-        target.closest('a') ||
-        target.closest('[role="button"]') ||
-        window.getComputedStyle(target).cursor === 'pointer';
-
-      setIsHovering(!!isClickable);
-    };
-
     window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mousemove', checkHover);
     window.addEventListener('mouseenter', handleMouseEnter);
     window.addEventListener('mouseleave', handleMouseLeave);
     window.addEventListener('mousedown', handleMouseDown);
@@ -196,7 +170,6 @@ export default function LiquidCursor() {
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mousemove', checkHover);
       window.removeEventListener('mouseenter', handleMouseEnter);
       window.removeEventListener('mouseleave', handleMouseLeave);
       window.removeEventListener('mousedown', handleMouseDown);
@@ -209,16 +182,13 @@ export default function LiquidCursor() {
     };
   }, [isPointerDevice, handleMouseMove, handleMouseEnter, handleMouseLeave, handleMouseDown, handleMouseUp, stopBreathing]);
 
+
   // 포인터 디바이스가 아니면 렌더링 안함
   if (!isPointerDevice) {
     return null;
   }
 
-  // 호버/클릭 상태에 따른 스케일 계산
-  const interactionScale = isClicking ? 0.6 : isHovering ? HOVER_SCALE : 1;
-
-  // 히어로 위거나 보이지 않으면 opacity 0
-  const shouldShow = isVisible && !isOverHero;
+  const shouldShow = isVisible;
 
   return (
     <>
@@ -252,23 +222,13 @@ export default function LiquidCursor() {
               scaleY: squeeze,
             }}
           >
-            {/* 내부 원 - 호버/클릭/심장박동 스케일 적용 */}
+            {/* 내부 원 - 호버/클릭/심장박동 스케일 적용 (finalScale로 단일 제어) */}
             <motion.div
               className="w-full h-full rounded-full"
               style={{
                 background: '#ffffff',
-                scale: breathScale,
+                scale: finalScale,
                 mixBlendMode: 'difference',
-              }}
-              animate={{
-                scale: interactionScale,
-              }}
-              transition={{
-                scale: {
-                  type: 'spring',
-                  stiffness: 500,
-                  damping: 25,
-                },
               }}
             />
           </motion.div>

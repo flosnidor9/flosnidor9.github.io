@@ -13,27 +13,26 @@ import MacGlassWindow from './hero/MacGlassWindow';
 import Clock from './hero/Clock';
 import GyroPermissionPrompt from './hero/GyroPermissionPrompt';
 import SidebarMusicPlayer from './sidebar/SidebarMusicPlayer';
-import SessionList from './sidebar/SessionList';
 import { useGyroscope } from '@/hooks/useGyroscope';
 import { musicTracks } from '@/lib/data/music';
-import type { FolderData } from '@/lib/data/folders';
+import { pickHeroImage } from '@/lib/heroImage';
 
 const TRANSLATE_RANGE = 30;
 const TILT_RANGE = 2;
 
 type Props = {
   imagePaths: string[];
-  folders: FolderData[];
 };
 
-export default function HomeScene({ imagePaths, folders }: Props) {
+export default function HomeScene({ imagePaths }: Props) {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [imageAspect, setImageAspect] = useState(16 / 10);
   const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    if (!imagePaths.length) return;
-    const src = imagePaths[Math.floor(Math.random() * imagePaths.length)];
+    const src = pickHeroImage(imagePaths);
+    if (!src) return;
+
     setImageSrc(src);
 
     const img = new window.Image();
@@ -110,7 +109,7 @@ export default function HomeScene({ imagePaths, folders }: Props) {
         transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
         style={{ perspective: '1000px' }}
       >
-        {/* ═══ 레이어 1: 블러된 배경 ═══ */}
+        {/* ═══ 레이어 1: 블러된 배경 (패럴랙스) ═══ */}
         {imageSrc && (
           <motion.div
             className="absolute inset-0"
@@ -130,7 +129,7 @@ export default function HomeScene({ imagePaths, folders }: Props) {
         {/* ═══ 레이어 2: 그레인 텍스처 ═══ */}
         <div className="absolute inset-0 grain-texture pointer-events-none" />
 
-        {/* ═══ 메인 레이아웃: 3단 구성 ═══ */}
+        {/* ═══ 메인 레이아웃: 음악 플레이어 + 중앙 윈도우 ═══ */}
         <div className="relative h-full w-full flex items-center justify-center px-[2rem] md:px-[3rem] lg:px-[4rem]">
           {/* 좌측 사이드바: 음악 플레이어 */}
           <div className="hidden md:flex flex-col gap-[1rem] w-[12rem] lg:w-[14rem] flex-shrink-0 z-20">
@@ -153,64 +152,26 @@ export default function HomeScene({ imagePaths, folders }: Props) {
             />
           </div>
 
-          {/* 우측 사이드바: 세션 목록 */}
-          <div className="hidden md:flex flex-col gap-[1rem] w-[12rem] lg:w-[14rem] flex-shrink-0 z-20">
-            <motion.h3
-              className="font-sans text-[0.75rem] text-white/40 uppercase tracking-widest px-[0.5rem]"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-            >
-              Sessions
-            </motion.h3>
-            <SessionList folders={folders} />
-          </div>
+          {/* 우측 공간 (좌우 대칭 유지용) */}
+          <div className="hidden md:block w-[12rem] lg:w-[14rem] flex-shrink-0" />
         </div>
 
         {/* ═══ 시계 (우측 하단) ═══ */}
         <Clock />
 
-        {/* ═══ 모바일: 하단 바 (음악 + 세션) ═══ */}
+        {/* ═══ 모바일: 하단 음악 플레이어 ═══ */}
         <div className="md:hidden absolute bottom-[1.5rem] left-0 right-0 px-[1rem] z-20">
           <motion.div
-            className="flex items-center gap-[0.75rem]"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.6 }}
           >
-            {/* 모바일 음악 미니 버튼 */}
             {track && (
-              <div className="flex-shrink-0">
-                <SidebarMusicPlayer
-                  track={track}
-                  normX={parallaxX}
-                  normY={parallaxY}
-                />
-              </div>
-            )}
-
-            {/* 모바일 세션 가로 스크롤 */}
-            {folders.length > 0 && (
-              <div className="flex-1 overflow-x-auto hide-scrollbar">
-                <div className="flex gap-[0.5rem]">
-                  {folders.map((folder) => (
-                    <a
-                      key={folder.slug}
-                      href={`/${folder.slug}`}
-                      className="glass-card flex-shrink-0 flex items-center gap-[0.5rem] px-[0.75rem] py-[0.5rem] rounded-full"
-                    >
-                      {folder.thumbnail && (
-                        <div className="relative w-[1.5rem] h-[1.5rem] rounded-full overflow-hidden">
-                          <Image src={folder.thumbnail} alt="" fill className="object-cover" />
-                        </div>
-                      )}
-                      <span className="text-[0.7rem] text-white/70 whitespace-nowrap">
-                        {folder.title}
-                      </span>
-                    </a>
-                  ))}
-                </div>
-              </div>
+              <SidebarMusicPlayer
+                track={track}
+                normX={parallaxX}
+                normY={parallaxY}
+              />
             )}
           </motion.div>
         </div>

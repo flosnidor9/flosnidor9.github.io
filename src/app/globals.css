@@ -348,3 +348,125 @@ body {
   filter: blur(60px) saturate(120%);
   transform: scale(1.15);
 }
+
+/* ─── GNB ───────────────────────────────────────────────── */
+.gnb {
+  background: rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ─── Timeline ──────────────────────────────────────────── */
+.timeline-container {
+  position: relative;
+}
+
+.timeline-container::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(255, 255, 255, 0.12) 10%,
+    rgba(255, 255, 255, 0.12) 90%,
+    transparent 100%
+  );
+}
+
+/* ─── Log Card ──────────────────────────────────────────── */
+.log-card {
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.log-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+/* ─── Bento Grid Card ────────────────────────────────────── */
+/*
+ * 패널이 배경 위에 둥둥 떠 있는 느낌:
+ *  - backdrop-filter로 배경을 몽환적으로 뭉갬
+ *  - box-shadow로 공중 부양 느낌
+ *  - 호버 시 블러 오버레이 걷힘 + 리퀴드 글로우 테두리
+ */
+.bento-card {
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 0.5px solid rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.45),
+    0 4px 16px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transition:
+    box-shadow 0.35s ease,
+    border-color 0.35s ease;
+}
+
+.bento-card:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.55),
+    0 0 0 0.5px rgba(255, 255, 255, 0.28),
+    0 0 48px rgba(200, 188, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+
+/* 호버 시 걷히는 블러 오버레이 */
+.bento-blur-veil {
+  backdrop-filter: blur(3px) brightness(0.92);
+  -webkit-backdrop-filter: blur(3px) brightness(0.92);
+  transition: opacity 0.45s ease;
+  opacity: 1;
+}
+
+.bento-card:hover .bento-blur-veil {
+  opacity: 0;
+}
+
+/* 이미지 — 호버 시 살짝 밝아지며 줌 */
+.bento-card-img {
+  transition: filter 0.45s ease, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  filter: brightness(0.9) saturate(1.05);
+}
+
+.bento-card:hover .bento-card-img {
+  filter: brightness(1.06) saturate(1.18);
+  transform: scale(1.04);
+}
+
+/* 리퀴드 글로우 테두리 오버레이 */
+.bento-glow-ring {
+  opacity: 0;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    transparent 45%
+  );
+  transition: opacity 0.35s ease;
+}
+
+.bento-card:hover .bento-glow-ring {
+  opacity: 1;
+}
+
+/* ─── Giscus ────────────────────────────────────────────── */
+.giscus-frame {
+  background: transparent !important;
+}
+
+.giscus-container {
+  min-height: 20rem;
+}
