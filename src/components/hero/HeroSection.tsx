@@ -59,6 +59,7 @@ export default function HeroSection({ imagePaths }: Props) {
   const {
     normX: gyroNormX,
     normY: gyroNormY,
+    shock,
     isActive: isGyroActive,
     permissionState,
     requestPermission,
@@ -151,7 +152,7 @@ export default function HeroSection({ imagePaths }: Props) {
         style={{ perspective: '800px' }}
       >
         {/* 리퀴드 그라데이션 배경 (스크롤로 올라옴) */}
-        <LiquidBackground opacity={bgOpacity} />
+        <LiquidBackground opacity={bgOpacity} shock={shock} />
 
         {/* 패럴랙스 + 틸트 + 스크롤 fade 이미지 레이어 */}
         <motion.div
