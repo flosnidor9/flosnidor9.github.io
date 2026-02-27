@@ -157,9 +157,6 @@ export default function HeroSection({ imagePaths }: Props) {
         {permissionState === 'unknown' && (
           <GyroPermissionPrompt onRequest={requestPermission} />
         )}
-
-        {/* 그레인은 스크롤 후에도 유지 */}
-        <div className="absolute inset-0 grain-texture pointer-events-none" />
       </motion.div>
     </section>
   );

@@ -17,7 +17,7 @@ export default function LiquidBackground({ opacity, shock }: Props) {
 
   return (
     <motion.div
-      className="absolute inset-0 liquid-bg grain-texture pointer-events-none"
+      className="absolute inset-0 liquid-bg pointer-events-none"
       style={{ 
         opacity,
         scale,

@@ -215,19 +215,6 @@ body {
   scrollbar-width: none;
 }
 
-/* ─── Grain Texture ──────────────────────────────────────── */
-/*
- * SVG feTurbulence 기반 정적 노이즈.
- * mix-blend-mode: overlay로 블러 레이어 위에 필름 그레인 질감을 더함.
- */
-.grain-texture {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)' opacity='1'/%3E%3C/svg%3E");
-  background-size: 300px 300px;
-  background-repeat: repeat;
-  mix-blend-mode: overlay;
-  opacity: 0.45;
-}
-
 /* ─── Glass Music Player Panel ──────────────────────────── */
 /*
  * 뮤직 플레이어용 유리 패널

@@ -28,26 +28,15 @@ export default function GrainBlurOverlay({ normX, normY }: Props) {
   )`;
 
   return (
-    <>
-      {/* 블러 레이어 — 미세 쿨톤 틴트로 서리 유리 색감 */}
-      <motion.div
-        className="absolute inset-0 gpu pointer-events-none"
-        style={{
-          backdropFilter: 'blur(40px)',
-          WebkitBackdropFilter: 'blur(40px)',
-          background: 'rgba(208, 218, 235, 0.055)',
-          maskImage: mask,
-          WebkitMaskImage: mask,
-        }}
-      />
-      {/* 그레인 레이어 */}
-      <motion.div
-        className="absolute inset-0 grain-texture gpu pointer-events-none"
-        style={{
-          maskImage: mask,
-          WebkitMaskImage: mask,
-        }}
-      />
-    </>
+    <motion.div
+      className="absolute inset-0 gpu pointer-events-none"
+      style={{
+        backdropFilter: 'blur(40px)',
+        WebkitBackdropFilter: 'blur(40px)',
+        background: 'rgba(208, 218, 235, 0.055)',
+        maskImage: mask,
+        WebkitMaskImage: mask,
+      }}
+    />
   );
 }

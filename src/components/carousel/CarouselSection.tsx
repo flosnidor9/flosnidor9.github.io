@@ -41,7 +41,7 @@ export default function CarouselSection({ folders }: Props) {
     <section className="relative min-h-screen flex flex-col justify-center overflow-hidden">
       {/* 리퀴드 그라데이션 배경 */}
       <div
-        className={`absolute inset-0 liquid-bg grain-texture pointer-events-none ${liquidFast ? 'liquid-fast' : ''}`}
+        className={`absolute inset-0 liquid-bg pointer-events-none ${liquidFast ? 'liquid-fast' : ''}`}
       />
 
       {/* 섹션 타이틀 */}

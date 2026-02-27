@@ -128,9 +128,6 @@ export default function GlassPlayerPanel({ track, normX, normY }: Props) {
           zIndex: 20,
         }}
       />
-
-      {/* 그레인 텍스처 */}
-      <div className="absolute inset-0 grain-texture pointer-events-none" />
     </motion.div>
   );
 }
