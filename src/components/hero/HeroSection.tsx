@@ -9,8 +9,10 @@ import {
   useTransform,
   useScroll,
 } from 'framer-motion';
+import { useGyroscope } from '@/hooks/useGyroscope';
 import GrainBlurOverlay from './GrainBlurOverlay';
 import LiquidBackground from './LiquidBackground';
+import GyroPermissionPrompt from './GyroPermissionPrompt';
 
 const TRANSLATE_RANGE = 40;
 const TILT_RANGE = 3;
@@ -53,8 +55,46 @@ export default function HeroSection({ imagePaths }: Props) {
   const rotateY    = useTransform(parallaxX, [-0.5, 0.5], [-TILT_RANGE, TILT_RANGE]);
   const rotateX    = useTransform(parallaxY, [-0.5, 0.5], [TILT_RANGE, -TILT_RANGE]);
 
+  // ── 자이로 ──────────────────────────────────────────
+  const {
+    normX: gyroNormX,
+    normY: gyroNormY,
+    isActive: isGyroActive,
+    permissionState,
+    requestPermission,
+  } = useGyroscope();
+
+  // 자이로 데이터로 마우스/패럴랙스 값 업데이트
+  useEffect(() => {
+    if (!isGyroActive) return;
+
+    const handleGyroChange = () => {
+      const gx = gyroNormX.get();
+      const gy = gyroNormY.get();
+      const { innerWidth: w, innerHeight: h } = window;
+      
+      // 이레이저 위치 업데이트 (화면 중앙 기준)
+      mouseX.set(w / 2 + gx * w);
+      mouseY.set(h / 2 + gy * h);
+      
+      // 패럴랙스 값 업데이트
+      normX.set(gx);
+      normY.set(gy);
+    };
+
+    const unsubscribeX = gyroNormX.on('change', handleGyroChange);
+    const unsubscribeY = gyroNormY.on('change', handleGyroChange);
+
+    return () => {
+      unsubscribeX();
+      unsubscribeY();
+    };
+  }, [isGyroActive, gyroNormX, gyroNormY, mouseX, mouseY, normX, normY]);
+
+
   const onMouseMove = useCallback(
     (e: React.MouseEvent) => {
+      if (isGyroActive) return;
       const rect = sectionRef.current?.getBoundingClientRect();
       if (!rect) return;
       mouseX.set(e.clientX);
@@ -62,18 +102,20 @@ export default function HeroSection({ imagePaths }: Props) {
       normX.set((e.clientX - rect.left) / rect.width - 0.5);
       normY.set((e.clientY - rect.top) / rect.height - 0.5);
     },
-    [mouseX, mouseY, normX, normY]
+    [isGyroActive, mouseX, mouseY, normX, normY]
   );
 
   const onMouseLeave = useCallback(() => {
+    if (isGyroActive) return;
     mouseX.set(-9999);
     mouseY.set(-9999);
     normX.set(0);
     normY.set(0);
-  }, [mouseX, mouseY, normX, normY]);
+  }, [isGyroActive, mouseX, mouseY, normX, normY]);
 
   const onTouchMove = useCallback(
     (e: React.TouchEvent) => {
+      if (isGyroActive) return;
       const rect = sectionRef.current?.getBoundingClientRect();
       if (!rect) return;
       const t = e.touches[0];
@@ -82,15 +124,16 @@ export default function HeroSection({ imagePaths }: Props) {
       normX.set((t.clientX - rect.left) / rect.width - 0.5);
       normY.set((t.clientY - rect.top) / rect.height - 0.5);
     },
-    [mouseX, mouseY, normX, normY]
+    [isGyroActive, mouseX, mouseY, normX, normY]
   );
 
   const onTouchEnd = useCallback(() => {
+    if (isGyroActive) return;
     mouseX.set(-9999);
     mouseY.set(-9999);
     normX.set(0);
     normY.set(0);
-  }, [mouseX, mouseY, normX, normY]);
+  }, [isGyroActive, mouseX, mouseY, normX, normY]);
 
   return (
     // 섹션 높이를 200vh로 주면 스크롤할 공간이 생김
@@ -131,6 +174,11 @@ export default function HeroSection({ imagePaths }: Props) {
 
         {/* 블러+그레인 오버레이 */}
         <GrainBlurOverlay smoothX={smoothX} smoothY={smoothY} />
+        
+        {/* 자이로 권한 요청 프롬프트 (iOS) */}
+        {permissionState === 'unknown' && (
+          <GyroPermissionPrompt onRequestPermission={requestPermission} />
+        )}
 
         {/* 그레인은 스크롤 후에도 유지 */}
         <div className="absolute inset-0 grain-texture pointer-events-none" />
