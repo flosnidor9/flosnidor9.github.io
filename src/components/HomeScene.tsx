@@ -74,12 +74,6 @@ export default function HomeScene({ imagePaths, folders }: Props) {
   const gyro = useGyroscope();
   const isGyroActive = gyro.permissionState === 'granted';
 
-  // ── 이레이저 스프링 ───────────────────────────────────────
-  const mouseX = useMotionValue(-9999);
-  const mouseY = useMotionValue(-9999);
-  const smoothX = useSpring(mouseX, { stiffness: 220, damping: 42 });
-  const smoothY = useSpring(mouseY, { stiffness: 220, damping: 42 });
-
   // ── 패럴랙스 스프링 ───────────────────────────────────────
   const normX = useMotionValue(0);
   const normY = useMotionValue(0);
@@ -118,11 +112,9 @@ export default function HomeScene({ imagePaths, folders }: Props) {
   const onMouseMove = useCallback((e: React.MouseEvent) => {
     const rect = sectionRef.current?.getBoundingClientRect();
     if (!rect) return;
-    mouseX.set(e.clientX);
-    mouseY.set(e.clientY);
     normX.set((e.clientX - rect.left) / rect.width - 0.5);
     normY.set((e.clientY - rect.top) / rect.height - 0.5);
-  }, [mouseX, mouseY, normX, normY]);
+  }, [normX, normY]);
 
   const onMouseLeave = useCallback(() => {
     normX.set(0);
@@ -135,11 +127,9 @@ export default function HomeScene({ imagePaths, folders }: Props) {
     const rect = sectionRef.current?.getBoundingClientRect();
     if (!rect) return;
     const t = e.touches[0];
-    mouseX.set(t.clientX);
-    mouseY.set(t.clientY);
     normX.set((t.clientX - rect.left) / rect.width - 0.5);
     normY.set((t.clientY - rect.top) / rect.height - 0.5);
-  }, [isGyroActive, mouseX, mouseY, normX, normY]);
+  }, [isGyroActive, normX, normY]);
 
   const onTouchEnd = useCallback(() => {
     if (isGyroActive) return;
@@ -198,7 +188,7 @@ export default function HomeScene({ imagePaths, folders }: Props) {
 
         {/* 블러+그레인 이레이저 오버레이 */}
         <motion.div className="absolute inset-0" style={{ opacity: overlayOpacity }}>
-          <GrainBlurOverlay smoothX={smoothX} smoothY={smoothY} />
+          <GrainBlurOverlay normX={parallaxX} normY={parallaxY} />
         </motion.div>
 
         {/* 그레인 (항상 유지) */}
