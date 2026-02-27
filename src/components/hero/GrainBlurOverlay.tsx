@@ -3,19 +3,15 @@
 import { motion, useMotionTemplate, useTransform, type MotionValue } from 'framer-motion';
 
 type Props = {
-  smoothX: MotionValue<number>;
-  smoothY: MotionValue<number>;
+  normX: MotionValue<number>;
+  normY: MotionValue<number>;
 };
 
-export default function GrainBlurOverlay({ smoothX, smoothY }: Props) {
-  // 커서(x, y)를 135° 대각선 축에 투영 → 그라디언트 위치(%) 계산
-  // 135° 그라디언트의 길이 ≈ (W + H) * √2/2, 투영값 ≈ (x + y) / (W + H) * 100
-  const diagPos = useTransform([smoothX, smoothY], ([x, y]: number[]) => {
-    if (x === -9999) return 50; // 초기 상태(마우스/자이로 X) → 중앙에 표시
-    const W = window.innerWidth;
-    const H = window.innerHeight;
-    return (x + y) / (W + H) * 100;
-  });
+export default function GrainBlurOverlay({ normX, normY }: Props) {
+  // normX, normY 값(범위: -0.5 ~ 0.5)을 135° 대각선 축에 투영
+  // → 그라디언트 위치(%) 계산
+  // (nx + ny)의 범위: -1 ~ 1 → (nx + ny) * 50 + 50 의 범위: 0 ~ 100
+  const diagPos = useTransform([normX, normY], ([nx, ny]) => (nx + ny) * 50 + 50);
 
   // 라디얼 이레이저와 동일한 페더 비율을 대각선 밴드에 적용
   const mask = useMotionTemplate`linear-gradient(135deg,
