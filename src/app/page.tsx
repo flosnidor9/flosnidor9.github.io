@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import HeroSection from '@/components/hero/HeroSection';
+import HomeScene from '@/components/HomeScene';
+import { getFolders } from '@/lib/data/folders';
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif']);
 
@@ -14,10 +15,12 @@ function getFavoriteImagePaths(): string[] {
 }
 
 export default function Home() {
-  const imagePaths = getFavoriteImagePaths();
   return (
     <main>
-      <HeroSection imagePaths={imagePaths} />
+      <HomeScene
+        imagePaths={getFavoriteImagePaths()}
+        folders={getFolders()}
+      />
     </main>
   );
 }

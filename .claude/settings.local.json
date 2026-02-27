@@ -7,7 +7,11 @@
       "Bash(npm run:*)",
       "Bash(NEXT_DISABLE_TURBO=1 npx next:*)",
       "WebSearch",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(git rebase:*)",
+      "Bash(git:*)",
+      "mcp__serena__get_symbols_overview",
+      "mcp__serena__list_dir"
     ]
   }
 }

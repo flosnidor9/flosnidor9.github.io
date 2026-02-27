@@ -35,6 +35,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  cursor: none !important;
 }
 
 html {
@@ -90,6 +91,128 @@ body {
   );
   background-size: 300% 300%;
   animation: liquid-shift 14s ease infinite;
+}
+
+/* 카드 호버 시 배경이 더 빠르게 일렁임 */
+.liquid-fast {
+  animation-duration: 5s !important;
+}
+
+/* ─── Featured Glass Card ────────────────────────────────── */
+/*
+ * 유리 효과의 핵심:
+ *  1. backdrop-filter + saturate — 배경을 투과하며 채도 강조
+ *  2. inset 상단 흰 선              — 유리 엣지 반사광
+ *  3. ::before 대각 글레어          — 빛이 유리 표면에 닿는 하이라이트
+ */
+.featured-card {
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.11) 0%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 40px 80px rgba(0, 0, 0, 0.55),
+    0 8px 24px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+    inset 0 0 60px rgba(255, 255, 255, 0.02);
+  border-radius: 1.5rem;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 유리 표면 대각 글레어 */
+.featured-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.09) 0%,
+    rgba(255, 255, 255, 0.02) 40%,
+    transparent 60%
+  );
+  pointer-events: none;
+  z-index: 10;
+  border-radius: inherit;
+}
+
+/* 하단 frosted info 영역 */
+.card-info-strip {
+  background: linear-gradient(
+    to bottom,
+    rgba(8, 8, 12, 0) 0%,
+    rgba(8, 8, 12, 0.72) 35%,
+    rgba(8, 8, 12, 0.88) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* 유리 네비게이션 버튼 */
+.glass-nav-btn {
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  border-radius: 9999px;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+.glass-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.13);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+/* ─── Glassmorphism (캐러셀용, 소형) ────────────────────── */
+.glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.card-droplet {
+  position: absolute;
+  top: 0.8rem;
+  right: 1.2rem;
+  width: 3.5rem;
+  height: 1.6rem;
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.28) 0%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(5px);
+  pointer-events: none;
+}
+
+.glass-tag {
+  display: inline-block;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+}
+
+/* ─── Scrollbar Hide ─────────────────────────────────────── */
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* ─── Grain Texture ──────────────────────────────────────── */

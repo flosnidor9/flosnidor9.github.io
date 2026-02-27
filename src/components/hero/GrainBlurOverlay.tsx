@@ -1,8 +1,6 @@
 'use client';
 
-import { motion, useMotionTemplate, type MotionValue } from 'framer-motion';
-
-const ERASER_RADIUS = 500;
+import { motion, useMotionTemplate, useTransform, type MotionValue } from 'framer-motion';
 
 type Props = {
   smoothX: MotionValue<number>;
@@ -10,16 +8,38 @@ type Props = {
 };
 
 export default function GrainBlurOverlay({ smoothX, smoothY }: Props) {
-  const mask = useMotionTemplate`radial-gradient(circle ${ERASER_RADIUS}px at ${smoothX}px ${smoothY}px, transparent 0%, transparent 28%, rgba(0,0,0,0.35) 52%, rgba(0,0,0,0.82) 74%, black 100%)`;
+  // 커서(x, y)를 135° 대각선 축에 투영 → 그라디언트 위치(%) 계산
+  // 135° 그라디언트의 길이 ≈ (W + H) * √2/2, 투영값 ≈ (x + y) / (W + H) * 100
+  const diagPos = useTransform([smoothX, smoothY], ([x, y]: number[]) => {
+    if (x < 0) return -100; // 커서 off-screen → 밴드 화면 밖, 전체 블러
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    return (x + y) / (W + H) * 100;
+  });
+
+  // 라디얼 이레이저와 동일한 페더 비율을 대각선 밴드에 적용
+  const mask = useMotionTemplate`linear-gradient(135deg,
+    black                           0%,
+    black                           calc(${diagPos}% - 30%),
+    rgba(0,0,0,0.82)                calc(${diagPos}% - 22%),
+    rgba(0,0,0,0.35)                calc(${diagPos}% - 14%),
+    transparent                     calc(${diagPos}% -  4%),
+    transparent                     calc(${diagPos}% +  4%),
+    rgba(0,0,0,0.35)                calc(${diagPos}% + 14%),
+    rgba(0,0,0,0.82)                calc(${diagPos}% + 22%),
+    black                           calc(${diagPos}% + 30%),
+    black                           100%
+  )`;
 
   return (
     <>
-      {/* 블러 레이어 */}
+      {/* 블러 레이어 — 미세 쿨톤 틴트로 서리 유리 색감 */}
       <motion.div
         className="absolute inset-0 gpu pointer-events-none"
         style={{
           backdropFilter: 'blur(40px)',
           WebkitBackdropFilter: 'blur(40px)',
+          background: 'rgba(208, 218, 235, 0.055)',
           maskImage: mask,
           WebkitMaskImage: mask,
         }}
