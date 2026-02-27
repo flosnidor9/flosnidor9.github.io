@@ -19,7 +19,10 @@
       "Bash(lsof:*)",
       "Bash(kill:*)",
       "Bash(node -e:*)",
-      "mcp__serena__activate_project"
+      "mcp__serena__activate_project",
+      "mcp__serena__list_memories",
+      "mcp__serena__think_about_task_adherence",
+      "Bash(npx tsc:*)"
     ]
   }
 }
