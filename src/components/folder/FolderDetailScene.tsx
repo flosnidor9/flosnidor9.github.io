@@ -417,15 +417,12 @@ function StickerItem({ post, index, baseRotate, offsetPct, savedPos, onDragEnd, 
           {/* 메모 텍스트 */}
           {post.content && (
             <motion.div
-              className="mt-[0.8rem] max-w-[16rem] md:max-w-[22rem]"
+              className="mt-[0.8rem] max-w-[16rem] md:max-w-[22rem] text-center"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.06 * index + 0.25 }}
             >
               <ReactMarkdown components={memoComponents}>{post.content}</ReactMarkdown>
-              <span className="font-mono text-[0.68rem] text-white/35 mt-[0.5rem] inline-block tracking-widest">
-                #{post.slug}
-              </span>
             </motion.div>
           )}
         </>
@@ -433,9 +430,6 @@ function StickerItem({ post, index, baseRotate, offsetPct, savedPos, onDragEnd, 
         /* 텍스트 전용 */
         <div style={{ rotate: `${rotate}deg` }}>
           <ReactMarkdown components={memoComponents}>{post.content!}</ReactMarkdown>
-          <span className="font-mono text-[0.68rem] text-white/35 mt-[0.5rem] inline-block tracking-widest">
-            #{post.slug}
-          </span>
         </div>
       )}
     </motion.div>
