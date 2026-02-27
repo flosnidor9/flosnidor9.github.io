@@ -11,7 +11,7 @@ export default function GrainBlurOverlay({ smoothX, smoothY }: Props) {
   // 커서(x, y)를 135° 대각선 축에 투영 → 그라디언트 위치(%) 계산
   // 135° 그라디언트의 길이 ≈ (W + H) * √2/2, 투영값 ≈ (x + y) / (W + H) * 100
   const diagPos = useTransform([smoothX, smoothY], ([x, y]: number[]) => {
-    if (x < 0) return -100; // 커서 off-screen → 밴드 화면 밖, 전체 블러
+    if (x === -9999) return 50; // 초기 상태(마우스/자이로 X) → 중앙에 표시
     const W = window.innerWidth;
     const H = window.innerHeight;
     return (x + y) / (W + H) * 100;
