@@ -11,7 +11,7 @@ export default function GrainBlurOverlay({ normX, normY }: Props) {
   // normX, normY 값(범위: -0.5 ~ 0.5)을 135° 대각선 축에 투영
   // → 그라디언트 위치(%) 계산
   // (nx + ny)의 범위: -1 ~ 1 → (nx + ny) * 50 + 50 의 범위: 0 ~ 100
-  const diagPos = useTransform([normX, normY], ([nx, ny]) => (nx + ny) * 50 + 50);
+  const diagPos = useTransform([normX, normY], ([nx, ny]: number[]) => (nx + ny) * 50 + 50);
 
   // 라디얼 이레이저와 동일한 페더 비율을 대각선 밴드에 적용
   const mask = useMotionTemplate`linear-gradient(135deg,
