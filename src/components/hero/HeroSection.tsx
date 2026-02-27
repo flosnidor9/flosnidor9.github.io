@@ -177,7 +177,7 @@ export default function HeroSection({ imagePaths }: Props) {
         
         {/* 자이로 권한 요청 프롬프트 (iOS) */}
         {permissionState === 'unknown' && (
-          <GyroPermissionPrompt onRequestPermission={requestPermission} />
+          <GyroPermissionPrompt onRequest={requestPermission} />
         )}
 
         {/* 그레인은 스크롤 후에도 유지 */}
