@@ -227,3 +227,41 @@ body {
   mix-blend-mode: overlay;
   opacity: 0.45;
 }
+
+/* ─── Glass Music Player Panel ──────────────────────────── */
+/*
+ * 뮤직 플레이어용 유리 패널
+ * featured-card보다 더 깊은 블러와 채도
+ */
+.glass-player-panel {
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  backdrop-filter: blur(32px) saturate(160%);
+  -webkit-backdrop-filter: blur(32px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 30px 60px rgba(0, 0, 0, 0.45),
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.30),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+    inset 0 0 60px rgba(255, 255, 255, 0.015);
+}
+
+/* 유리 표면 대각 글레어 */
+.glass-player-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 40%,
+    transparent 60%
+  );
+  pointer-events: none;
+  z-index: 10;
+  border-radius: inherit;
+}

@@ -14,6 +14,7 @@ import {
 import GrainBlurOverlay from './hero/GrainBlurOverlay';
 import GyroPermissionPrompt from './hero/GyroPermissionPrompt';
 import FeaturedCard from './carousel/FeaturedCard';
+import MusicPlayerSection from './music-player/MusicPlayerSection';
 import { useGyroscope } from '@/hooks/useGyroscope';
 import type { FolderData } from '@/lib/data/folders';
 
@@ -67,8 +68,13 @@ export default function HomeScene({ imagePaths, folders }: Props) {
   // 리퀴드 bg는 반투명(0.65)으로만 올라와서 배경 이미지가 비침
   const bgOpacity     = useTransform(scrollY, [50, 350], [0, 0.72]);
   const overlayOpacity = useTransform(scrollY, [0, 280], [1, 0]);
-  const cardOpacity   = useTransform(scrollY, [280, 480], [0, 1]);
-  const cardY         = useTransform(scrollY, [280, 480], [50, 0]);
+  // 히어로 영역이 보일 때만 포인터 이벤트 활성화 (커서 숨김용)
+  const heroPointerEvents = useTransform(scrollY, (v) => v < 250 ? 'auto' : 'none');
+  // 카드는 뮤직 플레이어가 왼쪽으로 이동한 후 등장 (600~800px)
+  const cardOpacity   = useTransform(scrollY, [600, 800], [0, 1]);
+  const cardY         = useTransform(scrollY, [600, 800], [50, 0]);
+  // 카드가 보이지 않을 때는 포인터 이벤트 비활성화
+  const cardPointerEvents = useTransform(scrollY, (v) => v > 550 ? 'auto' : 'none');
 
   // ── 자이로센서 훅 ─────────────────────────────────────────
   const gyro = useGyroscope();
@@ -155,8 +161,8 @@ export default function HomeScene({ imagePaths, folders }: Props) {
         {/* 고정 배경 이미지 — 항상 표시, 살짝 블러로 카드와 분리감 */}
         {imageSrc && (
           <div
-            className="absolute inset-0 pointer-events-none"
-            style={{ filter: 'blur(6px)', transform: 'scale(1.04)' }}
+            className="absolute inset-0"
+            style={{ filter: 'blur(6px)', transform: 'scale(1.04)', pointerEvents: 'none' }}
           >
             <Image src={imageSrc} alt="" fill className="object-cover" />
           </div>
@@ -174,10 +180,11 @@ export default function HomeScene({ imagePaths, folders }: Props) {
           style={{ opacity: bgOpacity }}
         />
 
-        {/* 히어로 이미지 */}
+        {/* 히어로 이미지 - 커서 숨김 영역 */}
         <motion.div
           className="absolute inset-0 gpu"
-          style={{ scale: imgScale, opacity: imgOpacity, translateX, translateY, rotateX, rotateY }}
+          style={{ scale: imgScale, opacity: imgOpacity, translateX, translateY, rotateX, rotateY, pointerEvents: heroPointerEvents }}
+          data-hide-cursor
         >
           {imageSrc ? (
             <Image src={imageSrc} alt="" fill className="object-cover" priority />
@@ -186,8 +193,12 @@ export default function HomeScene({ imagePaths, folders }: Props) {
           )}
         </motion.div>
 
-        {/* 블러+그레인 이레이저 오버레이 */}
-        <motion.div className="absolute inset-0" style={{ opacity: overlayOpacity }}>
+        {/* 블러+그레인 이레이저 오버레이 - 히어로 영역에서 커서 숨김 */}
+        <motion.div
+          className="absolute inset-0"
+          style={{ opacity: overlayOpacity, pointerEvents: heroPointerEvents }}
+          data-hide-cursor
+        >
           <GrainBlurOverlay normX={parallaxX} normY={parallaxY} />
         </motion.div>
 
@@ -201,11 +212,18 @@ export default function HomeScene({ imagePaths, folders }: Props) {
           )}
         </AnimatePresence>
 
+        {/* ── 뮤직 플레이어 (fixed 포지션) ─────────────────── */}
+        <MusicPlayerSection
+          scrollY={scrollY}
+          normX={parallaxX}
+          normY={parallaxY}
+        />
+
         {/* ── 카드 영역 ────────────────────────────────────── */}
         {currentFolder && (
           <motion.div
             className="absolute inset-0 flex flex-col items-center justify-center gap-[2rem]"
-            style={{ opacity: cardOpacity, y: cardY }}
+            style={{ opacity: cardOpacity, y: cardY, zIndex: 10, pointerEvents: cardPointerEvents }}
           >
             {/* 카드 + 사이드 네비게이션 */}
             <div className="relative flex items-center gap-[2rem] w-full justify-center">

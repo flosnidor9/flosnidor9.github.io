@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Inter } from "next/font/google";
 import "./globals.css";
+import LiquidCursor from "@/components/cursor/LiquidCursor";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-serif",
@@ -27,6 +28,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className={`${cormorant.variable} ${inter.variable} antialiased`}>
+        <LiquidCursor />
         {children}
       </body>
     </html>
