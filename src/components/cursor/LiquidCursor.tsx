@@ -116,10 +116,11 @@ export default function LiquidCursor() {
       (topElement as HTMLElement).closest?.('[data-hide-cursor]') ||
       (topElement as HTMLElement).closest?.('.cursor-none');
 
-    // 뮤직 플레이어나 카드 위에 있으면 커서 표시
+    // 뮤직 플레이어, 카드, 유리 패널 위에 있으면 커서 표시
     const isOverInteractive =
       (topElement as HTMLElement).closest?.('.glass-player-panel') ||
       (topElement as HTMLElement).closest?.('.featured-card') ||
+      (topElement as HTMLElement).closest?.('.mac-glass-window') ||
       (topElement as HTMLElement).closest?.('button') ||
       (topElement as HTMLElement).closest?.('a');
 

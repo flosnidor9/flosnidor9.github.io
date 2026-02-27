@@ -8,6 +8,26 @@ type Props = {
   isPlaying: boolean;
   normX: MotionValue<number>;
   normY: MotionValue<number>;
+  size?: 'normal' | 'small';
+};
+
+const SIZES = {
+  normal: {
+    container: '14rem',
+    cd: '14rem',
+    cdLeft: '3rem',
+    album: '12rem',
+    albumTop: '1rem',
+    hole: '2.5rem',
+  },
+  small: {
+    container: '7rem',
+    cd: '7rem',
+    cdLeft: '1.5rem',
+    album: '6rem',
+    albumTop: '0.5rem',
+    hole: '1.25rem',
+  },
 };
 
 /**
@@ -16,7 +36,8 @@ type Props = {
  * - normX/normY로 반사광 각도 변화
  * - isPlaying으로 회전 애니메이션 제어
  */
-export default function RotatingCD({ albumArt, isPlaying, normX, normY }: Props) {
+export default function RotatingCD({ albumArt, isPlaying, normX, normY, size = 'normal' }: Props) {
+  const s = SIZES[size];
   // normX/normY를 각도로 변환 → 홀로그램 반사광 회전
   const holoRotate = useTransform(
     [normX, normY],
@@ -41,15 +62,15 @@ export default function RotatingCD({ albumArt, isPlaying, normX, normY }: Props)
   const reflectGradient = useMotionTemplate`radial-gradient(ellipse at ${reflectX}% ${reflectY}%, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 30%, transparent 60%)`;
 
   return (
-    <div className="relative" style={{ width: '14rem', height: '14rem' }}>
+    <div className="relative" style={{ width: s.container, height: s.container }}>
       {/* CD 본체 - 앨범 아트 뒤에서 오른쪽으로 삐져나옴 */}
       <motion.div
         className="absolute gpu"
         style={{
-          width: '14rem',
-          height: '14rem',
+          width: s.cd,
+          height: s.cd,
           borderRadius: '50%',
-          left: '3rem', // 앨범 아트 뒤에서 오른쪽으로 삐져나옴
+          left: s.cdLeft, // 앨범 아트 뒤에서 오른쪽으로 삐져나옴
         }}
         animate={{
           rotate: isPlaying ? 360 : 0,
@@ -109,8 +130,8 @@ export default function RotatingCD({ albumArt, isPlaying, normX, normY }: Props)
         <div
           className="absolute rounded-full"
           style={{
-            width: '2.5rem',
-            height: '2.5rem',
+            width: s.hole,
+            height: s.hole,
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
@@ -122,14 +143,15 @@ export default function RotatingCD({ albumArt, isPlaying, normX, normY }: Props)
 
       {/* 앨범 아트 (CD 위에 겹침) */}
       <div
-        className="absolute rounded-[1rem] overflow-hidden"
+        className="absolute overflow-hidden"
         style={{
-          width: '12rem',
-          height: '12rem',
-          top: '1rem',
+          width: s.album,
+          height: s.album,
+          top: s.albumTop,
           left: '0',
           boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
           zIndex: 1,
+          borderRadius: size === 'small' ? '0.5rem' : '1rem',
         }}
       >
         <Image

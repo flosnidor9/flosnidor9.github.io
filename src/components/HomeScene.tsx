@@ -6,21 +6,20 @@ import {
   motion,
   AnimatePresence,
   useMotionValue,
-  useMotionTemplate,
   useSpring,
   useTransform,
-  useScroll,
 } from 'framer-motion';
-import GrainBlurOverlay from './hero/GrainBlurOverlay';
+import MacGlassWindow from './hero/MacGlassWindow';
+import Clock from './hero/Clock';
 import GyroPermissionPrompt from './hero/GyroPermissionPrompt';
-import FeaturedCard from './carousel/FeaturedCard';
-import MusicPlayerSection from './music-player/MusicPlayerSection';
+import SidebarMusicPlayer from './sidebar/SidebarMusicPlayer';
+import SessionList from './sidebar/SessionList';
 import { useGyroscope } from '@/hooks/useGyroscope';
+import { musicTracks } from '@/lib/data/music';
 import type { FolderData } from '@/lib/data/folders';
 
-const TRANSLATE_RANGE = 40;
-const TILT_RANGE = 3;
-const IMG_SCALE = 1.08;
+const TRANSLATE_RANGE = 30;
+const TILT_RANGE = 2;
 
 type Props = {
   imagePaths: string[];
@@ -29,52 +28,20 @@ type Props = {
 
 export default function HomeScene({ imagePaths, folders }: Props) {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
-  const [index, setIndex] = useState(0);
-  const [direction, setDirection] = useState(1);
+  const [imageAspect, setImageAspect] = useState(16 / 10);
   const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!imagePaths.length) return;
-    setImageSrc(imagePaths[Math.floor(Math.random() * imagePaths.length)]);
-  }, [imagePaths]);
+    const src = imagePaths[Math.floor(Math.random() * imagePaths.length)];
+    setImageSrc(src);
 
-  // ── 네비게이션 ────────────────────────────────────────────
-  const next = useCallback(() => {
-    if (!folders.length) return;
-    setDirection(1);
-    setIndex((i) => (i + 1) % folders.length);
-  }, [folders.length]);
-
-  const prev = useCallback(() => {
-    if (!folders.length) return;
-    setDirection(-1);
-    setIndex((i) => (i - 1 + folders.length) % folders.length);
-  }, [folders.length]);
-
-  // 키보드 네비게이션
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') next();
-      if (e.key === 'ArrowLeft') prev();
+    const img = new window.Image();
+    img.onload = () => {
+      setImageAspect(img.naturalWidth / img.naturalHeight);
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [next, prev]);
-
-  // ── 스크롤 트랜지션 ───────────────────────────────────────
-  const { scrollY } = useScroll();
-  const imgScale      = useTransform(scrollY, [0, 400],  [IMG_SCALE, IMG_SCALE * 1.12]);
-  const imgOpacity    = useTransform(scrollY, [0, 300],  [1, 0]);
-  // 리퀴드 bg는 반투명(0.65)으로만 올라와서 배경 이미지가 비침
-  const bgOpacity     = useTransform(scrollY, [50, 350], [0, 0.72]);
-  const overlayOpacity = useTransform(scrollY, [0, 280], [1, 0]);
-  // 히어로 영역이 보일 때만 포인터 이벤트 활성화 (커서 숨김용)
-  const heroPointerEvents = useTransform(scrollY, (v) => v < 250 ? 'auto' : 'none');
-  // 카드는 뮤직 플레이어가 왼쪽으로 이동한 후 등장 (600~800px)
-  const cardOpacity   = useTransform(scrollY, [600, 800], [0, 1]);
-  const cardY         = useTransform(scrollY, [600, 800], [50, 0]);
-  // 카드가 보이지 않을 때는 포인터 이벤트 비활성화
-  const cardPointerEvents = useTransform(scrollY, (v) => v > 550 ? 'auto' : 'none');
+    img.src = src;
+  }, [imagePaths]);
 
   // ── 자이로센서 훅 ─────────────────────────────────────────
   const gyro = useGyroscope();
@@ -87,25 +54,8 @@ export default function HomeScene({ imagePaths, folders }: Props) {
   const parallaxY = useSpring(normY, { stiffness: 60, damping: 20 });
   const translateX = useTransform(parallaxX, [-0.5, 0.5], [-TRANSLATE_RANGE, TRANSLATE_RANGE]);
   const translateY = useTransform(parallaxY, [-0.5, 0.5], [-TRANSLATE_RANGE, TRANSLATE_RANGE]);
-  const rotateY    = useTransform(parallaxX, [-0.5, 0.5], [-TILT_RANGE, TILT_RANGE]);
-  const rotateX    = useTransform(parallaxY, [-0.5, 0.5], [TILT_RANGE, -TILT_RANGE]);
-
-  // ── 배경 유리 반사 하이라이트 (대각선 밴드) ─────────────
-  // parallaxX/Y (-0.5~0.5)를 135° 축에 투영 → 시선 각도에 따라 이동하는 반사광
-  const glassHDiag = useTransform(
-    [parallaxX, parallaxY],
-    ([x, y]: number[]) => (x + y) * 50 + 50,
-  );
-  const glassHighlight = useMotionTemplate`linear-gradient(135deg,
-    transparent                  0%,
-    transparent                  calc(${glassHDiag}% - 16%),
-    rgba(255,255,255,0.06)       calc(${glassHDiag}% - 10%),
-    rgba(255,255,255,0.30)       calc(${glassHDiag}% -  2%),
-    rgba(255,255,255,0.30)       calc(${glassHDiag}% +  2%),
-    rgba(255,255,255,0.06)       calc(${glassHDiag}% + 10%),
-    transparent                  calc(${glassHDiag}% + 16%),
-    transparent                  100%
-  )`;
+  const rotateY = useTransform(parallaxX, [-0.5, 0.5], [-TILT_RANGE, TILT_RANGE]);
+  const rotateX = useTransform(parallaxY, [-0.5, 0.5], [TILT_RANGE, -TILT_RANGE]);
 
   // 자이로 활성화 시 → normX/normY를 자이로 값으로 구동
   useEffect(() => {
@@ -127,7 +77,6 @@ export default function HomeScene({ imagePaths, folders }: Props) {
     normY.set(0);
   }, [normX, normY]);
 
-  // 자이로 미활성 시에만 터치 이동으로 패럴랙스/이레이저 구동
   const onTouchMove = useCallback((e: React.TouchEvent) => {
     if (isGyroActive) return;
     const rect = sectionRef.current?.getBoundingClientRect();
@@ -143,162 +92,138 @@ export default function HomeScene({ imagePaths, folders }: Props) {
     normY.set(0);
   }, [isGyroActive, normX, normY]);
 
-  const currentFolder = folders[index] ?? null;
+  const track = musicTracks[0];
 
   return (
-    <section ref={sectionRef} style={{ height: '400vh' }}>
+    <section
+      ref={sectionRef}
+      className="h-screen w-full overflow-hidden cursor-none"
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
       <motion.div
-        className="sticky top-0 h-screen w-full overflow-hidden cursor-none"
-        onMouseMove={onMouseMove}
-        onMouseLeave={onMouseLeave}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
+        className="relative h-full w-full"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-        style={{ perspective: '800px' }}
+        style={{ perspective: '1000px' }}
       >
-        {/* 고정 배경 이미지 — 항상 표시, 살짝 블러로 카드와 분리감 */}
+        {/* ═══ 레이어 1: 블러된 배경 ═══ */}
         {imageSrc && (
-          <div
+          <motion.div
             className="absolute inset-0"
-            style={{ filter: 'blur(6px)', transform: 'scale(1.04)', pointerEvents: 'none' }}
+            style={{
+              translateX,
+              translateY,
+              rotateX,
+              rotateY,
+            }}
           >
-            <Image src={imageSrc} alt="" fill className="object-cover" />
-          </div>
+            <div className="absolute inset-0 hero-blur-bg">
+              <Image src={imageSrc} alt="" fill className="object-cover" priority />
+            </div>
+          </motion.div>
         )}
 
-        {/* 배경 유리 반사 — 마우스/자이로 시선 각도에 따라 이동하는 스페큘러 하이라이트 */}
-        <motion.div
-          className="absolute inset-0 pointer-events-none gpu"
-          style={{ background: glassHighlight, zIndex: 1 }}
-        />
-
-        {/* 리퀴드 그라데이션 오버레이 (반투명 — 배경 이미지가 비침) */}
-        <motion.div
-          className="absolute inset-0 liquid-bg grain-texture pointer-events-none"
-          style={{ opacity: bgOpacity }}
-        />
-
-        {/* 히어로 이미지 - 커서 숨김 영역 */}
-        <motion.div
-          className="absolute inset-0 gpu"
-          style={{ scale: imgScale, opacity: imgOpacity, translateX, translateY, rotateX, rotateY, pointerEvents: heroPointerEvents }}
-          data-hide-cursor
-        >
-          {imageSrc ? (
-            <Image src={imageSrc} alt="" fill className="object-cover" priority />
-          ) : (
-            <div className="absolute inset-0 bg-[var(--color-surface)]" />
-          )}
-        </motion.div>
-
-        {/* 블러+그레인 이레이저 오버레이 - 히어로 영역에서 커서 숨김 */}
-        <motion.div
-          className="absolute inset-0"
-          style={{ opacity: overlayOpacity, pointerEvents: heroPointerEvents }}
-          data-hide-cursor
-        >
-          <GrainBlurOverlay normX={parallaxX} normY={parallaxY} />
-        </motion.div>
-
-        {/* 그레인 (항상 유지) */}
+        {/* ═══ 레이어 2: 그레인 텍스처 ═══ */}
         <div className="absolute inset-0 grain-texture pointer-events-none" />
 
-        {/* 자이로 권한 요청 프롬프트 (iOS 모바일 전용) */}
+        {/* ═══ 메인 레이아웃: 3단 구성 ═══ */}
+        <div className="relative h-full w-full flex items-center justify-center px-[2rem] md:px-[3rem] lg:px-[4rem]">
+          {/* 좌측 사이드바: 음악 플레이어 */}
+          <div className="hidden md:flex flex-col gap-[1rem] w-[12rem] lg:w-[14rem] flex-shrink-0 z-20">
+            {track && (
+              <SidebarMusicPlayer
+                track={track}
+                normX={parallaxX}
+                normY={parallaxY}
+              />
+            )}
+          </div>
+
+          {/* 중앙: MacGlassWindow */}
+          <div className="flex-1 flex items-center justify-center z-10 px-[1rem] md:px-[2rem]">
+            <MacGlassWindow
+              normX={parallaxX}
+              normY={parallaxY}
+              aspectRatio={imageAspect}
+              imageSrc={imageSrc}
+            />
+          </div>
+
+          {/* 우측 사이드바: 세션 목록 */}
+          <div className="hidden md:flex flex-col gap-[1rem] w-[12rem] lg:w-[14rem] flex-shrink-0 z-20">
+            <motion.h3
+              className="font-sans text-[0.75rem] text-white/40 uppercase tracking-widest px-[0.5rem]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+            >
+              Sessions
+            </motion.h3>
+            <SessionList folders={folders} />
+          </div>
+        </div>
+
+        {/* ═══ 시계 (우측 하단) ═══ */}
+        <Clock />
+
+        {/* ═══ 모바일: 하단 바 (음악 + 세션) ═══ */}
+        <div className="md:hidden absolute bottom-[1.5rem] left-0 right-0 px-[1rem] z-20">
+          <motion.div
+            className="flex items-center gap-[0.75rem]"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.6 }}
+          >
+            {/* 모바일 음악 미니 버튼 */}
+            {track && (
+              <div className="flex-shrink-0">
+                <SidebarMusicPlayer
+                  track={track}
+                  normX={parallaxX}
+                  normY={parallaxY}
+                />
+              </div>
+            )}
+
+            {/* 모바일 세션 가로 스크롤 */}
+            {folders.length > 0 && (
+              <div className="flex-1 overflow-x-auto hide-scrollbar">
+                <div className="flex gap-[0.5rem]">
+                  {folders.map((folder) => (
+                    <a
+                      key={folder.slug}
+                      href={`/${folder.slug}`}
+                      className="glass-card flex-shrink-0 flex items-center gap-[0.5rem] px-[0.75rem] py-[0.5rem] rounded-full"
+                    >
+                      {folder.thumbnail && (
+                        <div className="relative w-[1.5rem] h-[1.5rem] rounded-full overflow-hidden">
+                          <Image src={folder.thumbnail} alt="" fill className="object-cover" />
+                        </div>
+                      )}
+                      <span className="text-[0.7rem] text-white/70 whitespace-nowrap">
+                        {folder.title}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </div>
+
+        {/* ═══ 그레인 (최상위) ═══ */}
+        <div className="absolute inset-0 grain-texture pointer-events-none" style={{ zIndex: 30 }} />
+
+        {/* ═══ 자이로 권한 요청 프롬프트 (iOS 모바일 전용) ═══ */}
         <AnimatePresence>
           {gyro.permissionState === 'unknown' && (
             <GyroPermissionPrompt onRequest={gyro.requestPermission} />
           )}
         </AnimatePresence>
-
-        {/* ── 뮤직 플레이어 (fixed 포지션) ─────────────────── */}
-        <MusicPlayerSection
-          scrollY={scrollY}
-          normX={parallaxX}
-          normY={parallaxY}
-        />
-
-        {/* ── 카드 영역 ────────────────────────────────────── */}
-        {currentFolder && (
-          <motion.div
-            className="absolute inset-0 flex flex-col items-center justify-center gap-[2rem]"
-            style={{ opacity: cardOpacity, y: cardY, zIndex: 10, pointerEvents: cardPointerEvents }}
-          >
-            {/* 카드 + 사이드 네비게이션 */}
-            <div className="relative flex items-center gap-[2rem] w-full justify-center">
-
-              {/* 이전 버튼 */}
-              {folders.length > 1 && (
-                <button
-                  onClick={prev}
-                  className="glass-nav-btn w-[3rem] h-[3rem] flex items-center justify-center text-white/70 hover:text-white flex-shrink-0 cursor-pointer"
-                  aria-label="이전"
-                >
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                    <path d="M11 4L6 9L11 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-              )}
-
-              {/* FeaturedCard */}
-              <AnimatePresence mode="wait" custom={direction}>
-                <FeaturedCard
-                  key={currentFolder.slug}
-                  folder={currentFolder}
-                  direction={direction}
-                  onDragLeft={next}
-                  onDragRight={prev}
-                  externalNormX={gyro.permissionState !== 'unavailable' ? gyro.normX : undefined}
-                  externalNormY={gyro.permissionState !== 'unavailable' ? gyro.normY : undefined}
-                />
-              </AnimatePresence>
-
-              {/* 다음 버튼 */}
-              {folders.length > 1 && (
-                <button
-                  onClick={next}
-                  className="glass-nav-btn w-[3rem] h-[3rem] flex items-center justify-center text-white/70 hover:text-white flex-shrink-0 cursor-pointer"
-                  aria-label="다음"
-                >
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                    <path d="M7 4L12 9L7 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-              )}
-            </div>
-
-            {/* 인덱스 표시 */}
-            {folders.length > 1 && (
-              <div className="flex items-center gap-[0.8rem]">
-                {folders.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => { setDirection(i > index ? 1 : -1); setIndex(i); }}
-                    className="cursor-pointer transition-all duration-300"
-                    style={{
-                      width: i === index ? '1.5rem' : '0.4rem',
-                      height: '0.4rem',
-                      borderRadius: '9999px',
-                      background: i === index ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.25)',
-                    }}
-                    aria-label={`${i + 1}번째 폴더`}
-                  />
-                ))}
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {/* 폴더 없을 때 안내 */}
-        {folders.length === 0 && (
-          <motion.p
-            className="absolute bottom-[3rem] left-0 right-0 text-center font-sans text-[0.8rem] text-white/30 tracking-widest uppercase"
-            style={{ opacity: cardOpacity }}
-          >
-            public/images/ 에 폴더를 추가하면 여기에 표시됩니다
-          </motion.p>
-        )}
       </motion.div>
     </section>
   );

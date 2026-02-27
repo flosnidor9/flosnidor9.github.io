@@ -252,3 +252,99 @@ body {
   z-index: 10;
   border-radius: inherit;
 }
+
+/* ─── macOS Glass Window ─────────────────────────────────── */
+.mac-glass-window {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  backdrop-filter: blur(2px) saturate(120%);
+  -webkit-backdrop-filter: blur(2px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow:
+    0 25px 50px rgba(0, 0, 0, 0.4),
+    0 10px 20px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  border-radius: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.mac-titlebar {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.traffic-light {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.traffic-light:hover {
+  transform: scale(1.15);
+  filter: brightness(1.2);
+}
+
+.traffic-close {
+  background: linear-gradient(180deg, #ff6058 0%, #e5453c 100%);
+  box-shadow: 0 0 0.5px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.traffic-minimize {
+  background: linear-gradient(180deg, #ffbd2e 0%, #dea123 100%);
+  box-shadow: 0 0 0.5px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.traffic-maximize {
+  background: linear-gradient(180deg, #28c940 0%, #1aab29 100%);
+  box-shadow: 0 0 0.5px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* ─── Holographic Highlight ─────────────────────────────── */
+.holographic-highlight {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 100, 100, 0.08) 0%,
+    rgba(255, 200, 100, 0.06) 20%,
+    rgba(100, 255, 100, 0.06) 40%,
+    rgba(100, 200, 255, 0.06) 60%,
+    rgba(200, 100, 255, 0.06) 80%,
+    rgba(255, 100, 200, 0.08) 100%
+  );
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+/* ─── Clock ─────────────────────────────────────────────── */
+.clock-text {
+  font-family: 'SF Pro Display', 'Inter', system-ui, -apple-system, sans-serif;
+  font-weight: 200;
+  letter-spacing: 0.05em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* ─── Grain Texture ─────────────────────────────────────── */
+.grain-texture::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.04;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+/* ─── Strong Blur for Hero Background ───────────────────── */
+.hero-blur-bg {
+  filter: blur(60px) saturate(120%);
+  transform: scale(1.15);
+}
