@@ -9,6 +9,7 @@ export type LogEntry = {
   content: string;
   tags: string[];
   image?: string;
+  images?: string[]; // 여러 이미지 지원
 };
 
 function parseFrontmatter(raw: string): { data: Record<string, string>; content: string } {
@@ -37,6 +38,13 @@ function parseTags(raw: string): string[] {
   return cleaned.split(',').map((t) => t.trim()).filter(Boolean);
 }
 
+function parseImages(raw: string): string[] {
+  // "[/images/1.jpg, /images/2.jpg]" 또는 "/images/1.jpg, /images/2.jpg" 형태 모두 처리
+  const cleaned = raw.replace(/[\[\]]/g, '').trim();
+  if (!cleaned) return [];
+  return cleaned.split(',').map((img) => img.trim()).filter(Boolean);
+}
+
 export function getLogEntries(): LogEntry[] {
   const logDir = path.join(process.cwd(), 'content', 'log');
   if (!fs.existsSync(logDir)) return [];
@@ -50,12 +58,27 @@ export function getLogEntries(): LogEntry[] {
   return files
     .map((file) => {
       const slug = path.basename(file, '.md');
-      const raw = fs.readFileSync(path.join(logDir, file), 'utf-8');
+      const filePath = path.join(logDir, file);
+      const raw = fs.readFileSync(filePath, 'utf-8');
       const { data, content } = parseFrontmatter(raw);
 
-      const dateStr = data.date ?? slug.slice(0, 10);
+      // 파일 생성/수정 시간 읽기
+      const stats = fs.statSync(filePath);
+      const fileCreatedAt = stats.birthtime; // 파일 생성 시간
+
+      // frontmatter에 date가 있으면 우선 사용, 없으면 파일 생성 시간 사용
+      let dateStr: string;
+      if (data.date) {
+        dateStr = data.date;
+      } else {
+        // 파일 생성 시간을 ISO 형식으로 변환
+        dateStr = fileCreatedAt.toISOString();
+      }
+
       const year = parseInt(dateStr.slice(0, 4), 10) || new Date().getFullYear();
       const tags = data.tags ? parseTags(data.tags) : [];
+
+      const images = data.images ? parseImages(data.images) : [];
 
       return {
         slug,
@@ -65,6 +88,7 @@ export function getLogEntries(): LogEntry[] {
         content,
         tags,
         image: data.image || undefined,
+        images: images.length > 0 ? images : undefined,
       };
     })
     .filter((e) => e.title && e.date);

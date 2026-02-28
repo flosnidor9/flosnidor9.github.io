@@ -22,7 +22,8 @@
       "mcp__serena__activate_project",
       "mcp__serena__list_memories",
       "mcp__serena__think_about_task_adherence",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "mcp__serena__find_file"
     ]
   }
 }

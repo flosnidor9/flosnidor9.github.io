@@ -378,16 +378,29 @@ body {
   );
 }
 
-/* ─── Log Card ──────────────────────────────────────────── */
+/* ─── Log Card (Twitter Style) ──────────────────────────── */
+.timeline-item-same-day {
+  margin-bottom: 0.5rem;
+}
+
+.timeline-item-different-day {
+  margin-bottom: 1rem;
+}
+
+.timeline-item:last-child {
+  margin-bottom: 0;
+}
+
 .log-card {
-  transition: background 0.2s ease, box-shadow 0.2s ease;
+  background: rgb(21, 32, 43);
+  border: 1px solid rgb(47, 51, 54);
+  padding: 1.25rem 1.5rem;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
 .log-card:hover {
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  background: rgb(26, 37, 48);
+  border-color: rgb(56, 68, 77);
 }
 
 /* ─── Bento Grid Card ────────────────────────────────────── */
