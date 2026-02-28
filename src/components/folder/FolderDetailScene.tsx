@@ -48,19 +48,19 @@ const memoComponents = {
 
 const folderMarkdownComponents = {
   h1: ({ children }: { children?: React.ReactNode }) => (
-    <h1 className="font-serif text-[1.25rem] md:text-[1.5rem] text-white/90 mb-[0.75rem]">{children}</h1>
+    <h1 className="font-serif text-[1.25rem] md:text-[1.5rem] text-white/90 mb-[0.75rem] text-center">{children}</h1>
   ),
   h2: ({ children }: { children?: React.ReactNode }) => (
-    <h2 className="font-serif text-[1.1rem] md:text-[1.25rem] text-white/85 mb-[0.5rem] mt-[1rem]">{children}</h2>
+    <h2 className="font-serif text-[1.1rem] md:text-[1.25rem] text-white/85 mb-[0.5rem] mt-[1rem] text-center">{children}</h2>
   ),
   p: ({ children }: { children?: React.ReactNode }) => (
-    <p className="font-sans text-[0.9rem] text-white/70 leading-relaxed mb-[0.75rem] last:mb-0">{children}</p>
+    <p className="font-sans text-[0.9rem] text-white/70 leading-relaxed mb-[0.75rem] last:mb-0 text-center">{children}</p>
   ),
   ul: ({ children }: { children?: React.ReactNode }) => (
-    <ul className="list-disc list-inside text-white/70 mb-[0.75rem] space-y-[0.25rem]">{children}</ul>
+    <ul className="list-disc list-inside text-white/70 mb-[0.75rem] space-y-[0.25rem] text-center">{children}</ul>
   ),
   li: ({ children }: { children?: React.ReactNode }) => (
-    <li className="font-sans text-[0.85rem]">{children}</li>
+    <li className="font-sans text-[0.85rem] text-center">{children}</li>
   ),
   strong: ({ children }: { children?: React.ReactNode }) => (
     <strong className="text-white/90 font-medium">{children}</strong>
@@ -69,7 +69,7 @@ const folderMarkdownComponents = {
     <em className="text-white/80 italic">{children}</em>
   ),
   blockquote: ({ children }: { children?: React.ReactNode }) => (
-    <blockquote className="border-l-[2px] border-white/20 pl-[1rem] my-[0.75rem] text-white/60 italic">
+    <blockquote className="border-l-[2px] border-white/20 pl-[1rem] my-[0.75rem] text-white/60 italic text-center">
       {children}
     </blockquote>
   ),
@@ -97,9 +97,6 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setMounted(true), []);
-
-  const firstImage = posts.find((p) => p.image)?.image;
-  const bgImage = firstImage || folder.thumbnail;
 
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('portrait');
   useEffect(() => {
@@ -213,36 +210,33 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
 
   return (
     <>
-    <section className="min-h-screen w-full overflow-x-hidden cursor-none">
-      {/* ── 배경 ── */}
-      <div className="fixed inset-0 z-0">
-        {bgImage && (
-          <div className="absolute inset-0 hero-blur-bg">
-            <Image src={bgImage} alt="" fill className="object-cover" priority />
-          </div>
-        )}
-        <div className="absolute inset-0 liquid-bg opacity-60" />
-        <div className="absolute inset-0 bg-black/25" />
-        <div className="absolute inset-0 grain-texture pointer-events-none" />
-      </div>
+    <section className="relative min-h-screen w-full cursor-none pb-12 md:pb-16">
+        {/* 뒤로가기 버튼 - GNB 아래 배치 */}
+        <motion.div
+          className="relative mb-8"
+          style={{ zIndex: 100, paddingTop: '5rem', paddingLeft: '2rem' }}
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <Link
+            href="/gallery"
+            className="glass-card inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-white/[0.12] transition-colors"
+            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/70 pointer-events-none">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </Link>
+        </motion.div>
 
-      {/* ── 콘텐츠 ── */}
-      <div className="relative z-10 min-h-screen py-[3rem] md:py-[4rem] lg:py-[5rem]">
         {/* 헤더 */}
         <motion.header
           className="flex flex-col items-center text-center mb-[3rem] md:mb-[4rem] px-[1.5rem]"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
         >
-          <Link
-            href="/"
-            className="glass-card flex items-center justify-center w-[2.5rem] h-[2.5rem] rounded-full hover:bg-white/[0.12] transition-colors mb-[1.5rem]"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/70">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </Link>
           <motion.h1
             className="font-serif text-[2rem] md:text-[2.5rem] lg:text-[3rem] text-white/90 leading-tight mb-[0.75rem]"
             layoutId={`folder-title-${folder.slug}`}
@@ -261,15 +255,16 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
 
         {/* 폴더 설명 */}
         {content && (
-          <motion.article
-            className="glass-card rounded-[1.25rem] p-[2rem] md:p-[2.5rem] mx-auto text-center"
-            style={{ width: 'calc(100% - 3rem)', maxWidth: '40rem', marginBottom: '5rem' }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
-          >
-            <ReactMarkdown components={folderMarkdownComponents}>{content}</ReactMarkdown>
-          </motion.article>
+          <div className="flex justify-center w-full mb-[5rem] px-[1.5rem]">
+            <motion.article
+              className="glass-card rounded-[1.25rem] p-[2rem] md:p-[2.5rem] w-full max-w-[40rem]"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+            >
+              <ReactMarkdown components={folderMarkdownComponents}>{content}</ReactMarkdown>
+            </motion.article>
+          </div>
         )}
 
         {/* ── 스티커 보드 (상대좌표 % 기반) ── */}
@@ -295,10 +290,7 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
         </div>
 
         <div className="h-[6rem] md:h-[8rem]" />
-      </div>
-
-      {/* ── 그레인 최상위 ── */}
-      <div className="fixed inset-0 grain-texture pointer-events-none z-20" />
+      </section>
 
       {/* ── 라이트박스 ── */}
       <AnimatePresence>
@@ -310,7 +302,6 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
           />
         )}
       </AnimatePresence>
-    </section>
 
     {/* ── 어드민 패널 — body에 portal로 탈출 ── */}
     {mounted && createPortal(
