@@ -14,7 +14,8 @@ type Props = {
   content: string | null;
 };
 
-type StickerPos = { x: number; y: number; rotate: number };
+// 좌표를 컨테이너 크기 대비 % 로 저장 (반응형 핵심)
+type StickerPos = { xPct: number; yPct: number; rotate: number };
 type LayoutMap = Record<string, StickerPos>;
 
 // ── Markdown 스타일 ───────────────────────────────────────────────────────────
@@ -91,16 +92,15 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
   const [copied, setCopied] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // state와 별도로 항상 최신 layout을 가리키는 ref
-  // (handleExport가 stale closure를 읽는 문제 방지)
   const layoutRef = useRef<LayoutMap>({});
+  // 스티커 보드 컨테이너 ref → dragConstraints에 사용
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setMounted(true), []);
 
   const firstImage = posts.find((p) => p.image)?.image;
   const bgImage = firstImage || folder.thumbnail;
 
-  // 화면 방향 감지
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('portrait');
   useEffect(() => {
     const mq = window.matchMedia('(orientation: landscape)');
@@ -113,14 +113,11 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
   const storageKey = `sticker-layout-${folder.slug}-${orientation}`;
   const layoutFile = `/images/${folder.slug}/layout-${orientation}.json`;
 
-  // layout state와 ref를 함께 갱신하는 헬퍼
   const applyLayout = useCallback((data: LayoutMap) => {
     layoutRef.current = data;
     setLayout(data);
   }, []);
 
-  // orientation 전환 시 해당 방향 레이아웃으로 교체
-  // layout-{orientation}.json 우선 → 없으면 localStorage → 없으면 기본 위치
   useEffect(() => {
     applyLayout({});
     fetch(layoutFile)
@@ -134,7 +131,6 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
       });
   }, [storageKey, layoutFile, applyLayout]);
 
-  // Shift+E → 어드민 모드 토글
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.shiftKey && e.code === 'KeyE') setAdminMode((v) => !v);
@@ -143,10 +139,11 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  // 드래그 완료 → % 좌표로 저장
   const handleDragEnd = useCallback(
-    (slug: string, x: number, y: number, rotate: number) => {
-      // ref를 즉시 갱신해 export가 항상 최신 값을 읽도록 보장
-      const next = { ...layoutRef.current, [slug]: { x, y, rotate } };
+    (slug: string, xPct: number, yPct: number, rotate: number) => {
+      console.log(`💾 ${slug} 저장: X=${xPct.toFixed(1)}%, Y=${yPct.toFixed(1)}%`);
+      const next = { ...layoutRef.current, [slug]: { xPct, yPct, rotate } };
       layoutRef.current = next;
       localStorage.setItem(storageKey, JSON.stringify(next));
       setLayout(next);
@@ -154,13 +151,33 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
     [storageKey],
   );
 
+  // stickerMeta: 기본 위치(%) 포함
+  const stickerMeta = useMemo(
+    () =>
+      posts.map((_, i) => {
+        const count = posts.length;
+        // 세로: 균등 분포 + 랜덤 지터
+        const baseYPct = count > 1 ? (i / (count - 1)) * 76 + 5 : 45;
+        const jitterY = (seededRand(i * 53 + 7) - 0.5) * 14;
+        const defaultYPct = Math.max(3, Math.min(90, baseYPct + jitterY));
+        // 가로: 5~72% (스티커 너비 여유 고려)
+        const defaultXPct = seededRand(i * 269 + 183) * 67 + 5;
+        return {
+          rotate: (seededRand(i * 127 + 311) - 0.5) * 10,
+          defaultXPct,
+          defaultYPct,
+        };
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [posts.length],
+  );
+
   const handleExport = () => {
-    // layoutRef에서 읽어 stale closure 문제 완전 회피
     const fullLayout: LayoutMap = {};
     posts.forEach((post, i) => {
       fullLayout[post.slug] = layoutRef.current[post.slug] ?? {
-        x: 0,
-        y: 0,
+        xPct: stickerMeta[i].defaultXPct,
+        yPct: stickerMeta[i].defaultYPct,
         rotate: stickerMeta[i].rotate,
       };
     });
@@ -171,18 +188,27 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
 
   const handleReset = () => {
     localStorage.removeItem(storageKey);
+    layoutRef.current = {};
     setLayout({});
   };
 
-  const stickerMeta = useMemo(
-    () =>
-      posts.map((_, i) => ({
-        rotate: (seededRand(i * 127 + 311) - 0.5) * 10,
-        offsetPct: seededRand(i * 269 + 183) * 42,
-      })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [posts.length],
-  );
+  // 컨테이너 높이: 실제 배치된 이미지 위치(yPct)를 고려해 동적 계산
+  const containerMinHeight = useMemo(() => {
+    // 모든 스티커의 실제 Y 위치(%) 중 최댓값 찾기
+    let maxYPct = 0;
+    posts.forEach((post, i) => {
+      const yPct = layout[post.slug]?.yPct ?? stickerMeta[i]?.defaultYPct ?? 50;
+      maxYPct = Math.max(maxYPct, yPct);
+    });
+
+    // maxYPct가 컨테이너 높이의 %이므로, 실제 필요한 높이 역산
+    // 예: maxYPct=80% → 컨테이너는 최소 스티커가 잘리지 않을 만큼 + 여유
+    // 80%에 스티커가 있다면, 100%를 기준으로 환산하고 스티커 높이(약 20rem) + 여유(10rem) 추가
+    const baseHeight = maxYPct > 0 ? (100 / maxYPct) * 100 : 100;
+    const estimatedRem = (baseHeight / 100) * 60 + 30; // 기본 60rem 기준 + 하단 여유
+
+    return `max(85vh, ${Math.max(estimatedRem, 60)}rem)`;
+  }, [posts, layout, stickerMeta]);
 
   return (
     <>
@@ -245,16 +271,22 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
           </motion.article>
         )}
 
-        {/* ── 스티커 보드 ── */}
-        <div className="relative max-w-[72rem] mx-auto px-[1.5rem] md:px-[4rem]">
+        {/* ── 스티커 보드 (상대좌표 % 기반) ── */}
+        <div
+          ref={containerRef}
+          className="relative w-full mx-auto px-[1.5rem] md:px-[4rem]"
+          style={{ minHeight: containerMinHeight, maxWidth: '100%' }}
+        >
           {posts.map((post, i) => (
             <StickerItem
               key={post.slug}
               post={post}
               index={i}
               baseRotate={stickerMeta[i].rotate}
-              offsetPct={stickerMeta[i].offsetPct}
+              defaultXPct={stickerMeta[i].defaultXPct}
+              defaultYPct={stickerMeta[i].defaultYPct}
               savedPos={layout[post.slug] ?? null}
+              containerRef={containerRef}
               onDragEnd={handleDragEnd}
               onImageClick={setSelectedImage}
             />
@@ -266,8 +298,6 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
 
       {/* ── 그레인 최상위 ── */}
       <div className="fixed inset-0 grain-texture pointer-events-none z-20" />
-
-      {/* 어드민 패널은 portal로 body에 직접 마운트 (overflow-x:hidden 클리핑 우회) */}
 
       {/* ── 라이트박스 ── */}
       <AnimatePresence>
@@ -281,7 +311,7 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
       </AnimatePresence>
     </section>
 
-    {/* ── 어드민 패널 — body에 portal로 탈출 (overflow-x:hidden 클리핑 우회) ── */}
+    {/* ── 어드민 패널 — body에 portal로 탈출 ── */}
     {mounted && createPortal(
       <AnimatePresence>
         {adminMode && (
@@ -317,80 +347,137 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
   );
 }
 
-// ── 스티커 아이템 ─────────────────────────────────────────────────────────────
+// ── 스티커 아이템 (절대 위치 % 기반) ─────────────────────────────────────────
 
 type StickerItemProps = {
   post: PostData;
   index: number;
   baseRotate: number;
-  offsetPct: number;
+  defaultXPct: number;
+  defaultYPct: number;
   savedPos: StickerPos | null;
-  onDragEnd: (slug: string, x: number, y: number, rotate: number) => void;
+  containerRef: React.RefObject<HTMLDivElement | null>;
+  onDragEnd: (slug: string, xPct: number, yPct: number, rotate: number) => void;
   onImageClick: (src: string) => void;
 };
 
-function StickerItem({ post, index, baseRotate, offsetPct, savedPos, onDragEnd, onImageClick }: StickerItemProps) {
-  const marginLeft = `clamp(0px, ${offsetPct}%, calc(100% - 16rem))`;
+function StickerItem({
+  post, index, baseRotate, defaultXPct, defaultYPct,
+  savedPos, containerRef, onDragEnd, onImageClick,
+}: StickerItemProps) {
+  const xPct = savedPos?.xPct ?? defaultXPct;
+  const yPct = savedPos?.yPct ?? defaultYPct;
   const rotate = savedPos?.rotate ?? baseRotate;
 
-  const x = useMotionValue(savedPos?.x ?? 0);
-  const y = useMotionValue(savedPos?.y ?? 0);
+  // 드래그 오프셋(px) — drag end 후 즉시 0으로 리셋
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
 
-  // 초기화·orientation 전환 시 motion value 동기화
+  // 스티커 자체 크기 측정용 ref
+  const stickerRef = useRef<HTMLDivElement>(null);
+
+  // savedPos 외부 변경(JSON 로드, 초기화) 시 동기화
   useEffect(() => {
-    x.set(savedPos?.x ?? 0);
-    y.set(savedPos?.y ?? 0);
+    x.set(0);
+    y.set(0);
   }, [savedPos, x, y]);
 
-  // onDragEnd 클로저 내에서 savedPos를 최신 값으로 읽기 위한 ref
-  const savedPosRef = useRef(savedPos);
-  useEffect(() => { savedPosRef.current = savedPos; }, [savedPos]);
-
   const [isDragging, setIsDragging] = useState(false);
-  const wasDraggedRef = useRef(false);
+  const dragDistanceRef = useRef(0);
 
   return (
     <motion.div
+      ref={stickerRef}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6, delay: 0.06 * index }}
       drag
       dragMomentum={false}
+      dragElastic={0.04}
       style={{
-        marginLeft,
+        position: 'absolute',
+        left: `${xPct}%`,
+        top: `${yPct}%`,
         x,
         y,
-        position: 'relative',
-        zIndex: isDragging ? 100 : undefined,
+        translateX: '-50%',
+        translateY: '-50%',
+        zIndex: isDragging ? 100 : 10,
         display: 'inline-flex',
         flexDirection: 'column',
-        marginBottom: '4rem',
+        touchAction: 'none',
+        willChange: 'transform',
       }}
       onDragStart={() => {
         setIsDragging(true);
-        wasDraggedRef.current = false;
+        dragDistanceRef.current = 0;
+      }}
+      onDrag={(_, info) => {
+        // 드래그 누적 거리 추적
+        dragDistanceRef.current = Math.max(
+          dragDistanceRef.current,
+          Math.abs(info.offset.x) + Math.abs(info.offset.y)
+        );
       }}
       onDragEnd={(_, info) => {
         setIsDragging(false);
-        // info.offset: 이번 드래그 제스처의 변위 (x.get()보다 신뢰할 수 있음)
-        const moved = Math.abs(info.offset.x) > 3 || Math.abs(info.offset.y) > 3;
+        const moved = dragDistanceRef.current > 8;
         if (moved) {
-          wasDraggedRef.current = true;
-          const prevX = savedPosRef.current?.x ?? 0;
-          const prevY = savedPosRef.current?.y ?? 0;
-          onDragEnd(post.slug, prevX + info.offset.x, prevY + info.offset.y, rotate);
+          const container = containerRef.current;
+          const stickerRect = stickerRef.current?.getBoundingClientRect();
+          if (!container || !stickerRect) return;
+
+          // padding을 제외한 실제 콘텐츠 영역 사용
+          const containerWidth = container.clientWidth;
+          const containerHeight = container.clientHeight;
+
+          // 컨테이너의 padding 값 계산
+          const computedStyle = window.getComputedStyle(container);
+          const paddingLeft = parseFloat(computedStyle.paddingLeft);
+          const paddingTop = parseFloat(computedStyle.paddingTop);
+
+          // 실제 드래그 가능 영역 (padding 제외)
+          const contentWidth = containerWidth - paddingLeft - parseFloat(computedStyle.paddingRight);
+          const contentHeight = containerHeight - paddingTop - parseFloat(computedStyle.paddingBottom);
+
+          console.log(`🔍 Container: ${containerWidth}px (content: ${contentWidth}px), Sticker: ${stickerRect.width}px`);
+
+          // 스티커 크기를 콘텐츠 영역 대비 %로 계산
+          const stickerWidthPct = (stickerRect.width / contentWidth) * 100;
+          const stickerHeightPct = (stickerRect.height / contentHeight) * 100;
+
+          // 픽셀 이동량 → % 변환 (콘텐츠 영역 기준)
+          const deltaXPct = (info.offset.x / contentWidth) * 100;
+          const deltaYPct = (info.offset.y / contentHeight) * 100;
+
+          // 중앙 정렬이므로 스티커 절반만큼 여유 확보
+          const maxXPct = 100 - stickerWidthPct / 2;
+          const newXPct = Math.max(stickerWidthPct / 2, Math.min(maxXPct, xPct + deltaXPct));
+          const newYPct = Math.max(stickerHeightPct / 2, Math.min(100 - stickerHeightPct / 2, yPct + deltaYPct));
+
+          console.log(`📍 ${post.slug}: X=${xPct.toFixed(1)}% → ${newXPct.toFixed(1)}% (최대 ${maxXPct.toFixed(1)}%)`);
+
+          // motion value 먼저 리셋 → CSS left/top 업데이트와 동일 프레임에서 처리
+          x.set(0);
+          y.set(0);
+          onDragEnd(post.slug, newXPct, newYPct, rotate);
         }
+        // 짧은 지연 후 드래그 거리 리셋 (클릭 이벤트 차단용)
+        setTimeout(() => {
+          dragDistanceRef.current = 0;
+        }, 100);
       }}
     >
       {post.image ? (
         <>
-          {/* 스티커 이미지 */}
+          {/* 스티커 이미지 — clamp로 반응형 크기 */}
           <motion.button
-            className="block w-[14rem] md:w-[20rem] will-change-transform cursor-none p-0"
+            className="block will-change-transform cursor-none p-0"
             style={{
               rotate,
               lineHeight: 0,
               borderRadius: '0.75rem',
+              width: 'clamp(8rem, 18vw, 20rem)',
               filter: isDragging
                 ? 'drop-shadow(0 20px 50px rgba(0,0,0,0.75))'
                 : 'drop-shadow(0 8px 24px rgba(0,0,0,0.5))',
@@ -399,8 +486,10 @@ function StickerItem({ post, index, baseRotate, offsetPct, savedPos, onDragEnd, 
             whileHover={isDragging ? {} : { rotate: 0, scale: 1.06 }}
             transition={{ type: 'spring', stiffness: 260, damping: 22 }}
             onClick={() => {
-              if (!wasDraggedRef.current) onImageClick(post.image!);
-              wasDraggedRef.current = false;
+              // 드래그 거리가 8px 미만일 때만 클릭으로 인식
+              if (dragDistanceRef.current <= 8) {
+                onImageClick(post.image!);
+              }
             }}
           >
             <Image
@@ -409,7 +498,7 @@ function StickerItem({ post, index, baseRotate, offsetPct, savedPos, onDragEnd, 
               width={800}
               height={800}
               style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '0.75rem' }}
-              sizes="(max-width: 768px) 14rem, 20rem"
+              sizes="(max-width: 480px) 8rem, (max-width: 1280px) 18vw, 20rem"
               draggable={false}
             />
           </motion.button>
@@ -417,7 +506,8 @@ function StickerItem({ post, index, baseRotate, offsetPct, savedPos, onDragEnd, 
           {/* 메모 텍스트 */}
           {post.content && (
             <motion.div
-              className="mt-[0.8rem] max-w-[16rem] md:max-w-[22rem] text-center"
+              className="mt-[0.8rem] text-center"
+              style={{ maxWidth: 'clamp(9rem, 20vw, 22rem)' }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.06 * index + 0.25 }}
