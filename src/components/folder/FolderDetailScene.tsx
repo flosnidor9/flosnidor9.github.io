@@ -142,7 +142,6 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
   // 드래그 완료 → % 좌표로 저장
   const handleDragEnd = useCallback(
     (slug: string, xPct: number, yPct: number, rotate: number) => {
-      console.log(`💾 ${slug} 저장: X=${xPct.toFixed(1)}%, Y=${yPct.toFixed(1)}%`);
       const next = { ...layoutRef.current, [slug]: { xPct, yPct, rotate } };
       layoutRef.current = next;
       localStorage.setItem(storageKey, JSON.stringify(next));
@@ -201,13 +200,15 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
       maxYPct = Math.max(maxYPct, yPct);
     });
 
-    // maxYPct가 컨테이너 높이의 %이므로, 실제 필요한 높이 역산
-    // 예: maxYPct=80% → 컨테이너는 최소 스티커가 잘리지 않을 만큼 + 여유
-    // 80%에 스티커가 있다면, 100%를 기준으로 환산하고 스티커 높이(약 20rem) + 여유(10rem) 추가
-    const baseHeight = maxYPct > 0 ? (100 / maxYPct) * 100 : 100;
-    const estimatedRem = (baseHeight / 100) * 60 + 30; // 기본 60rem 기준 + 하단 여유
+    // maxYPct는 스티커 중심점 위치(%)
+    // 스티커 높이 약 25rem (이미지 20rem + 메모 5rem) 고려
+    // 100vh 기준으로 maxYPct% 위치에 스티커 중심이 있으므로
+    // (maxYPct / 100 * 100vh) + 스티커높이절반 + 하단여백
+    const stickerHalfHeight = 15; // rem
+    const bottomPadding = 10; // rem
+    const estimatedRem = (maxYPct / 100) * 85 + stickerHalfHeight + bottomPadding;
 
-    return `max(85vh, ${Math.max(estimatedRem, 60)}rem)`;
+    return `max(85vh, ${Math.max(estimatedRem, 50)}rem)`;
   }, [posts, layout, stickerMeta]);
 
   return (
@@ -440,8 +441,6 @@ function StickerItem({
           const contentWidth = containerWidth - paddingLeft - parseFloat(computedStyle.paddingRight);
           const contentHeight = containerHeight - paddingTop - parseFloat(computedStyle.paddingBottom);
 
-          console.log(`🔍 Container: ${containerWidth}px (content: ${contentWidth}px), Sticker: ${stickerRect.width}px`);
-
           // 스티커 크기를 콘텐츠 영역 대비 %로 계산
           const stickerWidthPct = (stickerRect.width / contentWidth) * 100;
           const stickerHeightPct = (stickerRect.height / contentHeight) * 100;
@@ -451,11 +450,8 @@ function StickerItem({
           const deltaYPct = (info.offset.y / contentHeight) * 100;
 
           // 중앙 정렬이므로 스티커 절반만큼 여유 확보
-          const maxXPct = 100 - stickerWidthPct / 2;
-          const newXPct = Math.max(stickerWidthPct / 2, Math.min(maxXPct, xPct + deltaXPct));
+          const newXPct = Math.max(stickerWidthPct / 2, Math.min(100 - stickerWidthPct / 2, xPct + deltaXPct));
           const newYPct = Math.max(stickerHeightPct / 2, Math.min(100 - stickerHeightPct / 2, yPct + deltaYPct));
-
-          console.log(`📍 ${post.slug}: X=${xPct.toFixed(1)}% → ${newXPct.toFixed(1)}% (최대 ${maxXPct.toFixed(1)}%)`);
 
           // motion value 먼저 리셋 → CSS left/top 업데이트와 동일 프레임에서 처리
           x.set(0);
