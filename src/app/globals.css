@@ -29,26 +29,28 @@
 }
 
 /* ─── Base Reset ─────────────────────────────────────────── */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  cursor: none !important;
-}
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    cursor: none !important;
+  }
 
-html {
-  font-size: 16px;
-  scroll-behavior: smooth;
-}
+  html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+  }
 
-body {
-  background-color: var(--color-bg);
-  color: var(--color-text);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
 }
 
 /* ─── Tailwind Theme Extension ───────────────────────────── */

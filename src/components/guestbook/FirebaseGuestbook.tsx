@@ -92,24 +92,23 @@ export default function FirebaseGuestbook() {
   };
 
   return (
-    <div className="space-y-[2rem]">
+    <div className="flex flex-col gap-8">
       {/* 작성 폼 */}
       <motion.form
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
         onSubmit={handleSubmit}
-        className="glass-card rounded-[1.25rem] backdrop-blur-[40px]"
+        className="glass-card rounded-[1.25rem] backdrop-blur-[40px] p-6"
         style={{
-          background: 'rgba(255, 255, 255, 0.03)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          padding: '1.25rem 1.5rem',
+          background: 'rgba(0, 0, 0, 0.35)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
         }}
       >
-        <div className="space-y-[1.25rem]">
+        <div className="space-y-5">
           {/* 이름 입력 */}
           <div>
-            <label htmlFor="name" className="block text-[0.85rem] text-[var(--color-muted)] mb-[0.5rem]">
+            <label htmlFor="name" className="block text-[0.85rem] text-[var(--color-muted)] mb-2">
               이름 (선택)
             </label>
             <input
@@ -119,13 +118,13 @@ export default function FirebaseGuestbook() {
               onChange={(e) => setName(e.target.value)}
               placeholder="익명"
               maxLength={50}
-              className="w-full px-[1rem] py-[0.75rem] rounded-[0.75rem] bg-white/5 border border-white/10 text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+              className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/50 focus:outline-none focus:border-[var(--color-accent)] transition-colors"
             />
           </div>
 
           {/* 메시지 입력 */}
           <div>
-            <label htmlFor="message" className="block text-[0.85rem] text-[var(--color-muted)] mb-[0.5rem]">
+            <label htmlFor="message" className="block text-[0.85rem] text-[var(--color-muted)] mb-2">
               메시지 *
             </label>
             <textarea
@@ -135,9 +134,9 @@ export default function FirebaseGuestbook() {
               placeholder="방문해줘서 고마워요"
               maxLength={500}
               rows={4}
-              className="w-full px-[1rem] py-[0.75rem] rounded-[0.75rem] bg-white/5 border border-white/10 text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none focus:border-[var(--color-accent)] transition-colors resize-none"
+              className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-white/50 focus:outline-none focus:border-[var(--color-accent)] transition-colors resize-none"
             />
-            <p className="text-[0.75rem] text-[var(--color-muted)] mt-[0.5rem] text-right">
+            <p className="text-[0.75rem] text-[var(--color-muted)] mt-2 text-right">
               {message.length} / 500
             </p>
           </div>
@@ -157,7 +156,7 @@ export default function FirebaseGuestbook() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full px-[2rem] py-[0.875rem] rounded-[0.75rem] bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/30 text-[var(--color-accent)] font-medium hover:bg-[var(--color-accent)]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="w-full px-8 py-3.5 rounded-xl bg-[var(--color-accent)]/25 border border-[var(--color-accent)]/50 text-[var(--color-accent)] font-medium hover:bg-[var(--color-accent)]/35 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {isSubmitting ? '전송 중...' : '남기기'}
           </button>
@@ -165,7 +164,7 @@ export default function FirebaseGuestbook() {
       </motion.form>
 
       {/* 방명록 목록 */}
-      <div className="px-[1rem]">
+      <div className="flex flex-col gap-4 px-4">
         <AnimatePresence mode="popLayout">
           {entries.map((entry, index) => (
             <motion.div
@@ -174,19 +173,18 @@ export default function FirebaseGuestbook() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.4, delay: index * 0.05 }}
-              className="glass-card rounded-[1rem] backdrop-blur-[40px] mb-[1rem] last:mb-0"
+              className="glass-card rounded-2xl backdrop-blur-[40px] px-6 py-5"
               style={{
-                background: 'rgba(255, 255, 255, 0.02)',
-                border: '1px solid rgba(255, 255, 255, 0.06)',
-                padding: '1.25rem 1.5rem',
+                background: 'rgba(0, 0, 0, 0.3)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
               }}
             >
               {/* 헤더 */}
-              <div className="flex items-baseline justify-between mb-[0.75rem]">
+              <div className="flex items-baseline justify-between mb-3">
                 <p className="font-medium text-[var(--color-text)]">
                   {entry.name}
                 </p>
-                <time className="text-[0.75rem] text-[var(--color-muted)]">
+                <time className="text-[0.75rem] text-white/60">
                   {formatDate(entry.timestamp)}
                 </time>
               </div>
