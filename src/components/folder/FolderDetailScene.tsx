@@ -190,23 +190,24 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
 
   // 컨테이너 높이: 실제 배치된 이미지 위치(yPct)를 고려해 동적 계산
   const containerMinHeight = useMemo(() => {
-    // 모든 스티커의 실제 Y 위치(%) 중 최댓값 찾기
+    // 편집 모드: 충분한 드래그 공간 제공
+    if (adminMode) {
+      return '200vh';
+    }
+
+    // 일반 모드: 스티커 위치에 맞춰 컴팩트하게
     let maxYPct = 0;
     posts.forEach((post, i) => {
       const yPct = layout[post.slug]?.yPct ?? stickerMeta[i]?.defaultYPct ?? 50;
       maxYPct = Math.max(maxYPct, yPct);
     });
 
-    // maxYPct는 스티커 중심점 위치(%)
-    // 스티커 높이 약 25rem (이미지 20rem + 메모 5rem) 고려
-    // 100vh 기준으로 maxYPct% 위치에 스티커 중심이 있으므로
-    // (maxYPct / 100 * 100vh) + 스티커높이절반 + 하단여백
     const stickerHalfHeight = 15; // rem
     const bottomPadding = 10; // rem
     const estimatedRem = (maxYPct / 100) * 85 + stickerHalfHeight + bottomPadding;
 
     return `max(85vh, ${Math.max(estimatedRem, 50)}rem)`;
-  }, [posts, layout, stickerMeta]);
+  }, [posts, layout, stickerMeta, adminMode]);
 
   return (
     <>
@@ -273,18 +274,19 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
           className="relative w-full mx-auto px-[1.5rem] md:px-[4rem]"
           style={{ minHeight: containerMinHeight, maxWidth: '100%' }}
         >
-          {posts.map((post, i) => (
+          {mounted && posts.map((post, i) => (
             <StickerItem
               key={post.slug}
               post={post}
               index={i}
-              baseRotate={stickerMeta[i].rotate}
+              baseRotate={Math.round(stickerMeta[i].rotate * 100) / 100}
               defaultXPct={stickerMeta[i].defaultXPct}
               defaultYPct={stickerMeta[i].defaultYPct}
               savedPos={layout[post.slug] ?? null}
               containerRef={containerRef}
               onDragEnd={handleDragEnd}
               onImageClick={setSelectedImage}
+              editMode={adminMode}
             />
           ))}
         </div>
@@ -351,11 +353,12 @@ type StickerItemProps = {
   containerRef: React.RefObject<HTMLDivElement | null>;
   onDragEnd: (slug: string, xPct: number, yPct: number, rotate: number) => void;
   onImageClick: (src: string) => void;
+  editMode?: boolean;
 };
 
 function StickerItem({
   post, index, baseRotate, defaultXPct, defaultYPct,
-  savedPos, containerRef, onDragEnd, onImageClick,
+  savedPos, containerRef, onDragEnd, onImageClick, editMode = false,
 }: StickerItemProps) {
   const xPct = savedPos?.xPct ?? defaultXPct;
   const yPct = savedPos?.yPct ?? defaultYPct;
@@ -441,8 +444,10 @@ function StickerItem({
           const deltaYPct = (info.offset.y / contentHeight) * 100;
 
           // 중앙 정렬이므로 스티커 절반만큼 여유 확보
+          // 편집 모드에서는 Y축 제한을 200%까지 확장
+          const maxYPct = editMode ? 200 : 100;
           const newXPct = Math.max(stickerWidthPct / 2, Math.min(100 - stickerWidthPct / 2, xPct + deltaXPct));
-          const newYPct = Math.max(stickerHeightPct / 2, Math.min(100 - stickerHeightPct / 2, yPct + deltaYPct));
+          const newYPct = Math.max(stickerHeightPct / 2, Math.min(maxYPct - stickerHeightPct / 2, yPct + deltaYPct));
 
           // motion value 먼저 리셋 → CSS left/top 업데이트와 동일 프레임에서 처리
           x.set(0);
