@@ -25,21 +25,12 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Personal Archive",
     description: "개인 자료를 보관하고, 감상하고, 전시하기 위한 공간",
-    images: [
-      {
-        url: "/thumbnail/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Personal Archive",
-      },
-    ],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "Personal Archive",
     description: "개인 자료를 보관하고, 감상하고, 전시하기 위한 공간",
-    images: ["/thumbnail/og-image.png"],
   },
 };
 
