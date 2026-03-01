@@ -14,7 +14,7 @@ const tagColors: Record<string, string> = {
   마젠타: 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-400/30',
   그린: 'bg-green-500/20 text-green-300 border-green-400/30',
   스카이: 'bg-sky-500/20 text-sky-300 border-sky-400/30',
-  마젠그린: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30',
+  마제그린: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30',
   마코스카: 'bg-violet-500/20 text-violet-300 border-violet-400/30',
 };
 
