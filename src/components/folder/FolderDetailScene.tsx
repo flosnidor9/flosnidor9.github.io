@@ -492,6 +492,8 @@ function StickerItem({
               style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '0.75rem' }}
               sizes="(max-width: 480px) 8rem, (max-width: 1280px) 18vw, 20rem"
               draggable={false}
+              loading={index < 4 ? 'eager' : 'lazy'}
+              priority={index < 4}
             />
           </motion.button>
 
