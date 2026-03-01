@@ -1,9 +1,6 @@
-import { getLogByYear } from '@/lib/data/log';
-import TimelineSection from '@/components/log/TimelineSection';
+import FirebaseLogSection from '@/components/log/FirebaseLogSection';
 
 export default function LogPage() {
-  const grouped = getLogByYear();
-
   return (
     <main className="relative min-h-screen pt-[5rem] pb-[4rem] flex justify-center">
       <div className="w-full max-w-[38rem] px-[1rem]">
@@ -17,7 +14,7 @@ export default function LogPage() {
           </p>
         </header>
 
-        <TimelineSection grouped={grouped} />
+        <FirebaseLogSection />
       </div>
     </main>
   );

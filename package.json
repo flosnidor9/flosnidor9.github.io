@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@tailwindcss/typography": "^0.5.19",
     "@types/three": "^0.183.1",
     "firebase": "^12.10.0",
     "framer-motion": "^12.34.3",

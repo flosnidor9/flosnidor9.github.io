@@ -5,6 +5,7 @@ import LiquidCursor from "@/components/cursor/LiquidCursor";
 import GNB from "@/components/layout/GNB";
 import PersistentHeroBackground from "@/components/hero/PersistentHeroBackground";
 import { getFavoriteImagePaths } from "@/lib/data/images";
+import Providers from "@/components/providers/Providers";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-serif",
@@ -33,10 +34,12 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className={`${cormorant.variable} ${inter.variable} antialiased`}>
-        <PersistentHeroBackground imagePaths={imagePaths} />
-        <GNB />
-        <LiquidCursor />
-        {children}
+        <Providers>
+          <PersistentHeroBackground imagePaths={imagePaths} />
+          <GNB />
+          <LiquidCursor />
+          {children}
+        </Providers>
       </body>
     </html>
   );
