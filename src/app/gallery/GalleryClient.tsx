@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import type { FolderData, ImageOrientation } from '@/lib/data/folders';
-import { encodeGalleryPath } from '@/lib/galleryPath';
+import { toGalleryPath } from '@/lib/galleryPath';
 
 function getSpan(orientation: ImageOrientation): 1 | 2 {
   return orientation === 'landscape' ? 2 : 1;
@@ -136,7 +136,7 @@ function BentoCard({ folder, aspectRatio, minHeight, maxHeight }: BentoCardProps
     normY.set(0);
   }, [normX, normY]);
 
-  const href = `/gallery/${encodeGalleryPath(folder.slug)}`;
+  const href = `/gallery/${toGalleryPath(folder.slug)}`;
   const metaLabel = folder.isLeaf ? `${folder.count} items` : `${folder.childCount} folders`;
 
   return (

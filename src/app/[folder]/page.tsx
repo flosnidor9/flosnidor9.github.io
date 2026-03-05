@@ -1,10 +1,13 @@
 ﻿import { notFound, redirect } from 'next/navigation';
 import { getFolder, getFolders } from '@/lib/data/folders';
-import { encodeGalleryPath } from '@/lib/galleryPath';
+import { toGalleryPath } from '@/lib/galleryPath';
 
 type Props = {
   params: Promise<{ folder: string }>;
 };
+
+export const dynamic = 'force-static';
+export const dynamicParams = false;
 
 export async function generateStaticParams() {
   const folders = getFolders(null);
@@ -30,5 +33,5 @@ export default async function FolderPage({ params }: Props) {
     notFound();
   }
 
-  redirect(`/gallery/${encodeGalleryPath(folder.slug)}`);
+  redirect(`/gallery/${toGalleryPath(folder.slug)}`);
 }

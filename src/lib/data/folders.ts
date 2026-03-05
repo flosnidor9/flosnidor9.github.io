@@ -6,6 +6,7 @@ const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif']);
 const EXCLUDED = new Set(['favorites']);
 const PUBLIC_ROOT = path.join(process.cwd(), 'public');
 const IMAGES_ROOT = path.join(PUBLIC_ROOT, 'images');
+const FOLDER_META_FILE = 'folder.json';
 
 export type ImageOrientation = 'landscape' | 'portrait' | 'square';
 
@@ -22,6 +23,10 @@ export type FolderData = {
   aspectRatio: number;
   tags: string[];
   count: number;
+};
+
+type FolderMeta = {
+  thumbnail?: string;
 };
 
 function getThumbnailMeta(absPath: string): { orientation: ImageOrientation; aspectRatio: number } {
@@ -58,6 +63,38 @@ function toPublicUrl(absPath: string): string {
   return `/${rel}`;
 }
 
+function readFolderMeta(absDir: string): FolderMeta | null {
+  const metaPath = path.join(absDir, FOLDER_META_FILE);
+  if (!fs.existsSync(metaPath)) return null;
+
+  try {
+    const raw = fs.readFileSync(metaPath, 'utf-8');
+    const parsed = JSON.parse(raw) as FolderMeta;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function resolveCustomThumbnailAbs(absDir: string, meta: FolderMeta | null): string | null {
+  const raw = meta?.thumbnail?.trim();
+  if (!raw) return null;
+
+  const normalized = raw.replace(/\\/g, '/');
+  const absPath = normalized.startsWith('/')
+    ? path.join(PUBLIC_ROOT, normalized.replace(/^\/+/, ''))
+    : path.join(absDir, normalized);
+
+  if (!fs.existsSync(absPath)) return null;
+  const stat = fs.statSync(absPath);
+  if (!stat.isFile()) return null;
+
+  const ext = path.extname(absPath).toLowerCase();
+  if (!IMAGE_EXTS.has(ext)) return null;
+
+  return absPath;
+}
+
 type FolderNode = {
   slug: string;
   name: string;
@@ -92,6 +129,7 @@ function listDirectImages(absDir: string): string[] {
 }
 
 function buildFolderNode(absDir: string, segments: string[], output: FolderNode[]): FolderNodeBuild {
+  const folderMeta = readFolderMeta(absDir);
   const childDirs = listChildDirs(absDir);
   const childResults = childDirs.map((child) =>
     buildFolderNode(path.join(absDir, child.name), [...segments, child.name], output),
@@ -106,10 +144,12 @@ function buildFolderNode(absDir: string, segments: string[], output: FolderNode[
   const childCount = childResults.length;
   const totalImageCount = directImages.length + childResults.reduce((sum, child) => sum + child.totalImageCount, 0);
 
+  const customThumbnailAbs = resolveCustomThumbnailAbs(absDir, folderMeta);
   const thumbnailAbs =
-    directImages.length > 0
+    customThumbnailAbs ??
+    (directImages.length > 0
       ? path.join(absDir, directImages[0])
-      : childResults.find((child) => child.thumbnailAbs)?.thumbnailAbs ?? null;
+      : childResults.find((child) => child.thumbnailAbs)?.thumbnailAbs ?? null);
 
   const { orientation, aspectRatio } = thumbnailAbs
     ? getThumbnailMeta(thumbnailAbs)
@@ -202,6 +242,8 @@ export function getFolderContent(slug: string): string | null {
 export type PostData = {
   slug: string;
   image: string | null;
+  width: number | null;
+  height: number | null;
   content: string | null;
 };
 
@@ -216,7 +258,7 @@ export function getFolderPosts(folderSlug: string): PostData[] {
     .filter((d) => d.isFile())
     .map((d) => d.name);
 
-  const postMap = new Map<string, { image?: string; content?: string }>();
+  const postMap = new Map<string, { image?: string; width?: number; height?: number; content?: string }>();
 
   for (const file of files) {
     const ext = path.extname(file).toLowerCase();
@@ -232,7 +274,11 @@ export function getFolderPosts(folderSlug: string): PostData[] {
     const post = postMap.get(name)!;
 
     if (IMAGE_EXTS.has(ext)) {
+      const imageAbsPath = path.join(base, file);
+      const { width, height } = sizeOf(fs.readFileSync(imageAbsPath));
       post.image = `/images/${normalized}/${file}`;
+      post.width = width;
+      post.height = height;
     } else if (ext === '.md') {
       const mdPath = path.join(base, file);
       post.content = fs.readFileSync(mdPath, 'utf-8');
@@ -244,6 +290,8 @@ export function getFolderPosts(folderSlug: string): PostData[] {
     .map(([slug, data]) => ({
       slug,
       image: data.image ?? null,
+      width: data.width ?? null,
+      height: data.height ?? null,
       content: data.content ?? null,
     }));
 }

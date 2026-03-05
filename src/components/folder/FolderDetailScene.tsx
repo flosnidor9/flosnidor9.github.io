@@ -1,10 +1,10 @@
-'use client';
+﻿'use client';
 
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import Link from 'next/link';
-import { motion, AnimatePresence, useMotionValue } from 'framer-motion';
+import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import type { FolderData, PostData } from '@/lib/data/folders';
 
@@ -15,17 +15,9 @@ type Props = {
   backHref?: string;
 };
 
-// 좌표를 컨테이너 크기 대비 % 로 저장 (반응형 핵심)
-type StickerPos = { xPct: number; yPct: number; rotate: number };
-type LayoutMap = Record<string, StickerPos>;
-
-// ── Markdown 스타일 ───────────────────────────────────────────────────────────
-
 const memoComponents = {
   p: ({ children }: { children?: React.ReactNode }) => (
-    <p className="font-mono text-[0.82rem] text-white/75 leading-relaxed mb-[0.4rem] last:mb-0">
-      {children}
-    </p>
+    <p className="font-sans text-[0.82rem] text-white/70 leading-relaxed mb-[0.4rem] last:mb-0">{children}</p>
   ),
   h1: ({ children }: { children?: React.ReactNode }) => (
     <h1 className="font-mono text-[0.95rem] text-white/85 mb-[0.4rem] font-bold">{children}</h1>
@@ -33,16 +25,10 @@ const memoComponents = {
   h2: ({ children }: { children?: React.ReactNode }) => (
     <h2 className="font-mono text-[0.88rem] text-white/80 mb-[0.35rem] font-semibold">{children}</h2>
   ),
-  strong: ({ children }: { children?: React.ReactNode }) => (
-    <strong className="text-white/90 font-semibold">{children}</strong>
-  ),
-  em: ({ children }: { children?: React.ReactNode }) => (
-    <em className="text-white/70">{children}</em>
-  ),
+  strong: ({ children }: { children?: React.ReactNode }) => <strong className="text-white/90 font-semibold">{children}</strong>,
+  em: ({ children }: { children?: React.ReactNode }) => <em className="text-white/70">{children}</em>,
   ul: ({ children }: { children?: React.ReactNode }) => (
-    <ul className="list-disc list-inside font-mono text-[0.82rem] text-white/70 mb-[0.4rem] space-y-[0.2rem]">
-      {children}
-    </ul>
+    <ul className="list-disc list-inside font-mono text-[0.82rem] text-white/70 mb-[0.4rem] space-y-[0.2rem]">{children}</ul>
   ),
   li: ({ children }: { children?: React.ReactNode }) => <li>{children}</li>,
 };
@@ -60,160 +46,166 @@ const folderMarkdownComponents = {
   ul: ({ children }: { children?: React.ReactNode }) => (
     <ul className="list-disc list-inside text-white/70 mb-[0.75rem] space-y-[0.25rem] text-center">{children}</ul>
   ),
-  li: ({ children }: { children?: React.ReactNode }) => (
-    <li className="font-sans text-[0.85rem] text-center">{children}</li>
-  ),
-  strong: ({ children }: { children?: React.ReactNode }) => (
-    <strong className="text-white/90 font-medium">{children}</strong>
-  ),
-  em: ({ children }: { children?: React.ReactNode }) => (
-    <em className="text-white/80 italic">{children}</em>
-  ),
+  li: ({ children }: { children?: React.ReactNode }) => <li className="font-sans text-[0.85rem] text-center">{children}</li>,
+  strong: ({ children }: { children?: React.ReactNode }) => <strong className="text-white/90 font-medium">{children}</strong>,
+  em: ({ children }: { children?: React.ReactNode }) => <em className="text-white/80 italic">{children}</em>,
   blockquote: ({ children }: { children?: React.ReactNode }) => (
-    <blockquote className="border-l-[2px] border-white/20 pl-[1rem] my-[0.75rem] text-white/60 italic text-center">
-      {children}
-    </blockquote>
+    <blockquote className="border-l-[2px] border-white/20 pl-[1rem] my-[0.75rem] text-white/60 italic text-center">{children}</blockquote>
   ),
   hr: () => <hr className="border-white/10 my-[1rem]" />,
 };
 
-// ── 유틸 ─────────────────────────────────────────────────────────────────────
+function resolveOrderedPosts(allPosts: PostData[], orderedSlugs: string[] | null): PostData[] {
+  if (!orderedSlugs || orderedSlugs.length === 0) return allPosts;
 
-function seededRand(seed: number): number {
-  const x = Math.sin(seed) * 43758.5453123;
-  return x - Math.floor(x);
+  const bySlug = new Map(allPosts.map((post) => [post.slug, post] as const));
+  const ordered = orderedSlugs.map((slug) => bySlug.get(slug)).filter((post): post is PostData => Boolean(post));
+  const remaining = allPosts.filter((post) => !orderedSlugs.includes(post.slug));
+  return [...ordered, ...remaining];
 }
-
-// ── 메인 컴포넌트 ─────────────────────────────────────────────────────────────
 
 export default function FolderDetailScene({ folder, posts, content, backHref = '/gallery' }: Props) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [layout, setLayout] = useState<LayoutMap>({});
-  const [adminMode, setAdminMode] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [thumbnailMode, setThumbnailMode] = useState(false);
+  const [thumbnailSlug, setThumbnailSlug] = useState<string | null>(null);
+  const [thumbnailCopied, setThumbnailCopied] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [orderedPosts, setOrderedPosts] = useState<PostData[]>(posts);
+  const [storedOrder, setStoredOrder] = useState<string[] | null>(null);
+  const [fileOrder, setFileOrder] = useState<string[] | null>(null);
+  const [isManualOrder, setIsManualOrder] = useState(false);
 
-  const layoutRef = useRef<LayoutMap>({});
-  // 스티커 보드 컨테이너 ref → dragConstraints에 사용
-  const containerRef = useRef<HTMLDivElement>(null);
+  const storageKey = `gallery-order-${folder.slug}`;
+  const encodedSlug = folder.slug
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+  const orderJsonUrl = `/images/${encodedSlug}/order.json`;
 
   useEffect(() => setMounted(true), []);
 
-  const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('portrait');
   useEffect(() => {
-    const mq = window.matchMedia('(orientation: landscape)');
-    const update = () => setOrientation(mq.matches ? 'landscape' : 'portrait');
-    update();
-    mq.addEventListener('change', update);
-    return () => mq.removeEventListener('change', update);
-  }, []);
+    const stored = localStorage.getItem(storageKey);
+    if (!stored) {
+      setStoredOrder(null);
+      return;
+    }
 
-  const storageKey = `sticker-layout-${folder.slug}-${orientation}`;
-  const layoutFile = `/images/${folder.slug}/layout-${orientation}.json`;
-
-  const applyLayout = useCallback((data: LayoutMap) => {
-    layoutRef.current = data;
-    setLayout(data);
-  }, []);
+    try {
+      const parsed = JSON.parse(stored) as string[];
+      setStoredOrder(parsed);
+    } catch {
+      setStoredOrder(null);
+    }
+  }, [storageKey]);
 
   useEffect(() => {
-    applyLayout({});
-    fetch(layoutFile)
-      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
-      .then((data: LayoutMap) => applyLayout(data))
+    let cancelled = false;
+
+    fetch(orderJsonUrl)
+      .then((res) => {
+        if (!res.ok) throw new Error('no order file');
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        if (!Array.isArray(data)) throw new Error('invalid order data');
+        setFileOrder(data);
+      })
       .catch(() => {
-        const stored = localStorage.getItem(storageKey);
-        if (stored) {
-          try { applyLayout(JSON.parse(stored)); } catch { /* ignore */ }
-        }
+        if (!cancelled) setFileOrder(null);
       });
-  }, [storageKey, layoutFile, applyLayout]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orderJsonUrl]);
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.shiftKey && e.code === 'KeyE') setAdminMode((v) => !v);
+    const orderToApply = fileOrder ?? storedOrder;
+    if (isManualOrder) {
+      return;
+    }
+
+    if (orderToApply && orderToApply.length > 0) {
+      setOrderedPosts(resolveOrderedPosts(posts, orderToApply));
+    } else {
+      setOrderedPosts(posts);
+    }
+  }, [fileOrder, isManualOrder, posts, storedOrder]);
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.shiftKey && event.code === 'KeyE') {
+        event.preventDefault();
+        setEditMode((prev) => !prev);
+      }
+      if (event.shiftKey && event.code === 'KeyT') {
+        event.preventDefault();
+        setThumbnailMode((prev) => !prev);
+      }
     };
+
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  // 드래그 완료 → % 좌표로 저장
-  const handleDragEnd = useCallback(
-    (slug: string, xPct: number, yPct: number, rotate: number) => {
-      const next = { ...layoutRef.current, [slug]: { xPct, yPct, rotate } };
-      layoutRef.current = next;
-      localStorage.setItem(storageKey, JSON.stringify(next));
-      setLayout(next);
-    },
-    [storageKey],
-  );
+  useEffect(() => {
+    if (thumbnailSlug) return;
 
-  // stickerMeta: 기본 위치(%) 포함
-  const stickerMeta = useMemo(
-    () =>
-      posts.map((_, i) => {
-        const count = posts.length;
-        // 세로: 균등 분포 + 랜덤 지터
-        const baseYPct = count > 1 ? (i / (count - 1)) * 76 + 5 : 45;
-        const jitterY = (seededRand(i * 53 + 7) - 0.5) * 14;
-        const defaultYPct = Math.max(3, Math.min(90, baseYPct + jitterY));
-        // 가로: 5~72% (스티커 너비 여유 고려)
-        const defaultXPct = seededRand(i * 269 + 183) * 67 + 5;
-        return {
-          rotate: (seededRand(i * 127 + 311) - 0.5) * 10,
-          defaultXPct,
-          defaultYPct,
-        };
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [posts.length],
-  );
+    const currentThumbnailPost = posts.find((post) => post.image === folder.thumbnail);
+    if (currentThumbnailPost) {
+      setThumbnailSlug(currentThumbnailPost.slug);
+    }
+  }, [folder.thumbnail, posts, thumbnailSlug]);
 
-  const handleExport = () => {
-    const fullLayout: LayoutMap = {};
-    posts.forEach((post, i) => {
-      fullLayout[post.slug] = layoutRef.current[post.slug] ?? {
-        xPct: stickerMeta[i].defaultXPct,
-        yPct: stickerMeta[i].defaultYPct,
-        rotate: stickerMeta[i].rotate,
-      };
-    });
-    navigator.clipboard.writeText(JSON.stringify(fullLayout, null, 2));
+  useEffect(() => {
+    if (!isManualOrder) return;
+    const slugs = orderedPosts.map((post) => post.slug);
+    localStorage.setItem(storageKey, JSON.stringify(slugs));
+    setStoredOrder(slugs);
+  }, [isManualOrder, orderedPosts, storageKey]);
+
+  const postCountLabel = useMemo(() => `${orderedPosts.length} items`, [orderedPosts.length]);
+
+  const handleCopyJson = async () => {
+    await navigator.clipboard.writeText(JSON.stringify(orderedPosts.map((post) => post.slug), null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleReset = () => {
-    localStorage.removeItem(storageKey);
-    layoutRef.current = {};
-    setLayout({});
+  const handleReorder = (next: PostData[]) => {
+    setIsManualOrder(true);
+    setOrderedPosts(next);
   };
 
-  // 컨테이너 높이: 실제 배치된 이미지 위치(yPct)를 고려해 동적 계산
-  const containerMinHeight = useMemo(() => {
-    // 편집 모드: 충분한 드래그 공간 제공
-    if (adminMode) {
-      return '200vh';
-    }
+  const handleResetOrder = () => {
+    localStorage.removeItem(storageKey);
+    setStoredOrder(null);
+    setIsManualOrder(false);
+  };
 
-    // 일반 모드: 스티커 위치에 맞춰 컴팩트하게
-    let maxYPct = 0;
-    posts.forEach((post, i) => {
-      const yPct = layout[post.slug]?.yPct ?? stickerMeta[i]?.defaultYPct ?? 50;
-      maxYPct = Math.max(maxYPct, yPct);
-    });
+  const selectedThumbnailPost = orderedPosts.find((post) => post.slug === thumbnailSlug && post.image);
+  const selectedThumbnailFile =
+    selectedThumbnailPost?.image
+      ? decodeURIComponent(selectedThumbnailPost.image.split('/').pop() ?? '')
+      : null;
+  const thumbnailJson = selectedThumbnailFile
+    ? JSON.stringify({ thumbnail: selectedThumbnailFile }, null, 2)
+    : null;
 
-    const stickerHalfHeight = 15; // rem
-    const bottomPadding = 10; // rem
-    const estimatedRem = (maxYPct / 100) * 85 + stickerHalfHeight + bottomPadding;
-
-    return `max(85vh, ${Math.max(estimatedRem, 50)}rem)`;
-  }, [posts, layout, stickerMeta, adminMode]);
+  const handleCopyThumbnailJson = async () => {
+    if (!thumbnailJson) return;
+    await navigator.clipboard.writeText(thumbnailJson);
+    setThumbnailCopied(true);
+    setTimeout(() => setThumbnailCopied(false), 2000);
+  };
 
   return (
     <>
-    <section className="relative min-h-screen w-full cursor-none pb-12 md:pb-16">
-        {/* 뒤로가기 버튼 - GNB 아래 배치 */}
+      <section className="relative min-h-screen w-full cursor-none pb-[3rem] md:pb-[4rem]">
         <motion.div
           className="relative mb-8"
           style={{ zIndex: 100, paddingTop: '5rem', paddingLeft: '2rem' }}
@@ -232,7 +224,6 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
           </Link>
         </motion.div>
 
-        {/* 헤더 */}
         <motion.header
           className="flex flex-col items-center text-center mb-[3rem] md:mb-[4rem] px-[1.5rem]"
           initial={{ opacity: 0, y: -20 }}
@@ -251,11 +242,12 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
                 {tag}
               </span>
             ))}
-            <span className="text-[0.75rem] text-white/30">{posts.length} items</span>
+            <span className="text-[0.75rem] text-white/30">{postCountLabel}</span>
+            <span className="text-[0.72rem] text-white/35">Shift + E: Reorder</span>
+            <span className="text-[0.72rem] text-white/35">Shift + T: Thumbnail</span>
           </div>
         </motion.header>
 
-        {/* 폴더 설명 */}
         {content && (
           <div className="flex justify-center w-full mb-[5rem] px-[1.5rem]">
             <motion.article
@@ -269,251 +261,165 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
           </div>
         )}
 
-        {/* ── 스티커 보드 (상대좌표 % 기반) ── */}
-        <div
-          ref={containerRef}
-          className="relative w-full mx-auto px-[1.5rem] md:px-[4rem]"
-          style={{ minHeight: containerMinHeight, maxWidth: '100%' }}
-        >
-          {mounted && posts.map((post, i) => (
-            <StickerItem
-              key={post.slug}
-              post={post}
-              index={i}
-              baseRotate={Math.round(stickerMeta[i].rotate * 100) / 100}
-              defaultXPct={stickerMeta[i].defaultXPct}
-              defaultYPct={stickerMeta[i].defaultYPct}
-              savedPos={layout[post.slug] ?? null}
-              containerRef={containerRef}
-              onDragEnd={handleDragEnd}
-              onImageClick={setSelectedImage}
-              editMode={adminMode}
-            />
-          ))}
-        </div>
-
-        <div className="h-[6rem] md:h-[8rem]" />
+        {!editMode ? (
+          <div className="w-full px-[1rem] md:px-[2rem] lg:px-[3rem]">
+            <div className="mx-auto grid max-w-[110rem] grid-cols-1 items-start gap-[1rem] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 md:gap-[1.25rem]">
+              {orderedPosts.map((post, index) => (
+                <GalleryMasonryCard
+                  key={post.slug}
+                  post={post}
+                  index={index}
+                  onImageClick={setSelectedImage}
+                  thumbnailMode={thumbnailMode}
+                  isSelectedThumbnail={post.slug === thumbnailSlug}
+                  onSelectThumbnail={() => setThumbnailSlug(post.slug)}
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="w-full px-[1rem] md:px-[2rem] lg:px-[3rem]">
+            <div className="mx-auto max-w-[56rem]">
+              <Reorder.Group axis="y" values={orderedPosts} onReorder={handleReorder} className="space-y-[0.85rem]">
+                {orderedPosts.map((post, index) => (
+                  <EditableOrderCard key={post.slug} post={post} index={index} />
+                ))}
+              </Reorder.Group>
+            </div>
+          </div>
+        )}
       </section>
 
-      {/* ── 라이트박스 ── */}
       <AnimatePresence>
-        {selectedImage && (
-          <ImageLightbox
-            src={selectedImage}
-            alt={folder.title}
-            onClose={() => setSelectedImage(null)}
-          />
-        )}
+        {selectedImage && <ImageLightbox src={selectedImage} alt={folder.title} onClose={() => setSelectedImage(null)} />}
       </AnimatePresence>
 
-    {/* ── 어드민 패널 — body에 portal로 탈출 ── */}
-    {mounted && createPortal(
-      <AnimatePresence>
-        {adminMode && (
-          <motion.div
-            className="fixed bottom-[2rem] right-[2rem] flex flex-col gap-[0.6rem] items-end"
-            style={{ zIndex: 9999 }}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 16 }}
-            transition={{ duration: 0.25 }}
-          >
-            <p className="font-mono text-[0.7rem] text-white/40 pr-[0.25rem]">
-              Admin Mode · {orientation} · Shift+E to close
-            </p>
-            <button
-              onClick={handleExport}
-              className="glass-card rounded-[0.75rem] px-[1.25rem] py-[0.6rem] font-mono text-[0.8rem] text-white/80 hover:bg-white/[0.1] transition-colors"
-            >
-              {copied ? '✓ 복사됨' : `📋 layout-${orientation}.json 복사`}
-            </button>
-            <button
-              onClick={handleReset}
-              className="glass-card rounded-[0.75rem] px-[1.25rem] py-[0.6rem] font-mono text-[0.8rem] text-white/45 hover:bg-white/[0.1] transition-colors"
-            >
-              ↺ 배치 초기화
-            </button>
-          </motion.div>
+      {mounted &&
+        createPortal(
+          <AnimatePresence>
+            {(editMode || thumbnailMode) && (
+              <motion.div
+                className="fixed bottom-[1.25rem] right-[1.25rem] flex flex-col gap-[0.55rem] items-end"
+                style={{ zIndex: 9999 }}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 16 }}
+                transition={{ duration: 0.25 }}
+              >
+                {editMode ? (
+                  <>
+                    <p className="font-mono text-[0.7rem] text-white/45 pr-[0.2rem]">Reorder mode · Shift+E to close</p>
+                    <button
+                      onClick={handleCopyJson}
+                      className="glass-card rounded-[0.8rem] px-[1rem] py-[0.55rem] font-mono text-[0.8rem] text-white/85 hover:bg-white/[0.1] transition-colors"
+                    >
+                      {copied ? 'Copied JSON' : 'Copy JSON'}
+                    </button>
+                    <button
+                      onClick={handleResetOrder}
+                      className="glass-card rounded-[0.8rem] px-[1rem] py-[0.55rem] font-mono text-[0.75rem] text-white/55 hover:bg-white/[0.1] transition-colors"
+                    >
+                      Reset Order
+                    </button>
+                  </>
+                ) : null}
+
+                {thumbnailMode ? (
+                  <>
+                    <p className="font-mono text-[0.7rem] text-white/45 pr-[0.2rem]">Thumbnail mode · Shift+T to close</p>
+                    <p className="font-mono text-[0.68rem] text-white/35 pr-[0.2rem]">
+                      save to: /public/images/{folder.slug}/folder.json
+                    </p>
+                    <button
+                      onClick={handleCopyThumbnailJson}
+                      disabled={!thumbnailJson}
+                      className="glass-card rounded-[0.8rem] px-[1rem] py-[0.55rem] font-mono text-[0.8rem] text-white/85 hover:bg-white/[0.1] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {thumbnailCopied ? 'Copied folder.json' : 'Copy folder.json'}
+                    </button>
+                  </>
+                ) : null}
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
         )}
-      </AnimatePresence>,
-      document.body,
-    )}
     </>
   );
 }
 
-// ── 스티커 아이템 (절대 위치 % 기반) ─────────────────────────────────────────
-
-type StickerItemProps = {
+type GalleryMasonryCardProps = {
   post: PostData;
   index: number;
-  baseRotate: number;
-  defaultXPct: number;
-  defaultYPct: number;
-  savedPos: StickerPos | null;
-  containerRef: React.RefObject<HTMLDivElement | null>;
-  onDragEnd: (slug: string, xPct: number, yPct: number, rotate: number) => void;
   onImageClick: (src: string) => void;
-  editMode?: boolean;
+  thumbnailMode: boolean;
+  isSelectedThumbnail: boolean;
+  onSelectThumbnail: () => void;
 };
 
-function StickerItem({
-  post, index, baseRotate, defaultXPct, defaultYPct,
-  savedPos, containerRef, onDragEnd, onImageClick, editMode = false,
-}: StickerItemProps) {
-  const xPct = savedPos?.xPct ?? defaultXPct;
-  const yPct = savedPos?.yPct ?? defaultYPct;
-  const rotate = savedPos?.rotate ?? baseRotate;
-
-  // 드래그 오프셋(px) — drag end 후 즉시 0으로 리셋
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-
-  // 스티커 자체 크기 측정용 ref
-  const stickerRef = useRef<HTMLDivElement>(null);
-
-  // savedPos 외부 변경(JSON 로드, 초기화) 시 동기화
-  useEffect(() => {
-    x.set(0);
-    y.set(0);
-  }, [savedPos, x, y]);
-
-  const [isDragging, setIsDragging] = useState(false);
-  const dragDistanceRef = useRef(0);
+function GalleryMasonryCard({
+  post,
+  index,
+  onImageClick,
+  thumbnailMode,
+  isSelectedThumbnail,
+  onSelectThumbnail,
+}: GalleryMasonryCardProps) {
+  const handleImageClick = () => {
+    if (!post.image) return;
+    if (thumbnailMode) {
+      onSelectThumbnail();
+      return;
+    }
+    onImageClick(post.image);
+  };
 
   return (
     <motion.div
-      ref={stickerRef}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.6, delay: 0.06 * index }}
-      drag
-      dragMomentum={false}
-      dragElastic={0.04}
-      style={{
-        position: 'absolute',
-        left: `${xPct}%`,
-        top: `${yPct}%`,
-        x,
-        y,
-        translateX: '-50%',
-        translateY: '-50%',
-        zIndex: isDragging ? 100 : 10,
-        display: 'inline-flex',
-        flexDirection: 'column',
-        touchAction: 'none',
-        willChange: 'transform',
-      }}
-      onDragStart={() => {
-        setIsDragging(true);
-        dragDistanceRef.current = 0;
-      }}
-      onDrag={(_, info) => {
-        // 드래그 누적 거리 추적
-        dragDistanceRef.current = Math.max(
-          dragDistanceRef.current,
-          Math.abs(info.offset.x) + Math.abs(info.offset.y)
-        );
-      }}
-      onDragEnd={(_, info) => {
-        setIsDragging(false);
-        const moved = dragDistanceRef.current > 8;
-        if (moved) {
-          const container = containerRef.current;
-          const stickerRect = stickerRef.current?.getBoundingClientRect();
-          if (!container || !stickerRect) return;
-
-          // padding을 제외한 실제 콘텐츠 영역 사용
-          const containerWidth = container.clientWidth;
-          const containerHeight = container.clientHeight;
-
-          // 컨테이너의 padding 값 계산
-          const computedStyle = window.getComputedStyle(container);
-          const paddingLeft = parseFloat(computedStyle.paddingLeft);
-          const paddingTop = parseFloat(computedStyle.paddingTop);
-
-          // 실제 드래그 가능 영역 (padding 제외)
-          const contentWidth = containerWidth - paddingLeft - parseFloat(computedStyle.paddingRight);
-          const contentHeight = containerHeight - paddingTop - parseFloat(computedStyle.paddingBottom);
-
-          // 스티커 크기를 콘텐츠 영역 대비 %로 계산
-          const stickerWidthPct = (stickerRect.width / contentWidth) * 100;
-          const stickerHeightPct = (stickerRect.height / contentHeight) * 100;
-
-          // 픽셀 이동량 → % 변환 (콘텐츠 영역 기준)
-          const deltaXPct = (info.offset.x / contentWidth) * 100;
-          const deltaYPct = (info.offset.y / contentHeight) * 100;
-
-          // 중앙 정렬이므로 스티커 절반만큼 여유 확보
-          // 편집 모드에서는 Y축 제한을 200%까지 확장
-          const maxYPct = editMode ? 200 : 100;
-          const newXPct = Math.max(stickerWidthPct / 2, Math.min(100 - stickerWidthPct / 2, xPct + deltaXPct));
-          const newYPct = Math.max(stickerHeightPct / 2, Math.min(maxYPct - stickerHeightPct / 2, yPct + deltaYPct));
-
-          // motion value 먼저 리셋 → CSS left/top 업데이트와 동일 프레임에서 처리
-          x.set(0);
-          y.set(0);
-          onDragEnd(post.slug, newXPct, newYPct, rotate);
-        }
-        // 짧은 지연 후 드래그 거리 리셋 (클릭 이벤트 차단용)
-        setTimeout(() => {
-          dragDistanceRef.current = 0;
-        }, 100);
-      }}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: Math.min(index * 0.03, 0.3) }}
     >
       {post.image ? (
         <>
-          {/* 스티커 이미지 — clamp로 반응형 크기 */}
           <motion.button
-            className="block will-change-transform cursor-none p-0"
-            style={{
-              rotate,
-              lineHeight: 0,
-              borderRadius: '0.75rem',
-              width: 'clamp(8rem, 18vw, 20rem)',
-              filter: isDragging
-                ? 'drop-shadow(0 20px 50px rgba(0,0,0,0.75))'
-                : 'drop-shadow(0 8px 24px rgba(0,0,0,0.5))',
-              transition: 'filter 0.2s ease',
-            }}
-            whileHover={isDragging ? {} : { rotate: 0, scale: 1.06 }}
-            transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-            onClick={() => {
-              // 드래그 거리가 8px 미만일 때만 클릭으로 인식
-              if (dragDistanceRef.current <= 8) {
-                onImageClick(post.image!);
-              }
-            }}
+            type="button"
+            className="group relative w-full overflow-hidden rounded-3xl p-0"
+            style={{ lineHeight: 0 }}
+            whileHover={{ y: -3, scale: 1.01 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+            onClick={handleImageClick}
           >
+            <div className="pointer-events-none absolute inset-0 rounded-3xl shadow-[0_1.4rem_3.5rem_rgba(6,8,12,0.5)]" />
+            <div className="pointer-events-none absolute inset-0 rounded-3xl bg-[radial-gradient(80%_120%_at_50%_0%,rgba(120,255,230,0.16),transparent_60%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+            {thumbnailMode ? (
+              <div className="pointer-events-none absolute left-[0.75rem] top-[0.75rem] rounded-full bg-black/55 px-[0.7rem] py-[0.35rem] font-mono text-[0.68rem] text-white/90">
+                {isSelectedThumbnail ? 'Selected thumbnail' : 'Click to set thumbnail'}
+              </div>
+            ) : null}
             <Image
               src={post.image}
               alt={post.slug}
-              width={800}
-              height={800}
-              style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '0.75rem' }}
-              sizes="(max-width: 480px) 8rem, (max-width: 1280px) 18vw, 20rem"
+              width={post.width ?? 1200}
+              height={post.height ?? 900}
+              className={`h-auto w-full rounded-3xl object-contain brightness-[0.94] transition duration-300 group-hover:brightness-105 ${
+                isSelectedThumbnail ? 'ring-[0.16rem] ring-cyan-200/75 ring-inset' : ''
+              }`}
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1536px) 33vw, 20vw"
               draggable={false}
-              loading={index < 4 ? 'eager' : 'lazy'}
-              priority={index < 4}
+              loading={index < 8 ? 'eager' : 'lazy'}
+              priority={index < 8}
             />
           </motion.button>
 
-          {/* 메모 텍스트 */}
           {post.content && (
-            <motion.div
-              className="mt-[0.8rem] text-center"
-              style={{ maxWidth: 'clamp(9rem, 20vw, 22rem)' }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.06 * index + 0.25 }}
-            >
+            <motion.div className="mt-[0.65rem] px-[0.2rem] text-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <ReactMarkdown components={memoComponents}>{post.content}</ReactMarkdown>
             </motion.div>
           )}
         </>
       ) : (
-        /* 텍스트 전용 */
-        <div style={{ rotate: `${rotate}deg` }}>
+        <div className="rounded-2xl bg-white/[0.04] px-[1rem] py-[0.8rem]">
           <ReactMarkdown components={memoComponents}>{post.content!}</ReactMarkdown>
         </div>
       )}
@@ -521,7 +427,50 @@ function StickerItem({
   );
 }
 
-// ── 라이트박스 ────────────────────────────────────────────────────────────────
+type EditableOrderCardProps = {
+  post: PostData;
+  index: number;
+};
+
+function EditableOrderCard({ post, index }: EditableOrderCardProps) {
+  const dragControls = useDragControls();
+
+  return (
+    <Reorder.Item value={post} className="list-none" dragListener={false} dragControls={dragControls}>
+      <motion.article
+        layout
+        className="glass-card flex items-center gap-[0.75rem] rounded-2xl px-[0.7rem] py-[0.7rem] md:gap-[0.9rem]"
+        style={{
+          boxShadow: '0 1rem 2.4rem rgba(0,0,0,0.35)',
+        }}
+      >
+        <button
+          type="button"
+          onPointerDown={(event) => dragControls.start(event)}
+          className="inline-flex h-[1.9rem] w-[1.9rem] shrink-0 items-center justify-center rounded-full bg-white/10 text-white/70 hover:bg-white/15"
+          aria-label={`Reorder ${post.slug}`}
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="8" y1="6" x2="16" y2="6" />
+            <line x1="8" y1="12" x2="16" y2="12" />
+            <line x1="8" y1="18" x2="16" y2="18" />
+          </svg>
+        </button>
+
+        {post.image ? (
+          <Image src={post.image} alt={post.slug} width={80} height={80} className="h-[3.8rem] w-[3.8rem] rounded-2xl object-contain" draggable={false} />
+        ) : (
+          <div className="h-[3.8rem] w-[3.8rem] rounded-2xl bg-white/10" />
+        )}
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-mono text-[0.72rem] text-white/45">{index + 1}</p>
+          <p className="truncate font-mono text-[0.83rem] text-white/80">{post.slug}</p>
+        </div>
+      </motion.article>
+    </Reorder.Item>
+  );
+}
 
 type LightboxProps = { src: string; alt: string; onClose: () => void };
 
@@ -553,15 +502,9 @@ function ImageLightbox({ src, alt, onClose }: LightboxProps) {
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
         onClick={(e) => e.stopPropagation()}
       >
-        <Image
-          src={src}
-          alt={alt}
-          width={1200}
-          height={800}
-          className="object-contain max-h-[85vh] w-auto"
-          priority
-        />
+        <Image src={src} alt={alt} width={1200} height={800} className="object-contain max-h-[85vh] w-auto" priority />
       </motion.div>
     </motion.div>
   );
 }
+

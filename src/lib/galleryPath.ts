@@ -1,12 +1,18 @@
-export function encodeGalleryPath(slug: string): string {
-  return encodeURIComponent(slug);
+function sanitizeSegments(segments: string[]): string[] {
+  return segments.map((segment) => segment.trim()).filter((segment) => segment.length > 0 && segment !== '.' && segment !== '..');
 }
 
-export function decodeGalleryPath(encoded: string): string | null {
+export function toGalleryPath(slug: string): string {
+  const segments = sanitizeSegments(slug.split('/'));
+  return segments.map((segment) => encodeURIComponent(segment)).join('/');
+}
+
+export function fromGallerySegments(segments: string[]): string | null {
   try {
-    const decoded = decodeURIComponent(encoded);
-    if (!decoded || decoded.includes('\0')) return null;
-    return decoded;
+    const decoded = segments.map((segment) => decodeURIComponent(segment));
+    const normalized = sanitizeSegments(decoded).join('/');
+    if (!normalized || normalized.includes('\0')) return null;
+    return normalized;
   } catch {
     return null;
   }

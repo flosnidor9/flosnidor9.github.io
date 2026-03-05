@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import type { FolderData } from '@/lib/data/folders';
-import { encodeGalleryPath } from '@/lib/galleryPath';
+import { toGalleryPath } from '@/lib/galleryPath';
 
 type Props = {
   folders: FolderData[];
@@ -50,7 +50,7 @@ type SessionItemProps = {
 function SessionItem({ folder, index }: SessionItemProps) {
   return (
     <motion.a
-      href={`/gallery/${encodeGalleryPath(folder.slug)}`}
+      href={`/gallery/${toGalleryPath(folder.slug)}`}
       className="session-item group relative flex items-center gap-[0.75rem] p-[0.75rem] rounded-[0.75rem] glass-card hover:bg-white/[0.08] transition-colors cursor-pointer"
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}

@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+﻿import { notFound } from 'next/navigation';
 import {
   getAllFolderSlugs,
   getFolder,
@@ -6,18 +6,18 @@ import {
   getFolderPosts,
   getFolders,
 } from '@/lib/data/folders';
-import { decodeGalleryPath, encodeGalleryPath } from '@/lib/galleryPath';
+import { fromGallerySegments, toGalleryPath } from '@/lib/galleryPath';
 import GalleryClient from '../GalleryClient';
 import FolderDetailScene from '@/components/folder/FolderDetailScene';
 
 type Props = {
-  params: Promise<{ folderPath: string }>;
+  params: Promise<{ folderPath?: string[] }>;
 };
 
 function toParentHref(slug: string): string {
   const segments = slug.split('/').filter(Boolean);
   if (segments.length <= 1) return '/gallery';
-  return `/gallery/${encodeGalleryPath(segments.slice(0, -1).join('/'))}`;
+  return `/gallery/${toGalleryPath(segments.slice(0, -1).join('/'))}`;
 }
 
 function toParentSlug(slug: string): string | null {
@@ -27,14 +27,23 @@ function toParentSlug(slug: string): string | null {
 }
 
 export async function generateStaticParams() {
-  return getAllFolderSlugs().map((slug) => ({
-    folderPath: encodeGalleryPath(slug),
+  const params = getAllFolderSlugs().map((slug) => ({
+    folderPath: slug.split('/'),
   }));
+
+  return [{ folderPath: [] }, ...params];
 }
 
 export async function generateMetadata({ params }: Props) {
-  const { folderPath } = await params;
-  const slug = decodeGalleryPath(folderPath);
+  const { folderPath = [] } = await params;
+  if (folderPath.length === 0) {
+    return {
+      title: 'Gallery | Personal Archive',
+      description: 'Top-level categories',
+    };
+  }
+
+  const slug = fromGallerySegments(folderPath);
   if (!slug) return { title: 'Not Found' };
 
   const folder = getFolder(slug);
@@ -48,9 +57,19 @@ export async function generateMetadata({ params }: Props) {
   };
 }
 
-export default async function FolderPathPage({ params }: Props) {
-  const { folderPath } = await params;
-  const slug = decodeGalleryPath(folderPath);
+export default async function GalleryRoutePage({ params }: Props) {
+  const { folderPath = [] } = await params;
+
+  if (folderPath.length === 0) {
+    const folders = getFolders(null);
+    return (
+      <main className="relative min-h-screen pt-[3.5rem]">
+        <GalleryClient folders={folders} title="Gallery" description="Top-level categories" />
+      </main>
+    );
+  }
+
+  const slug = fromGallerySegments(folderPath);
   if (!slug) {
     notFound();
   }
@@ -63,7 +82,7 @@ export default async function FolderPathPage({ params }: Props) {
   const backHref = toParentHref(slug);
   const parentSlug = toParentSlug(slug);
   const parentFolder = parentSlug ? getFolder(parentSlug) : null;
-  const backLabel = parentFolder ? `${parentFolder.title}로` : '이전 분류';
+  const backLabel = parentFolder ? `Back to ${parentFolder.title}` : 'Back';
 
   if (!folder.isLeaf) {
     const children = getFolders(slug);
