@@ -15,6 +15,11 @@ type Props = {
   backHref?: string;
 };
 
+type LightboxState = {
+  src: string;
+  scrollY: number;
+};
+
 const memoComponents = {
   p: ({ children }: { children?: React.ReactNode }) => (
     <p className="font-sans text-[0.82rem] text-white/70 leading-relaxed mb-[0.4rem] last:mb-0">{children}</p>
@@ -65,7 +70,7 @@ function resolveOrderedPosts(allPosts: PostData[], orderedSlugs: string[] | null
 }
 
 export default function FolderDetailScene({ folder, posts, content, backHref = '/gallery' }: Props) {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<LightboxState | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [copied, setCopied] = useState(false);
   const [thumbnailMode, setThumbnailMode] = useState(false);
@@ -168,6 +173,15 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
     setStoredOrder(slugs);
   }, [isManualOrder, orderedPosts, storageKey]);
 
+  useEffect(() => {
+    if (!selectedImage) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [selectedImage]);
+
   const postCountLabel = useMemo(() => `${orderedPosts.length} items`, [orderedPosts.length]);
 
   const handleCopyJson = async () => {
@@ -269,7 +283,7 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
                   key={post.slug}
                   post={post}
                   index={index}
-                  onImageClick={setSelectedImage}
+                  onImageClick={(src) => setSelectedImage({ src, scrollY: window.scrollY })}
                   thumbnailMode={thumbnailMode}
                   isSelectedThumbnail={post.slug === thumbnailSlug}
                   onSelectThumbnail={() => setThumbnailSlug(post.slug)}
@@ -291,7 +305,14 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
       </section>
 
       <AnimatePresence>
-        {selectedImage && <ImageLightbox src={selectedImage} alt={folder.title} onClose={() => setSelectedImage(null)} />}
+        {selectedImage && (
+          <ImageLightbox
+            src={selectedImage.src}
+            alt={folder.title}
+            scrollY={selectedImage.scrollY}
+            onClose={() => setSelectedImage(null)}
+          />
+        )}
       </AnimatePresence>
 
       {mounted &&
@@ -472,12 +493,13 @@ function EditableOrderCard({ post, index }: EditableOrderCardProps) {
   );
 }
 
-type LightboxProps = { src: string; alt: string; onClose: () => void };
+type LightboxProps = { src: string; alt: string; scrollY: number; onClose: () => void };
 
-function ImageLightbox({ src, alt, onClose }: LightboxProps) {
+function ImageLightbox({ src, alt, scrollY, onClose }: LightboxProps) {
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center cursor-none"
+      className="absolute left-0 right-0 z-50 flex h-screen items-center justify-center cursor-none"
+      style={{ top: `${scrollY}px` }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
