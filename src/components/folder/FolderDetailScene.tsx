@@ -12,6 +12,7 @@ type Props = {
   folder: FolderData;
   posts: PostData[];
   content: string | null;
+  backHref?: string;
 };
 
 // 좌표를 컨테이너 크기 대비 % 로 저장 (반응형 핵심)
@@ -85,7 +86,7 @@ function seededRand(seed: number): number {
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────────────────
 
-export default function FolderDetailScene({ folder, posts, content }: Props) {
+export default function FolderDetailScene({ folder, posts, content, backHref = '/gallery' }: Props) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [layout, setLayout] = useState<LayoutMap>({});
   const [adminMode, setAdminMode] = useState(false);
@@ -221,7 +222,7 @@ export default function FolderDetailScene({ folder, posts, content }: Props) {
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         >
           <Link
-            href="/gallery"
+            href={backHref}
             className="glass-card inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-white/[0.12] transition-colors"
             style={{ pointerEvents: 'auto', cursor: 'pointer' }}
           >

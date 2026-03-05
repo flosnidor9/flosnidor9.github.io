@@ -1,13 +1,13 @@
-import { notFound } from 'next/navigation';
-import { getFolder, getFolders, getFolderContent, getFolderPosts } from '@/lib/data/folders';
-import FolderDetailScene from '@/components/folder/FolderDetailScene';
+﻿import { notFound, redirect } from 'next/navigation';
+import { getFolder, getFolders } from '@/lib/data/folders';
+import { encodeGalleryPath } from '@/lib/galleryPath';
 
 type Props = {
   params: Promise<{ folder: string }>;
 };
 
 export async function generateStaticParams() {
-  const folders = getFolders();
+  const folders = getFolders(null);
   return folders.map((f) => ({ folder: f.slug }));
 }
 
@@ -30,12 +30,5 @@ export default async function FolderPage({ params }: Props) {
     notFound();
   }
 
-  const posts = getFolderPosts(slug);
-  const content = getFolderContent(slug);
-
-  return (
-    <main>
-      <FolderDetailScene folder={folder} posts={posts} content={content} />
-    </main>
-  );
+  redirect(`/gallery/${encodeGalleryPath(folder.slug)}`);
 }

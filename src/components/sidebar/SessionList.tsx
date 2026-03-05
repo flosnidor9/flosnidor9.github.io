@@ -1,15 +1,16 @@
-'use client';
+﻿'use client';
 
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import type { FolderData } from '@/lib/data/folders';
+import { encodeGalleryPath } from '@/lib/galleryPath';
 
 type Props = {
   folders: FolderData[];
 };
 
 /**
- * 사이드바용 세션(폴더) 목록
+ * ?ъ씠?쒕컮???몄뀡(?대뜑) 紐⑸줉
  */
 export default function SessionList({ folders }: Props) {
   if (folders.length === 0) {
@@ -49,7 +50,7 @@ type SessionItemProps = {
 function SessionItem({ folder, index }: SessionItemProps) {
   return (
     <motion.a
-      href={`/${folder.slug}`}
+      href={`/gallery/${encodeGalleryPath(folder.slug)}`}
       className="session-item group relative flex items-center gap-[0.75rem] p-[0.75rem] rounded-[0.75rem] glass-card hover:bg-white/[0.08] transition-colors cursor-pointer"
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
@@ -61,7 +62,7 @@ function SessionItem({ folder, index }: SessionItemProps) {
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
     >
-      {/* 썸네일 */}
+      {/* ?몃꽕??*/}
       <div className="relative w-[3rem] h-[3rem] rounded-[0.5rem] overflow-hidden flex-shrink-0 bg-[var(--color-surface)]">
         {folder.thumbnail ? (
           <Image
@@ -81,7 +82,7 @@ function SessionItem({ folder, index }: SessionItemProps) {
         )}
       </div>
 
-      {/* 정보 */}
+      {/* ?뺣낫 */}
       <div className="flex flex-col gap-[0.15rem] min-w-0 flex-1">
         <h4 className="font-sans text-[0.85rem] text-white/90 truncate leading-tight">
           {folder.title}
@@ -101,7 +102,7 @@ function SessionItem({ folder, index }: SessionItemProps) {
         </div>
       </div>
 
-      {/* 화살표 */}
+      {/* ?붿궡??*/}
       <svg
         width="14"
         height="14"
@@ -116,3 +117,4 @@ function SessionItem({ folder, index }: SessionItemProps) {
     </motion.a>
   );
 }
+
