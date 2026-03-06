@@ -4,12 +4,21 @@ import path from 'path';
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif']);
 
 export function getFavoriteImagePaths(): string[] {
-  const dir = path.join(process.cwd(), 'public', 'images', 'favorites');
+  const dir = path.join(process.cwd(), 'public', 'images', 'Home');
   if (!fs.existsSync(dir)) return [];
   return fs
     .readdirSync(dir)
     .filter((f) => IMAGE_EXTS.has(path.extname(f).toLowerCase()))
-    .map((f) => `/images/favorites/${f}`);
+    .map((f) => `/images/Home/${f}`);
+}
+
+export function getStickerImagePaths(): string[] {
+  const dir = path.join(process.cwd(), 'public', 'images', 'Sticker');
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((f) => IMAGE_EXTS.has(path.extname(f).toLowerCase()))
+    .map((f) => `/images/Sticker/${f}`);
 }
 
 export type ImageItem = {

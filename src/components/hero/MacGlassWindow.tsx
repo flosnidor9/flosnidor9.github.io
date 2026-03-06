@@ -12,6 +12,7 @@ import {
 
 const TILT_RANGE = 12; // 틸트 각도 (도)
 const PADDING = 60; // 화면 여백 (px)
+const SIZE_SCALE = 0.6; // 윈도우 크기 배율 (0.6 = 60%)
 
 type Props = {
   normX: MotionValue<number>;
@@ -45,12 +46,12 @@ export default function MacGlassWindow({ normX, normY, aspectRatio = 16 / 10, im
 
       if (aspectRatio > screenRatio) {
         // 이미지가 화면보다 가로로 더 긴 경우 → 너비 기준
-        contentWidth = maxWidth;
-        contentHeight = maxWidth / aspectRatio;
+        contentWidth = maxWidth * SIZE_SCALE;
+        contentHeight = (maxWidth / aspectRatio) * SIZE_SCALE;
       } else {
         // 이미지가 화면보다 세로로 더 긴 경우 → 높이 기준
-        contentHeight = maxHeight;
-        contentWidth = maxHeight * aspectRatio;
+        contentHeight = maxHeight * SIZE_SCALE;
+        contentWidth = (maxHeight * aspectRatio) * SIZE_SCALE;
       }
 
       setWindowSize({

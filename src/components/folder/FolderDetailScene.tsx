@@ -252,8 +252,6 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
               </span>
             ))}
             <span className="text-[0.75rem] text-black/30">{postCountLabel}</span>
-            <span className="text-[0.72rem] text-black/35">Shift + E: Reorder</span>
-            <span className="text-[0.72rem] text-black/35">Shift + T: Thumbnail</span>
           </div>
         </motion.header>
 
@@ -419,7 +417,7 @@ function GalleryMasonryCard({
               width={post.width ?? 1200}
               height={post.height ?? 900}
               className={`h-auto w-full rounded-3xl object-contain brightness-[0.94] transition duration-300 group-hover:brightness-105 ${
-                isSelectedThumbnail ? 'ring-[0.16rem] ring-cyan-200/75 ring-inset' : ''
+                thumbnailMode && isSelectedThumbnail ? 'ring-[0.16rem] ring-cyan-200/75 ring-inset' : ''
               }`}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1536px) 33vw, 20vw"
               draggable={false}
