@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import Image from 'next/image';
 import {
   motion,
@@ -22,16 +22,26 @@ type Props = {
   children?: React.ReactNode;
 };
 
+export type MacGlassWindowHandle = {
+  getRect: () => DOMRect | null;
+  getSize: () => { width: number; height: number };
+};
+
 /**
  * macOS 스타일 유리 패널
  * - Traffic Light 버튼 (빨강/노랑/초록)
  * - 홀로그램 반사 효과 (자이로/마우스 연동)
  * - 마우스/자이로에 따른 3D 틸트 (눌리는 효과)
  */
-export default function MacGlassWindow({ normX, normY, aspectRatio = 16 / 10, imageSrc, children }: Props) {
-  const windowRef = useRef<HTMLDivElement>(null);
-  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
+const MacGlassWindow = forwardRef<MacGlassWindowHandle, Props>(
+  ({ normX, normY, aspectRatio = 16 / 10, imageSrc, children }, ref) => {
+    const windowRef = useRef<HTMLDivElement>(null);
+    const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
 
+    useImperativeHandle(ref, () => ({
+      getRect: () => windowRef.current?.getBoundingClientRect() ?? null,
+      getSize: () => windowSize,
+    }));
   // 화면 크기와 이미지 비율을 비교해서 최대 크기 계산
   useEffect(() => {
     const calculateSize = () => {
@@ -161,4 +171,8 @@ export default function MacGlassWindow({ normX, normY, aspectRatio = 16 / 10, im
       />
     </motion.div>
   );
-}
+});
+
+MacGlassWindow.displayName = 'MacGlassWindow';
+
+export default MacGlassWindow;

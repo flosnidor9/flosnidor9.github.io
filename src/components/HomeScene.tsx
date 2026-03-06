@@ -10,7 +10,7 @@ import {
   useSpring,
   useTransform,
 } from 'framer-motion';
-import MacGlassWindow from './hero/MacGlassWindow';
+import MacGlassWindow, { type MacGlassWindowHandle } from './hero/MacGlassWindow';
 import Clock from './hero/Clock';
 import GyroPermissionPrompt from './hero/GyroPermissionPrompt';
 import SidebarMusicPlayer from './sidebar/SidebarMusicPlayer';
@@ -28,9 +28,9 @@ type Props = {
 
 type StickerPosition = {
   src: string;
-  x: number;
-  y: number;
-  size: number;
+  x: number; // MacGlassWindow 중심 기준 상대 좌표 (-50 ~ 50, 0 = 중심)
+  y: number; // MacGlassWindow 중심 기준 상대 좌표 (-50 ~ 50, 0 = 중심)
+  size: number; // MacGlassWindow 크기 대비 % (예: 15 = MacGlassWindow의 15%)
   rotation: number;
   delay: number;
 };
@@ -40,6 +40,7 @@ type StickerItemProps = {
   index: number;
   editMode: boolean;
   sectionRef: React.RefObject<HTMLElement | null>;
+  windowRect: DOMRect | null;
   onUpdate: (props: Partial<StickerPosition>) => void;
   resizingIndex: number | null;
   setResizingIndex: (index: number | null) => void;
@@ -59,6 +60,8 @@ export default function HomeScene({ imagePaths, stickerPaths = [] }: Props) {
   const [resizingIndex, setResizingIndex] = useState<number | null>(null);
   const [initialSize, setInitialSize] = useState<number>(0);
   const sectionRef = useRef<HTMLElement>(null);
+  const macGlassRef = useRef<MacGlassWindowHandle>(null);
+  const [windowRect, setWindowRect] = useState<DOMRect | null>(null);
 
   useEffect(() => setMounted(true), []);
 
@@ -74,6 +77,46 @@ export default function HomeScene({ imagePaths, stickerPaths = [] }: Props) {
     };
     img.src = src;
   }, [imagePaths]);
+
+  // MacGlassWindow 위치/크기 추적
+  useEffect(() => {
+    const updateWindowRect = () => {
+      // MacGlassWindow의 크기 계산이 완료될 때까지 대기
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const rect = macGlassRef.current?.getRect();
+          if (rect) setWindowRect(rect);
+        });
+      });
+    };
+
+    updateWindowRect();
+
+    // 이벤트 리스너 등록
+    const handleResize = () => {
+      updateWindowRect();
+      // 추가로 약간의 딜레이 후 한 번 더 업데이트 (브라우저 렌더링 완료 대기)
+      setTimeout(updateWindowRect, 100);
+    };
+
+    window.addEventListener('resize', handleResize);
+    document.addEventListener('fullscreenchange', handleResize);
+    document.addEventListener('webkitfullscreenchange', handleResize);
+    document.addEventListener('mozfullscreenchange', handleResize);
+    document.addEventListener('MSFullscreenChange', handleResize);
+
+    // 초기 렌더링 후 위치 확인
+    const timer = setTimeout(updateWindowRect, 100);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      document.removeEventListener('fullscreenchange', handleResize);
+      document.removeEventListener('webkitfullscreenchange', handleResize);
+      document.removeEventListener('mozfullscreenchange', handleResize);
+      document.removeEventListener('MSFullscreenChange', handleResize);
+      clearTimeout(timer);
+    };
+  }, [imageSrc, imageAspect]);
 
   // Shift+E 키보드 이벤트
   useEffect(() => {
@@ -126,29 +169,29 @@ export default function HomeScene({ imagePaths, stickerPaths = [] }: Props) {
       return;
     }
 
-    // 없으면 랜덤 생성
+    // 없으면 랜덤 생성 (MacGlassWindow 중심 기준)
     const positions: StickerPosition[] = stickerPaths.map((src, index) => {
-      // 화면을 4개 영역으로 나누어 배치 (중앙 제외)
+      // MacGlassWindow 주변 4개 영역에 배치 (중앙은 피함)
       const zone = index % 4;
       let x = 0;
       let y = 0;
 
       switch (zone) {
         case 0: // 좌상
-          x = Math.random() * 20 + 5;
-          y = Math.random() * 30 + 10;
+          x = Math.random() * 25 - 50; // -50 ~ -25
+          y = Math.random() * 25 - 50; // -50 ~ -25
           break;
         case 1: // 우상
-          x = Math.random() * 20 + 75;
-          y = Math.random() * 30 + 10;
+          x = Math.random() * 25 + 25; // 25 ~ 50
+          y = Math.random() * 25 - 50; // -50 ~ -25
           break;
         case 2: // 좌하
-          x = Math.random() * 20 + 5;
-          y = Math.random() * 30 + 60;
+          x = Math.random() * 25 - 50; // -50 ~ -25
+          y = Math.random() * 25 + 25; // 25 ~ 50
           break;
         case 3: // 우하
-          x = Math.random() * 20 + 75;
-          y = Math.random() * 30 + 60;
+          x = Math.random() * 25 + 25; // 25 ~ 50
+          y = Math.random() * 25 + 25; // 25 ~ 50
           break;
       }
 
@@ -156,7 +199,7 @@ export default function HomeScene({ imagePaths, stickerPaths = [] }: Props) {
         src,
         x,
         y,
-        size: Math.random() * 5 + 5, // 5~10% (화면 너비 기준)
+        size: 15, // 15% (MacGlassWindow 크기 대비, 모든 스티커 동일)
         rotation: 0,
         delay: index * 0.1,
       };
@@ -260,13 +303,14 @@ export default function HomeScene({ imagePaths, stickerPaths = [] }: Props) {
         <div className="absolute inset-0 grain-texture pointer-events-none" />
 
         {/* ═══ 레이어 3: Sticker 배치 ═══ */}
-        {stickers.map((sticker, index) => (
+        {windowRect && stickers.map((sticker, index) => (
           <StickerItem
             key={sticker.src}
             sticker={sticker}
             index={index}
             editMode={editMode}
             sectionRef={sectionRef}
+            windowRect={windowRect}
             onUpdate={(newProps) => {
               setIsManualOrder(true);
               setStickers((prev) =>
@@ -296,6 +340,7 @@ export default function HomeScene({ imagePaths, stickerPaths = [] }: Props) {
           {/* 중앙: MacGlassWindow */}
           <div className="flex-1 flex items-center justify-center z-10 px-[1rem] md:px-[2rem]">
             <MacGlassWindow
+              ref={macGlassRef}
               normX={parallaxX}
               normY={parallaxY}
               aspectRatio={imageAspect}
@@ -380,6 +425,7 @@ function StickerItem({
   index,
   editMode,
   sectionRef,
+  windowRect,
   onUpdate,
   resizingIndex,
   setResizingIndex,
@@ -389,40 +435,56 @@ function StickerItem({
   const stickerX = useMotionValue(0);
   const stickerY = useMotionValue(0);
 
+  if (!windowRect) return null;
+
+  // MacGlassWindow 중심 좌표 계산
+  const centerX = windowRect.left + windowRect.width / 2;
+  const centerY = windowRect.top + windowRect.height / 2;
+
+  // 스티커 절대 위치 계산 (sticker.x, sticker.y는 -50~50 범위)
+  const stickerLeft = centerX + (windowRect.width * sticker.x) / 100;
+  const stickerTop = centerY + (windowRect.height * sticker.y) / 100;
+
+  // 스티커 크기 계산 (MacGlassWindow 크기 대비)
+  const stickerSize = (windowRect.width * sticker.size) / 100;
+
   return (
     <motion.div
       className="absolute"
       style={{
-        left: `${sticker.x}%`,
-        top: `${sticker.y}%`,
-        width: `${sticker.size}vw`,
-        height: `${sticker.size}vw`,
+        left: `${stickerLeft}px`,
+        top: `${stickerTop}px`,
+        width: `${stickerSize}px`,
+        height: `${stickerSize}px`,
         pointerEvents: editMode ? 'auto' : 'none',
         cursor: editMode ? 'grab' : 'default',
         zIndex: editMode ? 9000 : 40,
         x: stickerX,
         y: stickerY,
+        transform: 'translate(-50%, -50%)', // 스티커 중심을 계산된 위치에 맞춤
       }}
       drag={editMode}
       dragMomentum={false}
       dragElastic={0}
       onDragEnd={(event, info) => {
-        if (!editMode || !sectionRef.current) return;
+        if (!editMode || !windowRect) return;
 
-        const sectionRect = sectionRef.current.getBoundingClientRect();
+        // 드래그 후 절대 위치
+        const currentLeft = stickerLeft + stickerX.get();
+        const currentTop = stickerTop + stickerY.get();
 
-        // 현재 위치 = 원래 % 위치 + 드래그 offset
-        const currentLeft = (sticker.x / 100) * sectionRect.width + stickerX.get();
-        const currentTop = (sticker.y / 100) * sectionRect.height + stickerY.get();
+        // MacGlassWindow 중심에서의 상대 거리 (px)
+        const offsetX = currentLeft - centerX;
+        const offsetY = currentTop - centerY;
 
-        // %로 변환
-        const newX = (currentLeft / sectionRect.width) * 100;
-        const newY = (currentTop / sectionRect.height) * 100;
+        // MacGlassWindow 크기 대비 %로 변환 (-50 ~ 50)
+        const newX = (offsetX / windowRect.width) * 100;
+        const newY = (offsetY / windowRect.height) * 100;
 
         // 업데이트
         onUpdate({
-          x: Math.max(0, Math.min(100, newX)),
-          y: Math.max(0, Math.min(100, newY)),
+          x: Math.max(-100, Math.min(100, newX)),
+          y: Math.max(-100, Math.min(100, newY)),
         });
 
         // motion value 리셋
@@ -467,14 +529,13 @@ function StickerItem({
             }}
             onDrag={(event, info) => {
               event.stopPropagation();
-              if (resizingIndex !== index || !sectionRef.current) return;
+              if (resizingIndex !== index || !windowRect) return;
 
-              const sectionRect = sectionRef.current.getBoundingClientRect();
               const delta = (info.offset.x + info.offset.y) / 2;
 
-              // 픽셀 delta를 화면 너비 대비 %로 변환
-              const deltaPercent = (delta / sectionRect.width) * 100;
-              const newSize = Math.max(2, Math.min(30, initialSize + deltaPercent));
+              // 픽셀 delta를 MacGlassWindow 너비 대비 %로 변환
+              const deltaPercent = (delta / windowRect.width) * 100;
+              const newSize = Math.max(3, initialSize + deltaPercent); // 최소 크기만 제한, 최대 크기 제한 제거
 
               onUpdate({ size: newSize });
             }}
