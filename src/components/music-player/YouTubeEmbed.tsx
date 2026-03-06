@@ -134,7 +134,7 @@ const YouTubeEmbed = forwardRef<YouTubeEmbedRef, Props>(({ videoId, initialVolum
     playerRef.current = new window.YT.Player(playerId, {
       videoId,
       playerVars: {
-        autoplay: 1,        // 자동 재생
+        autoplay: 0,        // 자동 재생 비활성화 (음소거 해제 시 재생 시작)
         mute: 1,            // 음소거 (자동 재생 정책)
         controls: 0,        // 컨트롤 숨김
         loop: 1,

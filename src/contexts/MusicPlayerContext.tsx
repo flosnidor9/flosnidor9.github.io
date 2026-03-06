@@ -38,7 +38,6 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [isVolumeReady, setIsVolumeReady] = useState(false);
   const playerRef = useRef<YouTubeEmbedRef>(null);
-  const hasAutoUnmutedRef = useRef(false);
 
   const currentTrack = musicTracks[0] || null;
 
@@ -61,24 +60,6 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [volume, isVolumeReady]);
 
-  // 첫 클릭 시 자동 unmute
-  useEffect(() => {
-    const handleFirstClick = () => {
-      if (!hasAutoUnmutedRef.current && isMuted && playerRef.current) {
-        const newMuted = playerRef.current.toggleMute();
-        if (newMuted !== undefined) {
-          setIsMuted(newMuted);
-          hasAutoUnmutedRef.current = true;
-        }
-      }
-    };
-
-    document.addEventListener('click', handleFirstClick, { once: true });
-    return () => {
-      document.removeEventListener('click', handleFirstClick);
-    };
-  }, [isMuted]);
-
   const togglePlay = useCallback(() => {
     playerRef.current?.toggle();
   }, []);
@@ -87,8 +68,13 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     const newMuted = playerRef.current?.toggleMute();
     if (newMuted !== undefined) {
       setIsMuted(newMuted);
+
+      // 음소거 해제 시 자동으로 재생 시작
+      if (!newMuted && !isPlaying) {
+        playerRef.current?.toggle();
+      }
     }
-  }, []);
+  }, [isPlaying]);
 
   const handleVolumeChange = useCallback((newVolume: number) => {
     setVolume(newVolume);
@@ -99,9 +85,14 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       const newMuted = playerRef.current?.toggleMute();
       if (newMuted !== undefined) {
         setIsMuted(newMuted);
+
+        // 음소거 해제 시 자동으로 재생 시작
+        if (!newMuted && !isPlaying) {
+          playerRef.current?.toggle();
+        }
       }
     }
-  }, [isMuted]);
+  }, [isMuted, isPlaying]);
 
   const value: MusicPlayerContextType = {
     isPlaying,

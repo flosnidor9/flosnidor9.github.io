@@ -38,11 +38,11 @@ export default function HeroSection({ imagePaths }: Props) {
   const imgOpacity = useTransform(scrollY, [0, 300], [1, 0]);
   const bgOpacity  = useTransform(scrollY, [50, 350], [0, 1]);
 
-  // ── 패럴랙스용: 느린 스프링 ──────────────────────────────
+  // ── 패럴랙스용: 빠른 스프링 ──────────────────────────────
   const normX = useMotionValue(0);
   const normY = useMotionValue(0);
-  const parallaxX = useSpring(normX, { stiffness: 60, damping: 20 });
-  const parallaxY = useSpring(normY, { stiffness: 60, damping: 20 });
+  const parallaxX = useSpring(normX, { stiffness: 150, damping: 25 });
+  const parallaxY = useSpring(normY, { stiffness: 150, damping: 25 });
 
   const translateX = useTransform(parallaxX, [-0.5, 0.5], [-TRANSLATE_RANGE, TRANSLATE_RANGE]);
   const translateY = useTransform(parallaxY, [-0.5, 0.5], [-TRANSLATE_RANGE, TRANSLATE_RANGE]);

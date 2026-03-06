@@ -67,6 +67,11 @@ export default function GlassPlayerPanel({ track, normX, normY }: Props) {
         setTimeout(() => {
           playerRef.current?.setVolume(volume);
         }, 50);
+
+        // 음소거 해제 시 자동으로 재생 시작
+        if (!isPlaying) {
+          playerRef.current?.toggle();
+        }
       }
     }
   };
@@ -80,6 +85,11 @@ export default function GlassPlayerPanel({ track, normX, normY }: Props) {
       const newMuted = playerRef.current?.toggleMute();
       if (newMuted !== undefined) {
         setIsMuted(newMuted);
+
+        // 음소거 해제 시 자동으로 재생 시작
+        if (!newMuted && !isPlaying) {
+          playerRef.current?.toggle();
+        }
       }
     }
 
