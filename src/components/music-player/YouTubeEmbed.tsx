@@ -71,7 +71,7 @@ const YouTubeEmbed = forwardRef<YouTubeEmbedRef, Props>(({ videoId, onStateChang
   // 외부에서 제어할 수 있도록 ref 노출
   useImperativeHandle(ref, () => ({
     toggle: () => {
-      if (!playerRef.current) return;
+      if (!playerRef.current || typeof playerRef.current.playVideo !== 'function') return;
       if (isPlayingRef.current) {
         playerRef.current.pauseVideo();
       } else {
@@ -79,13 +79,15 @@ const YouTubeEmbed = forwardRef<YouTubeEmbedRef, Props>(({ videoId, onStateChang
       }
     },
     play: () => {
-      playerRef.current?.playVideo();
+      if (!playerRef.current || typeof playerRef.current.playVideo !== 'function') return;
+      playerRef.current.playVideo();
     },
     pause: () => {
-      playerRef.current?.pauseVideo();
+      if (!playerRef.current || typeof playerRef.current.pauseVideo !== 'function') return;
+      playerRef.current.pauseVideo();
     },
     toggleMute: () => {
-      if (!playerRef.current) return true;
+      if (!playerRef.current || typeof playerRef.current.isMuted !== 'function') return true;
       if (playerRef.current.isMuted()) {
         playerRef.current.unMute();
         return false;
