@@ -22,6 +22,7 @@ export default function SidebarMusicPlayer({ track, normX, normY, variant = 'sid
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [volume, setVolume] = useState(50);
+  const [isVolumeReady, setIsVolumeReady] = useState(false);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const playerRef = useRef<YouTubeEmbedRef>(null);
 
@@ -32,16 +33,17 @@ export default function SidebarMusicPlayer({ track, normX, normY, variant = 'sid
       const volumeValue = parseInt(savedVolume, 10);
       if (!isNaN(volumeValue) && volumeValue >= 0 && volumeValue <= 100) {
         setVolume(volumeValue);
-        playerRef.current?.setVolume(volumeValue);
       }
     }
+    setIsVolumeReady(true);
   }, []);
 
   // 음량 변경 시 localStorage에 저장
   useEffect(() => {
-    localStorage.setItem(VOLUME_STORAGE_KEY, volume.toString());
-    playerRef.current?.setVolume(volume);
-  }, [volume]);
+    if (isVolumeReady) {
+      localStorage.setItem(VOLUME_STORAGE_KEY, volume.toString());
+    }
+  }, [volume, isVolumeReady]);
 
   // 반사 하이라이트
   const reflectX = useTransform(normX, [-0.5, 0.5], [72, 28]);
@@ -64,6 +66,15 @@ export default function SidebarMusicPlayer({ track, normX, normY, variant = 'sid
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseInt(e.target.value, 10);
     setVolume(newVolume);
+    // 볼륨 변경 시 실시간으로 Player에 반영
+    playerRef.current?.setVolume(newVolume);
+    // 볼륨을 변경하면 자동으로 unmute
+    if (isMuted && newVolume > 0) {
+      const newMuted = playerRef.current?.toggleMute();
+      if (newMuted !== undefined) {
+        setIsMuted(newMuted);
+      }
+    }
   };
 
   const isBar = variant === 'bar';
@@ -77,7 +88,14 @@ export default function SidebarMusicPlayer({ track, normX, normY, variant = 'sid
     >
       {/* YouTube 배경 (블러 + 저투명도) */}
       <div className="absolute inset-0 opacity-20 scale-125 pointer-events-none">
-        <YouTubeEmbed ref={playerRef} videoId={track.id} onStateChange={setIsPlaying} />
+        {isVolumeReady && (
+          <YouTubeEmbed
+            ref={playerRef}
+            videoId={track.id}
+            initialVolume={volume}
+            onStateChange={setIsPlaying}
+          />
+        )}
       </div>
 
       {/* 블러 오버레이 */}

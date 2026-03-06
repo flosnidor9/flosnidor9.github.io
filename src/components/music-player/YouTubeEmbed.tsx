@@ -4,7 +4,9 @@ import { useEffect, useRef, useCallback, useId, useImperativeHandle, forwardRef 
 
 type Props = {
   videoId: string;
+  initialVolume?: number; // 초기 볼륨 (0-100)
   onStateChange?: (isPlaying: boolean) => void;
+  onReady?: () => void; // Player 준비 완료 시 콜백
 };
 
 // YouTube IFrame API 타입
@@ -59,14 +61,25 @@ export interface YouTubeEmbedRef {
  * - 자동 재생 (음소거 상태)
  * - ref를 통해 play/pause/toggle 제어 가능
  */
-const YouTubeEmbed = forwardRef<YouTubeEmbedRef, Props>(({ videoId, onStateChange }, ref) => {
+const YouTubeEmbed = forwardRef<YouTubeEmbedRef, Props>(({ videoId, initialVolume = 50, onStateChange, onReady }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
   const isPlayingRef = useRef(false);
+  const initialVolumeRef = useRef(initialVolume); // 초기 볼륨 참조 유지
 
   // useId()는 SSR/CSR에서 동일한 값을 반환하여 hydration 오류 방지
   const reactId = useId();
   const playerId = `yt-player-${reactId.replace(/:/g, '')}`;
+
+  // initialVolume이 변경되면 ref 업데이트 + Player 볼륨 업데이트
+  useEffect(() => {
+    initialVolumeRef.current = initialVolume;
+
+    // Player가 이미 준비되었으면 볼륨 즉시 업데이트
+    if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
+      playerRef.current.setVolume(initialVolume);
+    }
+  }, [initialVolume]);
 
   // 외부에서 제어할 수 있도록 ref 노출
   useImperativeHandle(ref, () => ({
@@ -136,6 +149,16 @@ const YouTubeEmbed = forwardRef<YouTubeEmbedRef, Props>(({ videoId, onStateChang
         origin: window.location.origin, // postMessage origin 허용
       },
       events: {
+        onReady: (event) => {
+          // Player 준비 완료 시 초기 볼륨 설정
+          setTimeout(() => {
+            if (typeof event.target.setVolume === 'function') {
+              // mute 상태를 유지하면서 볼륨 설정 (unmute 시 이 볼륨이 적용됨)
+              event.target.setVolume(initialVolumeRef.current);
+            }
+            onReady?.();
+          }, 100);
+        },
         onStateChange: (event) => {
           const playing = event.data === window.YT.PlayerState.PLAYING;
           isPlayingRef.current = playing;
@@ -143,7 +166,7 @@ const YouTubeEmbed = forwardRef<YouTubeEmbedRef, Props>(({ videoId, onStateChang
         },
       },
     });
-  }, [videoId, onStateChange, playerId]);
+  }, [videoId, onStateChange, onReady, playerId]);
 
   useEffect(() => {
     // YouTube IFrame API 로드
