@@ -8,7 +8,7 @@ type Props = {
   isPlaying: boolean;
   normX: MotionValue<number>;
   normY: MotionValue<number>;
-  size?: 'normal' | 'small';
+  size?: 'normal' | 'small' | 'tiny';
 };
 
 const SIZES = {
@@ -27,6 +27,14 @@ const SIZES = {
     album: '6rem',
     albumTop: '0.5rem',
     hole: '1.25rem',
+  },
+  tiny: {
+    container: '3.5rem',
+    cd: '3.5rem',
+    cdLeft: '0.75rem',
+    album: '3rem',
+    albumTop: '0.25rem',
+    hole: '0.6rem',
   },
 };
 
@@ -151,7 +159,7 @@ export default function RotatingCD({ albumArt, isPlaying, normX, normY, size = '
           left: '0',
           boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
           zIndex: 1,
-          borderRadius: size === 'small' ? '0.5rem' : '1rem',
+          borderRadius: size === 'tiny' ? '0.25rem' : size === 'small' ? '0.5rem' : '1rem',
         }}
       >
         <Image

@@ -39,6 +39,8 @@ interface YTPlayer {
   isMuted: () => boolean;
   mute: () => void;
   unMute: () => void;
+  setVolume: (volume: number) => void;
+  getVolume: () => number;
   destroy: () => void;
 }
 
@@ -47,6 +49,8 @@ export interface YouTubeEmbedRef {
   play: () => void;
   pause: () => void;
   toggleMute: () => boolean; // 반환값: 새로운 mute 상태
+  setVolume: (volume: number) => void; // 0-100
+  getVolume: () => number | undefined;
 }
 
 /**
@@ -89,6 +93,13 @@ const YouTubeEmbed = forwardRef<YouTubeEmbedRef, Props>(({ videoId, onStateChang
         playerRef.current.mute();
         return true;
       }
+    },
+    setVolume: (volume: number) => {
+      if (!playerRef.current) return;
+      playerRef.current.setVolume(Math.max(0, Math.min(100, volume)));
+    },
+    getVolume: () => {
+      return playerRef.current?.getVolume();
     },
   }), []);
 

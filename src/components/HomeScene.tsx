@@ -310,8 +310,8 @@ export default function HomeScene({ imagePaths, stickerPaths = [] }: Props) {
         {/* ═══ 시계 (우측 하단) ═══ */}
         <Clock />
 
-        {/* ═══ 모바일: 하단 음악 플레이어 ═══ */}
-        <div className="md:hidden absolute bottom-[1.5rem] left-0 right-0 px-[1rem] z-20">
+        {/* ═══ 모바일: 하단 음악 플레이어 (바 형태) ═══ */}
+        <div className="md:hidden absolute bottom-[0.5rem] left-0 right-0 px-[0.75rem] z-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -322,6 +322,7 @@ export default function HomeScene({ imagePaths, stickerPaths = [] }: Props) {
                 track={track}
                 normX={parallaxX}
                 normY={parallaxY}
+                variant="bar"
               />
             )}
           </motion.div>
