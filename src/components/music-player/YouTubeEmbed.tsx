@@ -96,10 +96,15 @@ const YouTubeEmbed = forwardRef<YouTubeEmbedRef, Props>(({ videoId, onStateChang
     },
     setVolume: (volume: number) => {
       if (!playerRef.current) return;
+      // YouTube Player 메서드가 존재하는지 확인 (타이밍 이슈 방지)
+      if (typeof playerRef.current.setVolume !== 'function') return;
       playerRef.current.setVolume(Math.max(0, Math.min(100, volume)));
     },
     getVolume: () => {
-      return playerRef.current?.getVolume();
+      if (!playerRef.current) return undefined;
+      // YouTube Player 메서드가 존재하는지 확인 (타이밍 이슈 방지)
+      if (typeof playerRef.current.getVolume !== 'function') return undefined;
+      return playerRef.current.getVolume();
     },
   }), []);
 
