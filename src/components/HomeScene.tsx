@@ -15,7 +15,6 @@ import Clock from './hero/Clock';
 import GyroPermissionPrompt from './hero/GyroPermissionPrompt';
 import SidebarMusicPlayer from './sidebar/SidebarMusicPlayer';
 import { useGyroscope } from '@/hooks/useGyroscope';
-import { musicTracks } from '@/lib/data/music';
 import { pickHeroImage } from '@/lib/heroImage';
 
 const TRANSLATE_RANGE = 30;
@@ -59,11 +58,25 @@ export default function HomeScene({ imagePaths, stickerPaths = [] }: Props) {
   const [isManualOrder, setIsManualOrder] = useState(false);
   const [resizingIndex, setResizingIndex] = useState<number | null>(null);
   const [initialSize, setInitialSize] = useState<number>(0);
+  const [isDesktop, setIsDesktop] = useState(false); // 미디어 쿼리 감지
   const sectionRef = useRef<HTMLElement>(null);
   const macGlassRef = useRef<MacGlassWindowHandle>(null);
   const [windowRect, setWindowRect] = useState<DOMRect | null>(null);
 
   useEffect(() => setMounted(true), []);
+
+  // 미디어 쿼리 감지 (md 이상 = 데스크톱)
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 768px)');
+    setIsDesktop(mediaQuery.matches);
+
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsDesktop(e.matches);
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   useEffect(() => {
     const src = pickHeroImage(imagePaths);
@@ -257,8 +270,6 @@ export default function HomeScene({ imagePaths, stickerPaths = [] }: Props) {
     normY.set(0);
   }, [isGyroActive, normX, normY]);
 
-  const track = musicTracks[0];
-
   const handleCopyJson = async () => {
     await navigator.clipboard.writeText(JSON.stringify(stickers, null, 2));
     setCopied(true);
@@ -328,9 +339,8 @@ export default function HomeScene({ imagePaths, stickerPaths = [] }: Props) {
         <div className="relative h-full w-full flex items-center justify-center px-[2rem] md:px-[3rem] lg:px-[4rem]">
           {/* 좌측 사이드바: 음악 플레이어 */}
           <div className="hidden md:flex flex-col gap-[1rem] w-[12rem] lg:w-[14rem] flex-shrink-0 z-20">
-            {track && (
+            {isDesktop && (
               <SidebarMusicPlayer
-                track={track}
                 normX={parallaxX}
                 normY={parallaxY}
               />
@@ -362,9 +372,8 @@ export default function HomeScene({ imagePaths, stickerPaths = [] }: Props) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.6 }}
           >
-            {track && (
+            {!isDesktop && (
               <SidebarMusicPlayer
-                track={track}
                 normX={parallaxX}
                 normY={parallaxY}
                 variant="bar"

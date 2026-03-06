@@ -61,7 +61,7 @@ export interface YouTubeEmbedRef {
  * - 자동 재생 (음소거 상태)
  * - ref를 통해 play/pause/toggle 제어 가능
  */
-const YouTubeEmbed = forwardRef<YouTubeEmbedRef, Props>(({ videoId, initialVolume = 50, onStateChange, onReady }, ref) => {
+const YouTubeEmbed = forwardRef<YouTubeEmbedRef, Props>(({ videoId, initialVolume = 20, onStateChange, onReady }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
   const isPlayingRef = useRef(false);

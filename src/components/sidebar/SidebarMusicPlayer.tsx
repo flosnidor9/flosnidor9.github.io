@@ -1,15 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
 import { motion, useTransform, useMotionTemplate, type MotionValue } from 'framer-motion';
 import RotatingCD from '../music-player/RotatingCD';
-import YouTubeEmbed, { type YouTubeEmbedRef } from '../music-player/YouTubeEmbed';
-import { getYouTubeThumbnail, type MusicTrack } from '@/lib/data/music';
-
-const VOLUME_STORAGE_KEY = 'music-player-volume';
+import { getYouTubeThumbnail } from '@/lib/data/music';
+import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
 
 type Props = {
-  track: MusicTrack;
   normX: MotionValue<number>;
   normY: MotionValue<number>;
   variant?: 'sidebar' | 'bar'; // sidebar: 세로 레이아웃 (데스크톱), bar: 가로 레이아웃 (모바일 portrait)
@@ -17,66 +13,29 @@ type Props = {
 
 /**
  * 사이드바용 컴팩트 음악 플레이어
+ * - 전역 MusicPlayerContext 사용 (YouTube Player는 GlobalMusicPlayer에서 관리)
  */
-export default function SidebarMusicPlayer({ track, normX, normY, variant = 'sidebar' }: Props) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
-  const [volume, setVolume] = useState(50);
-  const [isVolumeReady, setIsVolumeReady] = useState(false);
-  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
-  const playerRef = useRef<YouTubeEmbedRef>(null);
+export default function SidebarMusicPlayer({ normX, normY, variant = 'sidebar' }: Props) {
+  const {
+    isPlaying,
+    isMuted,
+    volume,
+    currentTrack,
+    togglePlay,
+    toggleMute,
+    handleVolumeChange,
+    showVolumeSlider,
+    setShowVolumeSlider,
+  } = useMusicPlayer();
 
-  // localStorage에서 음량 로드
-  useEffect(() => {
-    const savedVolume = localStorage.getItem(VOLUME_STORAGE_KEY);
-    if (savedVolume) {
-      const volumeValue = parseInt(savedVolume, 10);
-      if (!isNaN(volumeValue) && volumeValue >= 0 && volumeValue <= 100) {
-        setVolume(volumeValue);
-      }
-    }
-    setIsVolumeReady(true);
-  }, []);
-
-  // 음량 변경 시 localStorage에 저장
-  useEffect(() => {
-    if (isVolumeReady) {
-      localStorage.setItem(VOLUME_STORAGE_KEY, volume.toString());
-    }
-  }, [volume, isVolumeReady]);
+  if (!currentTrack) return null;
 
   // 반사 하이라이트
   const reflectX = useTransform(normX, [-0.5, 0.5], [72, 28]);
   const reflectY = useTransform(normY, [-0.5, 0.5], [28, 72]);
   const reflectGradient = useMotionTemplate`radial-gradient(ellipse at ${reflectX}% ${reflectY}%, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.03) 35%, transparent 62%)`;
 
-  const albumArt = getYouTubeThumbnail(track.id);
-
-  const handleToggle = () => {
-    playerRef.current?.toggle();
-  };
-
-  const handleMuteToggle = () => {
-    const newMuted = playerRef.current?.toggleMute();
-    if (newMuted !== undefined) {
-      setIsMuted(newMuted);
-    }
-  };
-
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseInt(e.target.value, 10);
-    setVolume(newVolume);
-    // 볼륨 변경 시 실시간으로 Player에 반영
-    playerRef.current?.setVolume(newVolume);
-    // 볼륨을 변경하면 자동으로 unmute
-    if (isMuted && newVolume > 0) {
-      const newMuted = playerRef.current?.toggleMute();
-      if (newMuted !== undefined) {
-        setIsMuted(newMuted);
-      }
-    }
-  };
-
+  const albumArt = getYouTubeThumbnail(currentTrack.id);
   const isBar = variant === 'bar';
 
   return (
@@ -86,18 +45,6 @@ export default function SidebarMusicPlayer({ track, normX, normY, variant = 'sid
       animate={{ opacity: 1, x: 0, y: 0 }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
     >
-      {/* YouTube 배경 (블러 + 저투명도) */}
-      <div className="absolute inset-0 opacity-20 scale-125 pointer-events-none">
-        {isVolumeReady && (
-          <YouTubeEmbed
-            ref={playerRef}
-            videoId={track.id}
-            initialVolume={volume}
-            onStateChange={setIsPlaying}
-          />
-        )}
-      </div>
-
       {/* 블러 오버레이 */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -111,7 +58,7 @@ export default function SidebarMusicPlayer({ track, normX, normY, variant = 'sid
       <div className={`relative z-10 flex ${isBar ? 'flex-row items-center gap-[0.75rem] p-[0.75rem]' : 'flex-col items-center gap-[1rem] p-[1.25rem]'}`}>
         {/* CD 아트 */}
         <button
-          onClick={handleToggle}
+          onClick={togglePlay}
           className={`cursor-pointer focus:outline-none ${isBar ? 'flex-shrink-0' : ''}`}
           aria-label={isPlaying ? '일시정지' : '재생'}
         >
@@ -128,9 +75,9 @@ export default function SidebarMusicPlayer({ track, normX, normY, variant = 'sid
         <div className={`flex ${isBar ? 'flex-row items-center gap-[0.75rem] flex-1 min-w-0' : 'flex-col items-center gap-[1rem] w-full'}`}>
           {/* 트랙 정보 */}
           <div className={`flex flex-col ${isBar ? 'items-start flex-1 min-w-0' : 'items-center w-full'} gap-[0.25rem] ${isBar ? 'text-left' : 'text-center'}`}>
-            <h4 className={`font-serif ${isBar ? 'text-[0.85rem]' : 'text-[1rem]'} text-white/90 truncate w-full`}>{track.title}</h4>
-            {track.artist && (
-              <p className={`font-sans ${isBar ? 'text-[0.65rem]' : 'text-[0.75rem]'} text-white/50 truncate w-full`}>{track.artist}</p>
+            <h4 className={`font-serif ${isBar ? 'text-[0.85rem]' : 'text-[1rem]'} text-white/90 truncate w-full`}>{currentTrack.title}</h4>
+            {currentTrack.artist && (
+              <p className={`font-sans ${isBar ? 'text-[0.65rem]' : 'text-[0.75rem]'} text-white/50 truncate w-full`}>{currentTrack.artist}</p>
             )}
           </div>
 
@@ -155,7 +102,7 @@ export default function SidebarMusicPlayer({ track, normX, normY, variant = 'sid
           <div className="flex items-center gap-[0.5rem]">
             {/* 음소거 버튼 */}
             <button
-              onClick={handleMuteToggle}
+              onClick={toggleMute}
               className={`flex items-center justify-center ${isBar ? 'w-[1.75rem] h-[1.75rem]' : 'w-[1.5rem] h-[1.5rem]'} rounded-full bg-white/10 hover:bg-white/20 transition-colors cursor-pointer`}
               aria-label={isMuted ? '음소거 해제' : '음소거'}
             >
@@ -202,7 +149,7 @@ export default function SidebarMusicPlayer({ track, normX, normY, variant = 'sid
               min="0"
               max="100"
               value={volume}
-              onChange={handleVolumeChange}
+              onChange={(e) => handleVolumeChange(parseInt(e.target.value, 10))}
               className="flex-1 h-[0.3rem] rounded-full appearance-none cursor-pointer"
               style={{
                 background: `linear-gradient(to right, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.5) ${volume}%, rgba(255,255,255,0.1) ${volume}%, rgba(255,255,255,0.1) 100%)`,

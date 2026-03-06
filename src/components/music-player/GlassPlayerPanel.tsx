@@ -25,7 +25,7 @@ export default function GlassPlayerPanel({ track, normX, normY }: Props) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true); // 자동재생은 음소거로 시작
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
-  const [volume, setVolume] = useState(50); // 서버/클라이언트 모두 50으로 시작
+  const [volume, setVolume] = useState(20); // 서버/클라이언트 모두 20으로 시작
   const [isVolumeReady, setIsVolumeReady] = useState(false); // localStorage 로드 완료 여부
   const playerRef = useRef<YouTubeEmbedRef>(null);
 

@@ -1,0 +1,135 @@
+'use client';
+
+import { createContext, useContext, useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
+import { type YouTubeEmbedRef } from '@/components/music-player/YouTubeEmbed';
+import { musicTracks } from '@/lib/data/music';
+
+const VOLUME_STORAGE_KEY = 'music-player-volume';
+
+type MusicPlayerContextType = {
+  // Player 상태
+  isPlaying: boolean;
+  isMuted: boolean;
+  volume: number;
+  currentTrack: typeof musicTracks[0] | null;
+
+  // Player 제어
+  playerRef: React.RefObject<YouTubeEmbedRef>;
+  setIsPlaying: (playing: boolean) => void;
+  setIsMuted: (muted: boolean) => void;
+  setVolume: (volume: number) => void;
+
+  // UI 제어
+  showVolumeSlider: boolean;
+  setShowVolumeSlider: (show: boolean) => void;
+
+  // 메서드
+  togglePlay: () => void;
+  toggleMute: () => void;
+  handleVolumeChange: (volume: number) => void;
+};
+
+const MusicPlayerContext = createContext<MusicPlayerContextType | null>(null);
+
+export function MusicPlayerProvider({ children }: { children: ReactNode }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [volume, setVolume] = useState(20);
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [isVolumeReady, setIsVolumeReady] = useState(false);
+  const playerRef = useRef<YouTubeEmbedRef>(null);
+  const hasAutoUnmutedRef = useRef(false);
+
+  const currentTrack = musicTracks[0] || null;
+
+  // localStorage에서 볼륨 로드
+  useEffect(() => {
+    const savedVolume = localStorage.getItem(VOLUME_STORAGE_KEY);
+    if (savedVolume) {
+      const volumeValue = parseInt(savedVolume, 10);
+      if (!isNaN(volumeValue) && volumeValue >= 0 && volumeValue <= 100) {
+        setVolume(volumeValue);
+      }
+    }
+    setIsVolumeReady(true);
+  }, []);
+
+  // 볼륨 변경 시 localStorage 저장
+  useEffect(() => {
+    if (isVolumeReady) {
+      localStorage.setItem(VOLUME_STORAGE_KEY, volume.toString());
+    }
+  }, [volume, isVolumeReady]);
+
+  // 첫 클릭 시 자동 unmute
+  useEffect(() => {
+    const handleFirstClick = () => {
+      if (!hasAutoUnmutedRef.current && isMuted && playerRef.current) {
+        const newMuted = playerRef.current.toggleMute();
+        if (newMuted !== undefined) {
+          setIsMuted(newMuted);
+          hasAutoUnmutedRef.current = true;
+        }
+      }
+    };
+
+    document.addEventListener('click', handleFirstClick, { once: true });
+    return () => {
+      document.removeEventListener('click', handleFirstClick);
+    };
+  }, [isMuted]);
+
+  const togglePlay = useCallback(() => {
+    playerRef.current?.toggle();
+  }, []);
+
+  const toggleMute = useCallback(() => {
+    const newMuted = playerRef.current?.toggleMute();
+    if (newMuted !== undefined) {
+      setIsMuted(newMuted);
+    }
+  }, []);
+
+  const handleVolumeChange = useCallback((newVolume: number) => {
+    setVolume(newVolume);
+    playerRef.current?.setVolume(newVolume);
+
+    // 볼륨 변경 시 자동 unmute
+    if (isMuted && newVolume > 0) {
+      const newMuted = playerRef.current?.toggleMute();
+      if (newMuted !== undefined) {
+        setIsMuted(newMuted);
+      }
+    }
+  }, [isMuted]);
+
+  const value: MusicPlayerContextType = {
+    isPlaying,
+    isMuted,
+    volume,
+    currentTrack,
+    playerRef,
+    setIsPlaying,
+    setIsMuted,
+    setVolume,
+    showVolumeSlider,
+    setShowVolumeSlider,
+    togglePlay,
+    toggleMute,
+    handleVolumeChange,
+  };
+
+  return (
+    <MusicPlayerContext.Provider value={value}>
+      {children}
+    </MusicPlayerContext.Provider>
+  );
+}
+
+export function useMusicPlayer() {
+  const context = useContext(MusicPlayerContext);
+  if (!context) {
+    throw new Error('useMusicPlayer must be used within MusicPlayerProvider');
+  }
+  return context;
+}

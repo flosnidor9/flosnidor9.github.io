@@ -6,6 +6,7 @@ import GNB from "@/components/layout/GNB";
 import PersistentHeroBackground from "@/components/hero/PersistentHeroBackground";
 import { getFavoriteImagePaths } from "@/lib/data/images";
 import Providers from "@/components/providers/Providers";
+import GlobalMusicPlayer from "@/components/music-player/GlobalMusicPlayer";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-serif",
@@ -45,6 +46,7 @@ export default function RootLayout({
     <html lang="ko">
       <body className={`${cormorant.variable} ${inter.variable} antialiased`}>
         <Providers>
+          <GlobalMusicPlayer />
           <PersistentHeroBackground imagePaths={imagePaths} />
           <GNB />
           <LiquidCursor />
