@@ -104,7 +104,7 @@ export default async function GalleryRoutePage({ params }: Props) {
 
   return (
     <main>
-      <FolderDetailScene folder={folder} posts={posts} content={content} backHref={backHref} />
+      <FolderDetailScene folder={folder} posts={posts} content={content} backHref={backHref} backLabel={backLabel} />
     </main>
   );
 }

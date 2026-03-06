@@ -37,7 +37,7 @@ export default function GalleryClient({ folders, title, description, backHref, b
           {backHref ? (
             <Link
               href={backHref}
-              className="mb-[1rem] inline-flex items-center gap-[0.4rem] rounded-full border border-white/20 bg-white/5 px-[0.75rem] py-[0.45rem] text-[0.82rem] text-white/75 transition-colors hover:bg-white/10"
+              className="mb-[1rem] inline-flex items-center gap-[0.4rem] rounded-full border border-black/40 bg-white/5 px-[0.75rem] py-[0.45rem] text-[0.82rem] text-black/75 transition-colors hover:bg-white/10"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="15 18 9 12 15 6" />
@@ -45,9 +45,9 @@ export default function GalleryClient({ folders, title, description, backHref, b
               <span>{backLabel}</span>
             </Link>
           ) : null}
-          <h1 className="font-serif text-[2rem] leading-tight text-white/90 md:text-[2.5rem]">{title}</h1>
+          <h1 className="font-serif text-[2rem] leading-tight text-black/90 md:text-[2.5rem]">{title}</h1>
           {description ? (
-            <p className="mt-[0.5rem] font-sans text-[0.9rem] text-white/60 md:text-[1rem]">{description}</p>
+            <p className="mt-[0.5rem] font-sans text-[0.9rem] text-black/60 md:text-[1rem]">{description}</p>
           ) : null}
         </header>
 

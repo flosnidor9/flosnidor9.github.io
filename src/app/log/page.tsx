@@ -6,10 +6,10 @@ export default function LogPage() {
       <div className="w-full max-w-[38rem] px-[1rem]">
         {/* 헤더 */}
         <header className="mb-[3rem]">
-          <h1 className="font-serif text-[2.5rem] font-light text-[var(--color-text)] tracking-wide mb-[0.5rem]">
+          <h1 className="font-serif text-[2.5rem] font-light text-black/90 tracking-wide mb-[0.5rem]">
             Log
           </h1>
-          <p className="text-[0.85rem] text-[var(--color-muted)]">
+          <p className="text-[0.85rem] text-black/60">
             일상의 조각들
           </p>
         </header>
