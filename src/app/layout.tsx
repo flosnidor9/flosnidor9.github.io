@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Inter } from "next/font/google";
 import "./globals.css";
-import LiquidCursor from "@/components/cursor/LiquidCursor";
+import CursorManager from "@/components/cursor/CursorManager";
 import GNB from "@/components/layout/GNB";
 import PersistentHeroBackground from "@/components/hero/PersistentHeroBackground";
 import { getFavoriteImagePaths } from "@/lib/data/images";
@@ -47,7 +47,7 @@ export default function RootLayout({
         <Providers>
           <PersistentHeroBackground imagePaths={imagePaths} />
           <GNB />
-          <LiquidCursor />
+          <CursorManager />
           {children}
         </Providers>
       </body>
