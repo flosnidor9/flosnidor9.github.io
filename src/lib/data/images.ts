@@ -4,12 +4,21 @@ import path from 'path';
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif']);
 
 export function getFavoriteImagePaths(): string[] {
-  const dir = path.join(process.cwd(), 'public', 'images', 'Home');
+  const dir = path.join(process.cwd(), 'public', 'images', 'bubbleHome');
   if (!fs.existsSync(dir)) return [];
   return fs
     .readdirSync(dir)
     .filter((f) => IMAGE_EXTS.has(path.extname(f).toLowerCase()))
-    .map((f) => `/images/Home/${f}`);
+    .map((f) => `/images/bubbleHome/${f}`);
+}
+
+export function getMainHomeImagePaths(): string[] {
+  const dir = path.join(process.cwd(), 'public', 'images', 'mainHome');
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((f) => IMAGE_EXTS.has(path.extname(f).toLowerCase()))
+    .map((f) => `/images/mainHome/${f}`);
 }
 
 export function getStickerImagePaths(): string[] {

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Inter } from "next/font/google";
 import "./globals.css";
 import CursorManager from "@/components/cursor/CursorManager";
-import GNB from "@/components/layout/GNB";
+import ConditionalGNB from "@/components/layout/ConditionalGNB";
 import PersistentHeroBackground from "@/components/hero/PersistentHeroBackground";
 import { getFavoriteImagePaths } from "@/lib/data/images";
 import Providers from "@/components/providers/Providers";
@@ -46,7 +46,7 @@ export default function RootLayout({
       <body className={`${cormorant.variable} ${inter.variable} antialiased`}>
         <Providers>
           <PersistentHeroBackground imagePaths={imagePaths} />
-          <GNB />
+          <ConditionalGNB />
           <CursorManager />
           {children}
         </Providers>
