@@ -33,5 +33,5 @@ export default async function FolderPage({ params }: Props) {
     notFound();
   }
 
-  redirect(`/gallery/${toGalleryPath(folder.slug)}`);
+  redirect(`/bubbleHome/gallery/${toGalleryPath(folder.slug)}`);
 }

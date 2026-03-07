@@ -14,7 +14,7 @@ type MusicPlayerContextType = {
   currentTrack: typeof musicTracks[0] | null;
 
   // Player 제어
-  playerRef: React.RefObject<YouTubeEmbedRef>;
+  playerRef: React.RefObject<YouTubeEmbedRef | null>;
   setIsPlaying: (playing: boolean) => void;
   setIsMuted: (muted: boolean) => void;
   setVolume: (volume: number) => void;

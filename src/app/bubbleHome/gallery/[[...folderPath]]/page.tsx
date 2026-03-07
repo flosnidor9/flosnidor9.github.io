@@ -16,8 +16,8 @@ type Props = {
 
 function toParentHref(slug: string): string {
   const segments = slug.split('/').filter(Boolean);
-  if (segments.length <= 1) return '/gallery';
-  return `/gallery/${toGalleryPath(segments.slice(0, -1).join('/'))}`;
+  if (segments.length <= 1) return '/bubbleHome/gallery';
+  return `/bubbleHome/gallery/${toGalleryPath(segments.slice(0, -1).join('/'))}`;
 }
 
 function toParentSlug(slug: string): string | null {

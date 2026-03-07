@@ -70,7 +70,7 @@ function resolveOrderedPosts(allPosts: PostData[], orderedSlugs: string[] | null
   return [...ordered, ...remaining];
 }
 
-export default function FolderDetailScene({ folder, posts, content, backHref = '/gallery', backLabel = 'Back' }: Props) {
+export default function FolderDetailScene({ folder, posts, content, backHref = '/bubbleHome/gallery', backLabel = 'Back' }: Props) {
   const [selectedImage, setSelectedImage] = useState<LightboxState | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [copied, setCopied] = useState(false);

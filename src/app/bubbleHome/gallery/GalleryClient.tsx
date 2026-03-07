@@ -136,7 +136,7 @@ function BentoCard({ folder, aspectRatio, minHeight, maxHeight }: BentoCardProps
     normY.set(0);
   }, [normX, normY]);
 
-  const href = `/gallery/${toGalleryPath(folder.slug)}`;
+  const href = `/bubbleHome/gallery/${toGalleryPath(folder.slug)}`;
   const metaLabel = folder.isLeaf ? `${folder.count} items` : `${folder.childCount} folders`;
 
   return (

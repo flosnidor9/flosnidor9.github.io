@@ -24,7 +24,9 @@
       "mcp__serena__think_about_task_adherence",
       "Bash(npx tsc:*)",
       "mcp__serena__find_file",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)"
     ]
   }
 }

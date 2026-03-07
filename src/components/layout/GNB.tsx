@@ -6,10 +6,10 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 
 const NAV_ITEMS = [
-  { label: 'Home', href: '/' },
-  { label: 'Gallery', href: '/gallery' },
-  { label: 'Log', href: '/log' },
-  { label: 'Guestbook', href: '/guestbook' },
+  { label: 'Home', href: '/bubbleHome' },
+  { label: 'Gallery', href: '/bubbleHome/gallery' },
+  { label: 'Log', href: '/bubbleHome/log' },
+  { label: 'Guestbook', href: '/bubbleHome/guestbook' },
 ];
 
 export default function GNB() {
