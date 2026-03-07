@@ -30,6 +30,15 @@ export function getStickerImagePaths(): string[] {
     .map((f) => `/images/Sticker/${f}`);
 }
 
+export function getFilmHomeImagePaths(): string[] {
+  const dir = path.join(process.cwd(), 'public', 'images', 'filmHome');
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((f) => IMAGE_EXTS.has(path.extname(f).toLowerCase()))
+    .map((f) => `/images/filmHome/${f}`);
+}
+
 export type ImageItem = {
   src: string;
   alt: string;

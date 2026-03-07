@@ -3,7 +3,7 @@ import path from 'path';
 import sizeOf from 'image-size';
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif']);
-const EXCLUDED = new Set(['Home', 'Sticker']);
+const EXCLUDED = new Set(['Home', 'Sticker', 'bubbleHome', 'mainHome', 'filmHome']);
 const PUBLIC_ROOT = path.join(process.cwd(), 'public');
 const IMAGES_ROOT = path.join(PUBLIC_ROOT, 'images');
 const FOLDER_META_FILE = 'folder.json';
