@@ -1,4 +1,4 @@
-﻿import { notFound } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import {
   getAllFolderSlugs,
   getFolder,
@@ -7,7 +7,7 @@ import {
   getFolders,
 } from '@/lib/data/folders';
 import { fromGallerySegments, toGalleryPath } from '@/lib/galleryPath';
-import GalleryClient from '../GalleryClient';
+import FilmGalleryClient from '../FilmGalleryClient';
 import FolderDetailScene from '@/components/folder/FolderDetailScene';
 
 type Props = {
@@ -16,8 +16,8 @@ type Props = {
 
 function toParentHref(slug: string): string {
   const segments = slug.split('/').filter(Boolean);
-  if (segments.length <= 1) return '/bubbleHome/gallery';
-  return `/bubbleHome/gallery/${toGalleryPath(segments.slice(0, -1).join('/'))}`;
+  if (segments.length <= 1) return '/filmHome/gallery';
+  return `/filmHome/gallery/${toGalleryPath(segments.slice(0, -1).join('/'))}`;
 }
 
 function toParentSlug(slug: string): string | null {
@@ -27,7 +27,7 @@ function toParentSlug(slug: string): string | null {
 }
 
 export async function generateStaticParams() {
-  const params = getAllFolderSlugs('bubble').map((slug) => ({
+  const params = getAllFolderSlugs('film').map((slug) => ({
     folderPath: slug.split('/'),
   }));
 
@@ -38,33 +38,33 @@ export async function generateMetadata({ params }: Props) {
   const { folderPath = [] } = await params;
   if (folderPath.length === 0) {
     return {
-      title: 'Gallery | Personal Archive',
-      description: 'Top-level categories',
+      title: 'Film Gallery | Personal Archive',
+      description: 'Film photography collection',
     };
   }
 
   const slug = fromGallerySegments(folderPath);
   if (!slug) return { title: 'Not Found' };
 
-  const folder = getFolder(slug, 'bubble');
+  const folder = getFolder(slug, 'film');
   if (!folder) return { title: 'Not Found' };
 
   return {
-    title: `${folder.title} | Personal Archive`,
+    title: `${folder.title} | Film Archive`,
     description: folder.isLeaf
       ? `${folder.title} - ${folder.count} images`
       : `${folder.title} - ${folder.childCount} folders`,
   };
 }
 
-export default async function GalleryRoutePage({ params }: Props) {
+export default async function FilmGalleryRoutePage({ params }: Props) {
   const { folderPath = [] } = await params;
 
   if (folderPath.length === 0) {
-    const folders = getFolders(null, 'bubble');
+    const folders = getFolders(null, 'film');
     return (
       <main className="relative min-h-screen pt-[3.5rem]">
-        <GalleryClient folders={folders} title="Gallery" description="Top-level categories" />
+        <FilmGalleryClient folders={folders} title="Film Gallery" description="Film photography collection" />
       </main>
     );
   }
@@ -74,21 +74,21 @@ export default async function GalleryRoutePage({ params }: Props) {
     notFound();
   }
 
-  const folder = getFolder(slug, 'bubble');
+  const folder = getFolder(slug, 'film');
   if (!folder) {
     notFound();
   }
 
   const backHref = toParentHref(slug);
   const parentSlug = toParentSlug(slug);
-  const parentFolder = parentSlug ? getFolder(parentSlug, 'bubble') : null;
+  const parentFolder = parentSlug ? getFolder(parentSlug, 'film') : null;
   const backLabel = parentFolder ? `Back to ${parentFolder.title}` : 'Back';
 
   if (!folder.isLeaf) {
-    const children = getFolders(slug, 'bubble');
+    const children = getFolders(slug, 'film');
     return (
       <main className="relative min-h-screen pt-[3.5rem]">
-        <GalleryClient
+        <FilmGalleryClient
           folders={children}
           title={folder.title}
           description={`${folder.childCount} sub-folders`}
@@ -99,12 +99,19 @@ export default async function GalleryRoutePage({ params }: Props) {
     );
   }
 
-  const posts = getFolderPosts(slug, 'bubble');
-  const content = getFolderContent(slug, 'bubble');
+  const posts = getFolderPosts(slug, 'film');
+  const content = getFolderContent(slug, 'film');
 
   return (
     <main>
-      <FolderDetailScene folder={folder} posts={posts} content={content} backHref={backHref} backLabel={backLabel} />
+      <FolderDetailScene
+        folder={folder}
+        posts={posts}
+        content={content}
+        backHref={backHref}
+        backLabel={backLabel}
+        theme="film"
+      />
     </main>
   );
 }

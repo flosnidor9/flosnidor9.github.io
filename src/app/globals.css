@@ -634,3 +634,93 @@ input[type="range"]::-moz-range-thumb:hover {
 input[type="range"]::-moz-range-thumb:active {
   transform: scale(1.1);
 }
+
+/* ─── Film Theme Card ─────────────────────────────────────── */
+/*
+ * 필름 카메라 감성의 빈티지 카드 스타일
+ * sepia 톤, 필름 스크래치, 빈티지 테두리
+ */
+.film-card {
+  background: linear-gradient(
+    160deg,
+    rgba(255, 248, 230, 0.06) 0%,
+    rgba(255, 248, 230, 0.02) 100%
+  );
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  border: 1px solid rgba(139, 90, 43, 0.2);
+  box-shadow:
+    0 20px 50px rgba(60, 40, 20, 0.35),
+    0 4px 14px rgba(60, 40, 20, 0.2),
+    inset 0 1px 0 rgba(255, 248, 230, 0.15);
+  transition:
+    box-shadow 0.35s ease,
+    border-color 0.35s ease;
+}
+
+.film-card:hover {
+  border-color: rgba(180, 130, 70, 0.35);
+  box-shadow:
+    0 28px 65px rgba(60, 40, 20, 0.45),
+    0 0 0 0.5px rgba(200, 160, 100, 0.25),
+    0 0 40px rgba(255, 200, 120, 0.08),
+    inset 0 1px 0 rgba(255, 248, 230, 0.25);
+}
+
+/* 호버 시 걷히는 블러 오버레이 */
+.film-blur-veil {
+  backdrop-filter: blur(2px) brightness(0.95) sepia(0.08);
+  -webkit-backdrop-filter: blur(2px) brightness(0.95) sepia(0.08);
+  transition: opacity 0.45s ease;
+  opacity: 1;
+}
+
+.film-card:hover .film-blur-veil {
+  opacity: 0;
+}
+
+/* 필름 이미지 스타일 */
+.film-card-img {
+  transition: filter 0.45s ease, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  filter: brightness(0.88) saturate(0.95) sepia(0.12) contrast(1.05);
+}
+
+.film-card:hover .film-card-img {
+  filter: brightness(1) saturate(1.05) sepia(0.08) contrast(1.08);
+  transform: scale(1.03);
+}
+
+/* 필름 스크래치/그레인 오버레이 */
+.film-scratch {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+}
+
+/* 빈티지 글로우 테두리 */
+.film-glow-ring {
+  opacity: 0;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 220, 180, 0.12) 0%,
+    transparent 45%
+  );
+  transition: opacity 0.35s ease;
+}
+
+.film-card:hover .film-glow-ring {
+  opacity: 1;
+}
+
+/* 필름 테마 태그 */
+.film-tag {
+  display: inline-block;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  color: rgba(255, 248, 230, 0.6);
+  background: rgba(139, 90, 43, 0.15);
+  border: 1px solid rgba(180, 130, 70, 0.2);
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+}

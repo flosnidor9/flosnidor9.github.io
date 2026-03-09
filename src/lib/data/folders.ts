@@ -3,10 +3,16 @@ import path from 'path';
 import sizeOf from 'image-size';
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif']);
-const EXCLUDED = new Set(['Home', 'Sticker', 'bubbleHome', 'mainHome', 'filmHome']);
 const PUBLIC_ROOT = path.join(process.cwd(), 'public');
-const IMAGES_ROOT = path.join(PUBLIC_ROOT, 'images');
 const FOLDER_META_FILE = 'folder.json';
+
+// Gallery type definitions
+const GALLERY_ROOTS = {
+  bubble: path.join(PUBLIC_ROOT, 'images', 'bubble'),
+  film: path.join(PUBLIC_ROOT, 'images', 'film'),
+} as const;
+
+export type GalleryType = keyof typeof GALLERY_ROOTS;
 
 export type ImageOrientation = 'landscape' | 'portrait' | 'square';
 
@@ -118,7 +124,7 @@ type FolderNodeBuild = FolderNode & {
 function listChildDirs(absDir: string): fs.Dirent[] {
   return fs
     .readdirSync(absDir, { withFileTypes: true })
-    .filter((d) => d.isDirectory() && !EXCLUDED.has(d.name));
+    .filter((d) => d.isDirectory());
 }
 
 function listDirectImages(absDir: string): string[] {
@@ -128,11 +134,11 @@ function listDirectImages(absDir: string): string[] {
     .map((d) => d.name);
 }
 
-function buildFolderNode(absDir: string, segments: string[], output: FolderNode[]): FolderNodeBuild {
+function buildFolderNode(absDir: string, segments: string[], output: FolderNode[], galleryType: GalleryType): FolderNodeBuild {
   const folderMeta = readFolderMeta(absDir);
   const childDirs = listChildDirs(absDir);
   const childResults = childDirs.map((child) =>
-    buildFolderNode(path.join(absDir, child.name), [...segments, child.name], output),
+    buildFolderNode(path.join(absDir, child.name), [...segments, child.name], output, galleryType),
   );
 
   const directImages = listDirectImages(absDir);
@@ -190,51 +196,55 @@ function buildFolderNode(absDir: string, segments: string[], output: FolderNode[
   return node;
 }
 
-function buildFolderIndex(): FolderData[] {
-  if (!fs.existsSync(IMAGES_ROOT)) return [];
+function buildFolderIndex(galleryType: GalleryType = 'bubble'): FolderData[] {
+  const galleryRoot = GALLERY_ROOTS[galleryType];
+  if (!fs.existsSync(galleryRoot)) return [];
 
   const nodes: FolderNode[] = [];
-  const roots = listChildDirs(IMAGES_ROOT);
+  const roots = listChildDirs(galleryRoot);
   for (const root of roots) {
-    buildFolderNode(path.join(IMAGES_ROOT, root.name), [root.name], nodes);
+    buildFolderNode(path.join(galleryRoot, root.name), [root.name], nodes, galleryType);
   }
 
   return nodes.sort((a, b) => a.slug.localeCompare(b.slug, 'en'));
 }
 
-export function getFolders(parentSlug: string | null = null): FolderData[] {
+export function getFolders(parentSlug: string | null = null, galleryType: GalleryType = 'bubble'): FolderData[] {
   const parent = parentSlug ? toSlugSegments(parentSlug).join('/') : null;
-  const folders = buildFolderIndex();
+  const folders = buildFolderIndex(galleryType);
   return folders.filter((f) => f.parentSlug === parent);
 }
 
-export function getFolder(slug: string): FolderData | null {
+export function getFolder(slug: string, galleryType: GalleryType = 'bubble'): FolderData | null {
   const normalized = toSlugSegments(slug).join('/');
   if (!normalized) return null;
-  const folders = buildFolderIndex();
+  const folders = buildFolderIndex(galleryType);
   return folders.find((f) => f.slug === normalized) ?? null;
 }
 
-export function getAllFolderSlugs(): string[] {
-  return buildFolderIndex().map((f) => f.slug);
+export function getAllFolderSlugs(galleryType: GalleryType = 'bubble'): string[] {
+  return buildFolderIndex(galleryType).map((f) => f.slug);
 }
 
-export function getFolderImages(slug: string): string[] {
+export function getFolderImages(slug: string, galleryType: GalleryType = 'bubble'): string[] {
   const normalized = toSlugSegments(slug).join('/');
   if (!normalized) return [];
-  const base = path.join(IMAGES_ROOT, ...normalized.split('/'));
+  const galleryRoot = GALLERY_ROOTS[galleryType];
+  const base = path.join(galleryRoot, ...normalized.split('/'));
   if (!fs.existsSync(base)) return [];
 
+  const galleryPrefix = galleryType === 'bubble' ? 'bubble' : 'film';
   return fs
     .readdirSync(base, { withFileTypes: true })
     .filter((d) => d.isFile() && IMAGE_EXTS.has(path.extname(d.name).toLowerCase()))
-    .map((d) => `/images/${normalized}/${d.name}`);
+    .map((d) => `/images/${galleryPrefix}/${normalized}/${d.name}`);
 }
 
-export function getFolderContent(slug: string): string | null {
+export function getFolderContent(slug: string, galleryType: GalleryType = 'bubble'): string | null {
   const normalized = toSlugSegments(slug).join('/');
   if (!normalized) return null;
-  const mdPath = path.join(IMAGES_ROOT, ...normalized.split('/'), 'content.md');
+  const galleryRoot = GALLERY_ROOTS[galleryType];
+  const mdPath = path.join(galleryRoot, ...normalized.split('/'), 'content.md');
   if (!fs.existsSync(mdPath)) return null;
   return fs.readFileSync(mdPath, 'utf-8');
 }
@@ -247,10 +257,11 @@ export type PostData = {
   content: string | null;
 };
 
-export function getFolderPosts(folderSlug: string): PostData[] {
+export function getFolderPosts(folderSlug: string, galleryType: GalleryType = 'bubble'): PostData[] {
   const normalized = toSlugSegments(folderSlug).join('/');
   if (!normalized) return [];
-  const base = path.join(IMAGES_ROOT, ...normalized.split('/'));
+  const galleryRoot = GALLERY_ROOTS[galleryType];
+  const base = path.join(galleryRoot, ...normalized.split('/'));
   if (!fs.existsSync(base)) return [];
 
   const files = fs
@@ -259,6 +270,7 @@ export function getFolderPosts(folderSlug: string): PostData[] {
     .map((d) => d.name);
 
   const postMap = new Map<string, { image?: string; width?: number; height?: number; content?: string }>();
+  const galleryPrefix = galleryType === 'bubble' ? 'bubble' : 'film';
 
   for (const file of files) {
     const ext = path.extname(file).toLowerCase();
@@ -276,7 +288,7 @@ export function getFolderPosts(folderSlug: string): PostData[] {
     if (IMAGE_EXTS.has(ext)) {
       const imageAbsPath = path.join(base, file);
       const { width, height } = sizeOf(fs.readFileSync(imageAbsPath));
-      post.image = `/images/${normalized}/${file}`;
+      post.image = `/images/${galleryPrefix}/${normalized}/${file}`;
       post.width = width;
       post.height = height;
     } else if (ext === '.md') {

@@ -14,6 +14,7 @@ type Props = {
   content: string | null;
   backHref?: string;
   backLabel?: string;
+  theme?: 'bubble' | 'film';
 };
 
 type LightboxState = {
@@ -70,7 +71,8 @@ function resolveOrderedPosts(allPosts: PostData[], orderedSlugs: string[] | null
   return [...ordered, ...remaining];
 }
 
-export default function FolderDetailScene({ folder, posts, content, backHref = '/bubbleHome/gallery', backLabel = 'Back' }: Props) {
+export default function FolderDetailScene({ folder, posts, content, backHref = '/bubbleHome/gallery', backLabel = 'Back', theme = 'bubble' }: Props) {
+  const isFilm = theme === 'film';
   const [selectedImage, setSelectedImage] = useState<LightboxState | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -230,7 +232,11 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
           <div className="w-full max-w-[64rem] mx-auto mb-[1rem] flex">
             <Link
               href={backHref}
-              className="inline-flex items-center gap-[0.4rem] rounded-full border border-black/40 bg-white/5 px-[0.75rem] py-[0.45rem] text-[0.82rem] text-black/75 transition-colors hover:bg-white/10"
+              className={`inline-flex items-center gap-[0.4rem] rounded-full border px-[0.75rem] py-[0.45rem] text-[0.82rem] transition-colors ${
+                isFilm
+                  ? 'border-amber-900/40 bg-amber-50/5 text-amber-900/75 hover:bg-amber-50/10'
+                  : 'border-black/40 bg-white/5 text-black/75 hover:bg-white/10'
+              }`}
               style={{ pointerEvents: 'auto', cursor: 'pointer' }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -240,18 +246,25 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
             </Link>
           </div>
           <motion.h1
-            className="font-serif text-[2rem] md:text-[2.5rem] lg:text-[3rem] text-black/90 leading-tight mb-[0.75rem]"
+            className={`font-serif text-[2rem] md:text-[2.5rem] lg:text-[3rem] leading-tight mb-[0.75rem] ${
+              isFilm ? 'text-amber-900/90' : 'text-black/90'
+            }`}
             layoutId={`folder-title-${folder.slug}`}
           >
             {folder.title}
           </motion.h1>
           <div className="flex items-center gap-[0.75rem] flex-wrap justify-center">
             {folder.tags.map((tag) => (
-              <span key={tag} className="text-[0.75rem] text-black/50 bg-white/5 px-[0.75rem] py-[0.25rem] rounded-full">
+              <span
+                key={tag}
+                className={`text-[0.75rem] px-[0.75rem] py-[0.25rem] rounded-full ${
+                  isFilm ? 'text-amber-900/50 bg-amber-50/5' : 'text-black/50 bg-white/5'
+                }`}
+              >
                 {tag}
               </span>
             ))}
-            <span className="text-[0.75rem] text-black/30">{postCountLabel}</span>
+            <span className={`text-[0.75rem] ${isFilm ? 'text-amber-900/30' : 'text-black/30'}`}>{postCountLabel}</span>
           </div>
         </motion.header>
 
@@ -280,6 +293,7 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
                   thumbnailMode={thumbnailMode}
                   isSelectedThumbnail={post.slug === thumbnailSlug}
                   onSelectThumbnail={() => setThumbnailSlug(post.slug)}
+                  theme={theme}
                 />
               ))}
             </div>
@@ -369,6 +383,7 @@ type GalleryMasonryCardProps = {
   thumbnailMode: boolean;
   isSelectedThumbnail: boolean;
   onSelectThumbnail: () => void;
+  theme?: 'bubble' | 'film';
 };
 
 function GalleryMasonryCard({
@@ -378,7 +393,9 @@ function GalleryMasonryCard({
   thumbnailMode,
   isSelectedThumbnail,
   onSelectThumbnail,
+  theme = 'bubble',
 }: GalleryMasonryCardProps) {
+  const isFilm = theme === 'film';
   const handleImageClick = () => {
     if (!post.image) return;
     if (thumbnailMode) {
@@ -416,9 +433,9 @@ function GalleryMasonryCard({
               alt={post.slug}
               width={post.width ?? 1200}
               height={post.height ?? 900}
-              className={`h-auto w-full rounded-3xl object-contain brightness-[0.94] transition duration-300 group-hover:brightness-105 ${
-                thumbnailMode && isSelectedThumbnail ? 'ring-[0.16rem] ring-cyan-200/75 ring-inset' : ''
-              }`}
+              className={`h-auto w-full rounded-3xl object-contain transition duration-300 group-hover:brightness-105 ${
+                isFilm ? 'brightness-[0.92] sepia-[0.12] contrast-[1.02]' : 'brightness-[0.94]'
+              } ${thumbnailMode && isSelectedThumbnail ? 'ring-[0.16rem] ring-cyan-200/75 ring-inset' : ''}`}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1536px) 33vw, 20vw"
               draggable={false}
               loading={index < 8 ? 'eager' : 'lazy'}

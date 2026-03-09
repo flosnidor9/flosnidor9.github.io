@@ -297,22 +297,6 @@ export default function FilmHomeClient({ imagePaths }: FilmHomeClientProps) {
       </motion.div>
 
       {/* 메인 컨텐츠 영역 */}
-      <div className="relative z-10 min-h-screen flex items-center justify-center px-[2rem] md:ml-[20rem]">
-        <motion.div
-          className="text-center"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <h1 className="font-serif text-[4rem] md:text-[5rem] font-light text-white/90 mb-[1rem]">
-            Film Archive
-          </h1>
-          <p className="font-sans text-[1.1rem] md:text-[1.25rem] font-light text-white/60">
-            영화와 필름의 순간들을 기록하다
-          </p>
-        </motion.div>
-      </div>
-
       {/* 시계 - 오른쪽 하단, 모바일에서는 뮤직플레이어 위로 */}
       <motion.div
         className="fixed right-[2rem] z-20 bottom-[6rem] md:bottom-[2rem]"
