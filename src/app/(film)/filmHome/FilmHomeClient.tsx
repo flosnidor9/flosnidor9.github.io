@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-import FilmGNB from '@/components/layout/FilmGNB';
 import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
 import { musicTracks } from '@/lib/data/music';
 
@@ -16,6 +15,13 @@ export default function FilmHomeClient({ imagePaths }: FilmHomeClientProps) {
   const [randomImage, setRandomImage] = useState<string | null>(null);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [time, setTime] = useState<string>('');
+  const [verticalTearLinePos, setVerticalTearLinePos] = useState(36.5);
+  const [horizontalTearLinePos, setHorizontalTearLinePos] = useState(17);
+
+  const verticalTearLineRef = useRef<HTMLDivElement>(null);
+  const horizontalTearLineRef = useRef<HTMLDivElement>(null);
+  const verticalTicketRef = useRef<HTMLDivElement>(null);
+  const horizontalTicketRef = useRef<HTMLDivElement>(null);
 
   const {
     isPlaying,
@@ -34,6 +40,38 @@ export default function FilmHomeClient({ imagePaths }: FilmHomeClientProps) {
     }
     togglePlay();
   };
+
+  // 절취선 정확한 위치 계산
+  useLayoutEffect(() => {
+    if (!mounted) return;
+
+    const calculateTearLinePositions = () => {
+      // 세로 티켓 절취선 위치 계산
+      if (verticalTearLineRef.current && verticalTicketRef.current) {
+        const ticketRect = verticalTicketRef.current.getBoundingClientRect();
+        const tearLineRect = verticalTearLineRef.current.getBoundingClientRect();
+        const relativeTop = tearLineRect.top - ticketRect.top;
+        const percentage = (relativeTop / ticketRect.height) * 100;
+        setVerticalTearLinePos(percentage);
+      }
+
+      // 가로 티켓 절취선 위치 계산
+      if (horizontalTearLineRef.current && horizontalTicketRef.current) {
+        const ticketRect = horizontalTicketRef.current.getBoundingClientRect();
+        const tearLineRect = horizontalTearLineRef.current.getBoundingClientRect();
+        const relativeLeft = tearLineRect.left - ticketRect.left;
+        const percentage = (relativeLeft / ticketRect.width) * 100;
+        setHorizontalTearLinePos(percentage);
+      }
+    };
+
+    // 초기 계산
+    calculateTearLinePositions();
+
+    // 리사이즈 시 재계산
+    window.addEventListener('resize', calculateTearLinePositions);
+    return () => window.removeEventListener('resize', calculateTearLinePositions);
+  }, [mounted]);
 
   useEffect(() => {
     setMounted(true);
@@ -59,6 +97,58 @@ export default function FilmHomeClient({ imagePaths }: FilmHomeClientProps) {
 
     return () => clearInterval(interval);
   }, [imagePaths]);
+
+  // 세로 티켓 마스크 생성 (작은 펀칭홀 + 절취선 큰 펀칭홀)
+  const verticalTicketMask = useMemo(() => {
+    const masks = [];
+    const punchHoles = 28;
+    const punchSize = 0.18; // 작은 펀칭홀 크기 (rem)
+    const tearLinePunchSize = 0.6; // 절취선 큰 펀칭홀 크기 (rem)
+
+    // 왼쪽 펀칭홀
+    for (let i = 0; i < punchHoles; i++) {
+      const y = (100 / (punchHoles - 1)) * i;
+      masks.push(`radial-gradient(circle at 0% ${y.toFixed(2)}%, transparent ${punchSize}rem, black ${punchSize + 0.01}rem)`);
+    }
+
+    // 오른쪽 펀칭홀
+    for (let i = 0; i < punchHoles; i++) {
+      const y = (100 / (punchHoles - 1)) * i;
+      masks.push(`radial-gradient(circle at 100% ${y.toFixed(2)}%, transparent ${punchSize}rem, black ${punchSize + 0.01}rem)`);
+    }
+
+    // 절취선 큰 펀칭홀 (좌우) - 동적으로 계산된 위치 사용
+    masks.push(`radial-gradient(circle at 0% ${verticalTearLinePos.toFixed(2)}%, transparent ${tearLinePunchSize}rem, black ${tearLinePunchSize + 0.01}rem)`);
+    masks.push(`radial-gradient(circle at 100% ${verticalTearLinePos.toFixed(2)}%, transparent ${tearLinePunchSize}rem, black ${tearLinePunchSize + 0.01}rem)`);
+
+    return masks.join(', ');
+  }, [verticalTearLinePos]);
+
+  // 가로 티켓 마스크 생성 (작은 펀칭홀 + 절취선 큰 펀칭홀)
+  const horizontalTicketMask = useMemo(() => {
+    const masks = [];
+    const punchHoles = 35;
+    const punchSize = 0.15; // 작은 펀칭홀 크기 (rem)
+    const tearLinePunchSize = 0.5; // 절취선 큰 펀칭홀 크기 (rem)
+
+    // 상단 펀칭홀
+    for (let i = 0; i < punchHoles; i++) {
+      const x = (100 / (punchHoles - 1)) * i;
+      masks.push(`radial-gradient(circle at ${x.toFixed(2)}% 0%, transparent ${punchSize}rem, black ${punchSize + 0.01}rem)`);
+    }
+
+    // 하단 펀칭홀
+    for (let i = 0; i < punchHoles; i++) {
+      const x = (100 / (punchHoles - 1)) * i;
+      masks.push(`radial-gradient(circle at ${x.toFixed(2)}% 100%, transparent ${punchSize}rem, black ${punchSize + 0.01}rem)`);
+    }
+
+    // 절취선 큰 펀칭홀 (상하) - 동적으로 계산된 위치 사용
+    masks.push(`radial-gradient(circle at ${horizontalTearLinePos.toFixed(2)}% 0%, transparent ${tearLinePunchSize}rem, black ${tearLinePunchSize + 0.01}rem)`);
+    masks.push(`radial-gradient(circle at ${horizontalTearLinePos.toFixed(2)}% 100%, transparent ${tearLinePunchSize}rem, black ${tearLinePunchSize + 0.01}rem)`);
+
+    return masks.join(', ');
+  }, [horizontalTearLinePos]);
 
   if (!mounted) return null;
 
@@ -109,9 +199,6 @@ export default function FilmHomeClient({ imagePaths }: FilmHomeClientProps) {
         ))}
       </div>
 
-      {/* GNB */}
-      <FilmGNB />
-
       {/* 데스크톱: 왼쪽 고정 뮤직 플레이어 - 세로 티켓 */}
       <motion.div
         className="hidden md:block fixed left-[4rem] top-1/2 -translate-y-1/2 z-40"
@@ -120,32 +207,16 @@ export default function FilmHomeClient({ imagePaths }: FilmHomeClientProps) {
         transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
       >
         <div className="relative">
-          {/* 왼쪽 톱니 테두리 */}
-          <div className="absolute left-0 top-0 bottom-0 w-[0.5rem] flex flex-col justify-between -translate-x-1/2 z-10">
-            {Array.from({ length: 16 }).map((_, i) => (
-              <div
-                key={`left-${i}`}
-                className="w-[0.5rem] h-[0.5rem] rounded-full"
-                style={{ background: 'black' }}
-              />
-            ))}
-          </div>
-          {/* 오른쪽 톱니 테두리 */}
-          <div className="absolute right-0 top-0 bottom-0 w-[0.5rem] flex flex-col justify-between translate-x-1/2 z-10">
-            {Array.from({ length: 16 }).map((_, i) => (
-              <div
-                key={`right-${i}`}
-                className="w-[0.5rem] h-[0.5rem] rounded-full"
-                style={{ background: 'black' }}
-              />
-            ))}
-          </div>
-
           <div
-            className="relative flex flex-col w-[14rem] overflow-hidden"
+            ref={verticalTicketRef}
+            className="relative flex flex-col w-[14rem]"
             style={{
               background: 'linear-gradient(180deg, #1f1d1a 0%, #141210 100%)',
               boxShadow: '0 20px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.03)',
+              WebkitMaskImage: verticalTicketMask,
+              maskImage: verticalTicketMask,
+              WebkitMaskComposite: 'source-in',
+              maskComposite: 'intersect',
             }}
           >
             {/* 빈티지 그런지 오버레이 */}
@@ -165,9 +236,7 @@ export default function FilmHomeClient({ imagePaths }: FilmHomeClientProps) {
             </div>
 
             {/* 점선 구분 */}
-            <div className="relative px-[0.75rem]">
-              <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[1rem] h-[1rem] rounded-full z-20" style={{ background: 'black' }} />
-              <div className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 w-[1rem] h-[1rem] rounded-full z-20" style={{ background: 'black' }} />
+            <div ref={verticalTearLineRef} className="relative px-[0.75rem]">
               <div className="w-full h-0" style={{ borderTop: '2px dashed rgba(255,255,255,0.15)' }} />
             </div>
 
@@ -230,24 +299,16 @@ export default function FilmHomeClient({ imagePaths }: FilmHomeClientProps) {
         transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
       >
         <div className="relative">
-          {/* 상단 톱니 테두리 */}
-          <div className="absolute top-0 left-0 right-0 h-[0.4rem] flex flex-row justify-between -translate-y-1/2 z-10 px-[0.5rem]">
-            {Array.from({ length: 20 }).map((_, i) => (
-              <div key={`top-${i}`} className="w-[0.4rem] h-[0.4rem] rounded-full" style={{ background: 'black' }} />
-            ))}
-          </div>
-          {/* 하단 톱니 테두리 */}
-          <div className="absolute bottom-0 left-0 right-0 h-[0.4rem] flex flex-row justify-between translate-y-1/2 z-10 px-[0.5rem]">
-            {Array.from({ length: 20 }).map((_, i) => (
-              <div key={`bottom-${i}`} className="w-[0.4rem] h-[0.4rem] rounded-full" style={{ background: 'black' }} />
-            ))}
-          </div>
-
           <div
-            className="relative flex flex-row items-center overflow-hidden px-[1rem] py-[0.75rem] gap-[0.75rem]"
+            ref={horizontalTicketRef}
+            className="relative flex flex-row items-center px-[1rem] py-[0.75rem] gap-[0.75rem]"
             style={{
               background: 'linear-gradient(90deg, #1f1d1a 0%, #141210 100%)',
               boxShadow: '0 10px 30px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.03)',
+              WebkitMaskImage: horizontalTicketMask,
+              maskImage: horizontalTicketMask,
+              WebkitMaskComposite: 'source-in',
+              maskComposite: 'intersect',
             }}
           >
             {/* 빈티지 효과들 */}
@@ -269,9 +330,7 @@ export default function FilmHomeClient({ imagePaths }: FilmHomeClientProps) {
             </button>
 
             {/* 점선 구분 (세로) */}
-            <div className="relative h-[2.5rem] flex items-center">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[0.6rem] h-[0.6rem] rounded-full z-20" style={{ background: 'black' }} />
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-[0.6rem] h-[0.6rem] rounded-full z-20" style={{ background: 'black' }} />
+            <div ref={horizontalTearLineRef} className="relative h-[2.5rem] flex items-center">
               <div className="h-full w-0" style={{ borderLeft: '2px dashed rgba(255,255,255,0.15)' }} />
             </div>
 
