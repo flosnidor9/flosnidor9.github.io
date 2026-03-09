@@ -27,6 +27,14 @@ export default function FilmHomeClient({ imagePaths }: FilmHomeClientProps) {
     handleVolumeChange,
   } = useMusicPlayer();
 
+  // 재생 버튼 클릭 시 뮤트도 해제
+  const handlePlayClick = () => {
+    if (!isPlaying && isMuted) {
+      toggleMute();
+    }
+    togglePlay();
+  };
+
   useEffect(() => {
     setMounted(true);
 
@@ -166,7 +174,7 @@ export default function FilmHomeClient({ imagePaths }: FilmHomeClientProps) {
             {/* 하단 - 컨트롤 */}
             <div className="px-[1.25rem] py-[1rem]">
               <div className="flex items-center justify-between mb-[0.75rem]">
-                <button onClick={togglePlay} className="flex items-center gap-[0.5rem] cursor-pointer group" aria-label={isPlaying ? '일시정지' : '재생'}>
+                <button onClick={handlePlayClick} className="flex items-center gap-[0.5rem] cursor-pointer group" aria-label={isPlaying ? '일시정지' : '재생'}>
                   <div className="w-[2.5rem] h-[2.5rem] rounded-full flex items-center justify-center transition-all group-hover:scale-105" style={{ background: isPlaying ? 'rgba(255,255,255,0.1)' : '#7B0D14' }}>
                     {isPlaying ? (
                       <div className="flex gap-[0.15rem]">
@@ -247,7 +255,7 @@ export default function FilmHomeClient({ imagePaths }: FilmHomeClientProps) {
             <div className="absolute inset-0 pointer-events-none z-10" style={{ boxShadow: 'inset 0 0 20px rgba(0,0,0,0.5)' }} />
 
             {/* 재생 버튼 */}
-            <button onClick={togglePlay} className="flex-shrink-0 cursor-pointer" aria-label={isPlaying ? '일시정지' : '재생'}>
+            <button onClick={handlePlayClick} className="flex-shrink-0 cursor-pointer" aria-label={isPlaying ? '일시정지' : '재생'}>
               <div className="w-[2.5rem] h-[2.5rem] rounded-full flex items-center justify-center" style={{ background: isPlaying ? 'rgba(255,255,255,0.1)' : '#7B0D14' }}>
                 {isPlaying ? (
                   <div className="flex gap-[0.15rem]">
