@@ -2,6 +2,7 @@
 import { notFound } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import { getAllLogPosts, getLogPostBySlug } from '@/lib/logs';
+import LogCommentsSection from '@/components/log/LogCommentsSection';
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -74,7 +75,10 @@ export default async function LogDetailPage({ params }: Props) {
         <div className="prose prose-invert max-w-none prose-headings:font-serif prose-headings:font-light prose-p:text-white/85 prose-p:leading-relaxed prose-a:text-white prose-a:underline prose-a:underline-offset-2 prose-strong:text-white prose-code:rounded prose-code:bg-white/10 prose-code:px-[0.4rem] prose-code:py-[0.2rem] prose-pre:border prose-pre:border-white/10 prose-pre:bg-white/5">
           <ReactMarkdown>{post.content}</ReactMarkdown>
         </div>
+
+        <LogCommentsSection postSlug={post.slug} />
       </article>
     </main>
   );
 }
+
