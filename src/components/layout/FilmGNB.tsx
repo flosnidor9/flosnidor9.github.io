@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 const NAV_ITEMS = [
   { label: 'Home', href: '/filmHome' },
   { label: 'Gallery', href: '/filmHome/gallery' },
-  { label: 'Archive', href: '/filmHome/archive' },
+  { label: 'Log', href: '/filmHome/log' },
   { label: 'About', href: '/filmHome/about' },
 ];
 

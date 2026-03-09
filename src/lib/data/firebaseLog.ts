@@ -11,6 +11,7 @@ import { db } from '@/lib/firebase';
 
 export type FirebaseLogEntry = {
   id: string;
+  title?: string;
   content: string;
   timestamp: Timestamp;
   year: number;
@@ -19,6 +20,7 @@ export type FirebaseLogEntry = {
 };
 
 export type LogEntryInput = {
+  title?: string;
   content: string;
   tags: string[];
   images: string[];
@@ -47,13 +49,19 @@ export async function addLog(entry: LogEntryInput): Promise<string> {
   const now = new Date();
   const year = now.getFullYear();
 
-  const docRef = await addDoc(collection(db, LOGS_COLLECTION), {
+  const data: any = {
     content: entry.content,
     tags: entry.tags,
     images: entry.images,
     timestamp: Timestamp.now(),
     year,
-  });
+  };
+
+  if (entry.title) {
+    data.title = entry.title;
+  }
+
+  const docRef = await addDoc(collection(db, LOGS_COLLECTION), data);
 
   return docRef.id;
 }
