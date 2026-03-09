@@ -22,45 +22,45 @@ type LightboxState = {
   scrollY: number;
 };
 
-const memoComponents = {
+const getMemoComponents = (isFilm: boolean) => ({
   p: ({ children }: { children?: React.ReactNode }) => (
-    <p className="font-sans text-[0.82rem] text-black/70 leading-relaxed mb-[0.4rem] last:mb-0">{children}</p>
+    <p className={`font-sans text-[0.82rem] ${isFilm ? 'text-white/70' : 'text-black/70'} leading-relaxed mb-[0.4rem] last:mb-0`}>{children}</p>
   ),
   h1: ({ children }: { children?: React.ReactNode }) => (
-    <h1 className="font-mono text-[0.95rem] text-black/85 mb-[0.4rem] font-bold">{children}</h1>
+    <h1 className={`font-mono text-[0.95rem] ${isFilm ? 'text-white/85' : 'text-black/85'} mb-[0.4rem] font-bold`}>{children}</h1>
   ),
   h2: ({ children }: { children?: React.ReactNode }) => (
-    <h2 className="font-mono text-[0.88rem] text-black/80 mb-[0.35rem] font-semibold">{children}</h2>
+    <h2 className={`font-mono text-[0.88rem] ${isFilm ? 'text-white/80' : 'text-black/80'} mb-[0.35rem] font-semibold`}>{children}</h2>
   ),
-  strong: ({ children }: { children?: React.ReactNode }) => <strong className="text-black/90 font-semibold">{children}</strong>,
-  em: ({ children }: { children?: React.ReactNode }) => <em className="text-black/70">{children}</em>,
+  strong: ({ children }: { children?: React.ReactNode }) => <strong className={`${isFilm ? 'text-white/90' : 'text-black/90'} font-semibold`}>{children}</strong>,
+  em: ({ children }: { children?: React.ReactNode }) => <em className={isFilm ? 'text-white/70' : 'text-black/70'}>{children}</em>,
   ul: ({ children }: { children?: React.ReactNode }) => (
-    <ul className="list-disc list-inside font-mono text-[0.82rem] text-black/70 mb-[0.4rem] space-y-[0.2rem]">{children}</ul>
+    <ul className={`list-disc list-inside font-mono text-[0.82rem] ${isFilm ? 'text-white/70' : 'text-black/70'} mb-[0.4rem] space-y-[0.2rem]`}>{children}</ul>
   ),
   li: ({ children }: { children?: React.ReactNode }) => <li>{children}</li>,
-};
+});
 
-const folderMarkdownComponents = {
+const getFolderMarkdownComponents = (isFilm: boolean) => ({
   h1: ({ children }: { children?: React.ReactNode }) => (
-    <h1 className="font-serif text-[1.25rem] md:text-[1.5rem] text-black/90 mb-[0.75rem] text-center">{children}</h1>
+    <h1 className={`font-serif text-[1.25rem] md:text-[1.5rem] ${isFilm ? 'text-white/90' : 'text-black/90'} mb-[0.75rem] text-center`}>{children}</h1>
   ),
   h2: ({ children }: { children?: React.ReactNode }) => (
-    <h2 className="font-serif text-[1.1rem] md:text-[1.25rem] text-black/85 mb-[0.5rem] mt-[1rem] text-center">{children}</h2>
+    <h2 className={`font-serif text-[1.1rem] md:text-[1.25rem] ${isFilm ? 'text-white/85' : 'text-black/85'} mb-[0.5rem] mt-[1rem] text-center`}>{children}</h2>
   ),
   p: ({ children }: { children?: React.ReactNode }) => (
-    <p className="font-sans text-[0.9rem] text-black/70 leading-relaxed mb-[0.75rem] last:mb-0 text-center">{children}</p>
+    <p className={`font-sans text-[0.9rem] ${isFilm ? 'text-white/70' : 'text-black/70'} leading-relaxed mb-[0.75rem] last:mb-0 text-center`}>{children}</p>
   ),
   ul: ({ children }: { children?: React.ReactNode }) => (
-    <ul className="list-disc list-inside text-black/70 mb-[0.75rem] space-y-[0.25rem] text-center">{children}</ul>
+    <ul className={`list-disc list-inside ${isFilm ? 'text-white/70' : 'text-black/70'} mb-[0.75rem] space-y-[0.25rem] text-center`}>{children}</ul>
   ),
   li: ({ children }: { children?: React.ReactNode }) => <li className="font-sans text-[0.85rem] text-center">{children}</li>,
-  strong: ({ children }: { children?: React.ReactNode }) => <strong className="text-black/90 font-medium">{children}</strong>,
-  em: ({ children }: { children?: React.ReactNode }) => <em className="text-black/80 italic">{children}</em>,
+  strong: ({ children }: { children?: React.ReactNode }) => <strong className={`${isFilm ? 'text-white/90' : 'text-black/90'} font-medium`}>{children}</strong>,
+  em: ({ children }: { children?: React.ReactNode }) => <em className={`${isFilm ? 'text-white/80' : 'text-black/80'} italic`}>{children}</em>,
   blockquote: ({ children }: { children?: React.ReactNode }) => (
-    <blockquote className="border-l-[2px] border-black/20 pl-[1rem] my-[0.75rem] text-black/60 italic text-center">{children}</blockquote>
+    <blockquote className={`border-l-[2px] ${isFilm ? 'border-white/20' : 'border-black/20'} pl-[1rem] my-[0.75rem] ${isFilm ? 'text-white/60' : 'text-black/60'} italic text-center`}>{children}</blockquote>
   ),
-  hr: () => <hr className="border-black/10 my-[1rem]" />,
-};
+  hr: () => <hr className={`${isFilm ? 'border-white/10' : 'border-black/10'} my-[1rem]`} />,
+});
 
 function resolveOrderedPosts(allPosts: PostData[], orderedSlugs: string[] | null): PostData[] {
   if (!orderedSlugs || orderedSlugs.length === 0) return allPosts;
@@ -73,6 +73,8 @@ function resolveOrderedPosts(allPosts: PostData[], orderedSlugs: string[] | null
 
 export default function FolderDetailScene({ folder, posts, content, backHref = '/bubbleHome/gallery', backLabel = 'Back', theme = 'bubble' }: Props) {
   const isFilm = theme === 'film';
+  const memoComponents = useMemo(() => getMemoComponents(isFilm), [isFilm]);
+  const folderMarkdownComponents = useMemo(() => getFolderMarkdownComponents(isFilm), [isFilm]);
   const [selectedImage, setSelectedImage] = useState<LightboxState | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -234,7 +236,7 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
               href={backHref}
               className={`inline-flex items-center gap-[0.4rem] rounded-full border px-[0.75rem] py-[0.45rem] text-[0.82rem] transition-colors ${
                 isFilm
-                  ? 'border-amber-900/40 bg-amber-50/5 text-amber-900/75 hover:bg-amber-50/10'
+                  ? 'border-white/30 bg-white/5 text-white/80 hover:bg-white/10'
                   : 'border-black/40 bg-white/5 text-black/75 hover:bg-white/10'
               }`}
               style={{ pointerEvents: 'auto', cursor: 'pointer' }}
@@ -247,7 +249,7 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
           </div>
           <motion.h1
             className={`font-serif text-[2rem] md:text-[2.5rem] lg:text-[3rem] leading-tight mb-[0.75rem] ${
-              isFilm ? 'text-amber-900/90' : 'text-black/90'
+              isFilm ? 'text-white/95' : 'text-black/90'
             }`}
             layoutId={`folder-title-${folder.slug}`}
           >
@@ -258,13 +260,13 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
               <span
                 key={tag}
                 className={`text-[0.75rem] px-[0.75rem] py-[0.25rem] rounded-full ${
-                  isFilm ? 'text-amber-900/50 bg-amber-50/5' : 'text-black/50 bg-white/5'
+                  isFilm ? 'text-white/60 bg-white/5' : 'text-black/50 bg-white/5'
                 }`}
               >
                 {tag}
               </span>
             ))}
-            <span className={`text-[0.75rem] ${isFilm ? 'text-amber-900/30' : 'text-black/30'}`}>{postCountLabel}</span>
+            <span className={`text-[0.75rem] ${isFilm ? 'text-white/40' : 'text-black/30'}`}>{postCountLabel}</span>
           </div>
         </motion.header>
 
@@ -294,6 +296,7 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
                   isSelectedThumbnail={post.slug === thumbnailSlug}
                   onSelectThumbnail={() => setThumbnailSlug(post.slug)}
                   theme={theme}
+                  memoComponents={memoComponents}
                 />
               ))}
             </div>
@@ -303,7 +306,7 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
             <div className="mx-auto max-w-[56rem]">
               <Reorder.Group axis="y" values={orderedPosts} onReorder={handleReorder} className="space-y-[0.85rem]">
                 {orderedPosts.map((post, index) => (
-                  <EditableOrderCard key={post.slug} post={post} index={index} />
+                  <EditableOrderCard key={post.slug} post={post} index={index} theme={theme} />
                 ))}
               </Reorder.Group>
             </div>
@@ -318,6 +321,7 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
             alt={folder.title}
             scrollY={selectedImage.scrollY}
             onClose={() => setSelectedImage(null)}
+            theme={theme}
           />
         )}
       </AnimatePresence>
@@ -336,16 +340,16 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
               >
                 {editMode ? (
                   <>
-                    <p className="font-mono text-[0.7rem] text-black/45 pr-[0.2rem]">Reorder mode · Shift+E to close</p>
+                    <p className={`font-mono text-[0.7rem] ${isFilm ? 'text-white/50' : 'text-black/45'} pr-[0.2rem]`}>Reorder mode · Shift+E to close</p>
                     <button
                       onClick={handleCopyJson}
-                      className="glass-card rounded-[0.8rem] px-[1rem] py-[0.55rem] font-mono text-[0.8rem] text-black/85 hover:bg-white/[0.1] transition-colors"
+                      className={`glass-card rounded-[0.8rem] px-[1rem] py-[0.55rem] font-mono text-[0.8rem] ${isFilm ? 'text-white/85' : 'text-black/85'} hover:bg-white/[0.1] transition-colors`}
                     >
                       {copied ? 'Copied JSON' : 'Copy JSON'}
                     </button>
                     <button
                       onClick={handleResetOrder}
-                      className="glass-card rounded-[0.8rem] px-[1rem] py-[0.55rem] font-mono text-[0.75rem] text-black/55 hover:bg-white/[0.1] transition-colors"
+                      className={`glass-card rounded-[0.8rem] px-[1rem] py-[0.55rem] font-mono text-[0.75rem] ${isFilm ? 'text-white/60' : 'text-black/55'} hover:bg-white/[0.1] transition-colors`}
                     >
                       Reset Order
                     </button>
@@ -354,14 +358,14 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
 
                 {thumbnailMode ? (
                   <>
-                    <p className="font-mono text-[0.7rem] text-black/45 pr-[0.2rem]">Thumbnail mode · Shift+T to close</p>
-                    <p className="font-mono text-[0.68rem] text-black/35 pr-[0.2rem]">
+                    <p className={`font-mono text-[0.7rem] ${isFilm ? 'text-white/50' : 'text-black/45'} pr-[0.2rem]`}>Thumbnail mode · Shift+T to close</p>
+                    <p className={`font-mono text-[0.68rem] ${isFilm ? 'text-white/40' : 'text-black/35'} pr-[0.2rem]`}>
                       save to: /public/images/{folder.slug}/folder.json
                     </p>
                     <button
                       onClick={handleCopyThumbnailJson}
                       disabled={!thumbnailJson}
-                      className="glass-card rounded-[0.8rem] px-[1rem] py-[0.55rem] font-mono text-[0.8rem] text-black/85 hover:bg-white/[0.1] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className={`glass-card rounded-[0.8rem] px-[1rem] py-[0.55rem] font-mono text-[0.8rem] ${isFilm ? 'text-white/85' : 'text-black/85'} hover:bg-white/[0.1] transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       {thumbnailCopied ? 'Copied folder.json' : 'Copy folder.json'}
                     </button>
@@ -384,6 +388,7 @@ type GalleryMasonryCardProps = {
   isSelectedThumbnail: boolean;
   onSelectThumbnail: () => void;
   theme?: 'bubble' | 'film';
+  memoComponents: any;
 };
 
 function GalleryMasonryCard({
@@ -394,6 +399,7 @@ function GalleryMasonryCard({
   isSelectedThumbnail,
   onSelectThumbnail,
   theme = 'bubble',
+  memoComponents,
 }: GalleryMasonryCardProps) {
   const isFilm = theme === 'film';
   const handleImageClick = () => {
@@ -424,7 +430,7 @@ function GalleryMasonryCard({
             <div className="pointer-events-none absolute inset-0 rounded-3xl shadow-[0_1.4rem_3.5rem_rgba(6,8,12,0.5)]" />
             <div className="pointer-events-none absolute inset-0 rounded-3xl bg-[radial-gradient(80%_120%_at_50%_0%,rgba(120,255,230,0.16),transparent_60%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
             {thumbnailMode ? (
-              <div className="pointer-events-none absolute left-[0.75rem] top-[0.75rem] rounded-full bg-white/55 px-[0.7rem] py-[0.35rem] font-mono text-[0.68rem] text-black/90">
+              <div className={`pointer-events-none absolute left-[0.75rem] top-[0.75rem] rounded-full bg-white/55 px-[0.7rem] py-[0.35rem] font-mono text-[0.68rem] ${isFilm ? 'text-black/90' : 'text-black/90'}`}>
                 {isSelectedThumbnail ? 'Selected thumbnail' : 'Click to set thumbnail'}
               </div>
             ) : null}
@@ -434,7 +440,7 @@ function GalleryMasonryCard({
               width={post.width ?? 1200}
               height={post.height ?? 900}
               className={`h-auto w-full rounded-3xl object-contain transition duration-300 group-hover:brightness-105 ${
-                isFilm ? 'brightness-[0.92] sepia-[0.12] contrast-[1.02]' : 'brightness-[0.94]'
+                isFilm ? 'brightness-[0.92] contrast-[1.02]' : 'brightness-[0.94]'
               } ${thumbnailMode && isSelectedThumbnail ? 'ring-[0.16rem] ring-cyan-200/75 ring-inset' : ''}`}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1536px) 33vw, 20vw"
               draggable={false}
@@ -461,10 +467,12 @@ function GalleryMasonryCard({
 type EditableOrderCardProps = {
   post: PostData;
   index: number;
+  theme?: 'bubble' | 'film';
 };
 
-function EditableOrderCard({ post, index }: EditableOrderCardProps) {
+function EditableOrderCard({ post, index, theme = 'bubble' }: EditableOrderCardProps) {
   const dragControls = useDragControls();
+  const isFilm = theme === 'film';
 
   return (
     <Reorder.Item value={post} className="list-none" dragListener={false} dragControls={dragControls}>
@@ -478,7 +486,7 @@ function EditableOrderCard({ post, index }: EditableOrderCardProps) {
         <button
           type="button"
           onPointerDown={(event) => dragControls.start(event)}
-          className="inline-flex h-[1.9rem] w-[1.9rem] shrink-0 items-center justify-center rounded-full bg-white/10 text-black/70 hover:bg-white/15"
+          className={`inline-flex h-[1.9rem] w-[1.9rem] shrink-0 items-center justify-center rounded-full bg-white/10 ${isFilm ? 'text-white/70' : 'text-black/70'} hover:bg-white/15`}
           aria-label={`Reorder ${post.slug}`}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
@@ -495,17 +503,19 @@ function EditableOrderCard({ post, index }: EditableOrderCardProps) {
         )}
 
         <div className="min-w-0 flex-1">
-          <p className="truncate font-mono text-[0.72rem] text-black/45">{index + 1}</p>
-          <p className="truncate font-mono text-[0.83rem] text-black/80">{post.slug}</p>
+          <p className={`truncate font-mono text-[0.72rem] ${isFilm ? 'text-white/50' : 'text-black/45'}`}>{index + 1}</p>
+          <p className={`truncate font-mono text-[0.83rem] ${isFilm ? 'text-white/80' : 'text-black/80'}`}>{post.slug}</p>
         </div>
       </motion.article>
     </Reorder.Item>
   );
 }
 
-type LightboxProps = { src: string; alt: string; scrollY: number; onClose: () => void };
+type LightboxProps = { src: string; alt: string; scrollY: number; onClose: () => void; theme?: 'bubble' | 'film' };
 
-function ImageLightbox({ src, alt, scrollY, onClose }: LightboxProps) {
+function ImageLightbox({ src, alt, scrollY, onClose, theme = 'bubble' }: LightboxProps) {
+  const isFilm = theme === 'film';
+
   return (
     <motion.div
       className="absolute left-0 right-0 z-50 flex h-screen items-center justify-center cursor-none"
@@ -521,7 +531,7 @@ function ImageLightbox({ src, alt, scrollY, onClose }: LightboxProps) {
         className="absolute top-[1.5rem] right-[1.5rem] glass-card w-[2.5rem] h-[2.5rem] rounded-full flex items-center justify-center z-10 hover:bg-white/[0.12] transition-colors"
         onClick={onClose}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-black/70">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isFilm ? 'text-white/80' : 'text-black/70'}>
           <line x1="18" y1="6" x2="6" y2="18" />
           <line x1="6" y1="6" x2="18" y2="18" />
         </svg>

@@ -37,7 +37,7 @@ export default function FilmGalleryClient({ folders, title, description, backHre
           {backHref ? (
             <Link
               href={backHref}
-              className="mb-[1rem] inline-flex items-center gap-[0.4rem] rounded-full border border-amber-900/40 bg-amber-50/5 px-[0.75rem] py-[0.45rem] text-[0.82rem] text-amber-900/75 transition-colors hover:bg-amber-50/10"
+              className="mb-[1rem] inline-flex items-center gap-[0.4rem] rounded-full border border-white/30 bg-white/5 px-[0.75rem] py-[0.45rem] text-[0.82rem] text-white/80 transition-colors hover:bg-white/10"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="15 18 9 12 15 6" />
@@ -45,14 +45,14 @@ export default function FilmGalleryClient({ folders, title, description, backHre
               <span>{backLabel}</span>
             </Link>
           ) : null}
-          <h1 className="font-serif text-[2rem] leading-tight text-amber-900/90 md:text-[2.5rem]">{title}</h1>
+          <h1 className="font-serif text-[2rem] leading-tight text-white/95 md:text-[2.5rem]">{title}</h1>
           {description ? (
-            <p className="mt-[0.5rem] font-sans text-[0.9rem] text-amber-900/60 md:text-[1rem]">{description}</p>
+            <p className="mt-[0.5rem] font-sans text-[0.9rem] text-white/70 md:text-[1rem]">{description}</p>
           ) : null}
         </header>
 
         {folders.length === 0 ? (
-          <div className="film-card rounded-[1.25rem] p-[3rem] text-center font-serif text-amber-900/50">
+          <div className="film-card rounded-[1.25rem] p-[3rem] text-center font-serif text-white/60">
             No folders found.
           </div>
         ) : (

@@ -38,8 +38,7 @@ export async function generateMetadata({ params }: Props) {
   const { folderPath = [] } = await params;
   if (folderPath.length === 0) {
     return {
-      title: 'Film Gallery | Personal Archive',
-      description: 'Film photography collection',
+      title: 'Gallery | Personal Archive',
     };
   }
 
@@ -64,7 +63,7 @@ export default async function FilmGalleryRoutePage({ params }: Props) {
     const folders = getFolders(null, 'film');
     return (
       <main className="relative min-h-screen pt-[3.5rem]">
-        <FilmGalleryClient folders={folders} title="Film Gallery" description="Film photography collection" />
+        <FilmGalleryClient folders={folders} title="Gallery" />
       </main>
     );
   }
