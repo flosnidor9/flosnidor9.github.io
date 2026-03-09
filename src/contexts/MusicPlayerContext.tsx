@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { type YouTubeEmbedRef } from '@/components/music-player/YouTubeEmbed';
-import { musicTracks } from '@/lib/data/music';
+import { type MusicTrack, musicTracks } from '@/lib/data/music';
 
 const VOLUME_STORAGE_KEY = 'music-player-volume';
 
@@ -31,7 +31,12 @@ type MusicPlayerContextType = {
 
 const MusicPlayerContext = createContext<MusicPlayerContextType | null>(null);
 
-export function MusicPlayerProvider({ children }: { children: ReactNode }) {
+type MusicPlayerProviderProps = {
+  children: ReactNode;
+  track?: MusicTrack;
+};
+
+export function MusicPlayerProvider({ children, track }: MusicPlayerProviderProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [volume, setVolume] = useState(20);
@@ -39,7 +44,8 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const [isVolumeReady, setIsVolumeReady] = useState(false);
   const playerRef = useRef<YouTubeEmbedRef>(null);
 
-  const currentTrack = musicTracks[0] || null;
+  // props로 받은 track 사용, 없으면 기본 트랙
+  const currentTrack = track || musicTracks[0] || null;
 
   // localStorage에서 볼륨 로드
   useEffect(() => {

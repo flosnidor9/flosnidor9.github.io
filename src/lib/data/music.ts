@@ -12,6 +12,19 @@ export const musicTracks: MusicTrack[] = [
   { id: 'IEEJA1ZeQaI', title: '恋愛脳', artist: 'ナナヲアカリ' },
 ];
 
+// 각 홈별 음악
+export const bubbleHomeTrack: MusicTrack = {
+  id: 'IEEJA1ZeQaI',
+  title: '恋愛脳',
+  artist: 'ナナヲアカリ',
+};
+
+export const filmHomeTrack: MusicTrack = {
+  id: 'C2HITwP_RV8',
+  title: 'STAY WITH ME',
+  artist: '자우림',
+};
+
 /**
  * YouTube 썸네일 URL 헬퍼
  * maxresdefault.jpg: 1280x720

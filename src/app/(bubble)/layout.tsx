@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Inter } from "next/font/google";
-import "./globals.css";
+import "../globals.css";
 import CursorManager from "@/components/cursor/CursorManager";
-import ConditionalGNB from "@/components/layout/ConditionalGNB";
+import GNB from "@/components/layout/GNB";
 import PersistentHeroBackground from "@/components/hero/PersistentHeroBackground";
 import { getFavoriteImagePaths } from "@/lib/data/images";
 import Providers from "@/components/providers/Providers";
@@ -20,21 +20,16 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Personal Archive",
-  description: "개인 자료를 보관하고, 감상하고, 전시하기 위한 공간",
+  title: "Bubble Home | Personal Archive",
+  description: "물방울처럼 둥둥 떠다니는 추억들",
   openGraph: {
-    title: "Personal Archive",
-    description: "개인 자료를 보관하고, 감상하고, 전시하기 위한 공간",
+    title: "Bubble Home | Personal Archive",
+    description: "물방울처럼 둥둥 떠다니는 추억들",
     type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Personal Archive",
-    description: "개인 자료를 보관하고, 감상하고, 전시하기 위한 공간",
   },
 };
 
-export default function RootLayout({
+export default function BubbleLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -46,7 +41,7 @@ export default function RootLayout({
       <body className={`${cormorant.variable} ${inter.variable} antialiased`}>
         <Providers>
           <PersistentHeroBackground imagePaths={imagePaths} />
-          <ConditionalGNB />
+          <GNB />
           <CursorManager />
           {children}
         </Providers>
