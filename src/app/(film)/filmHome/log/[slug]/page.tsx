@@ -46,8 +46,8 @@ export default async function LogDetailPage({ params }: Props) {
     : '';
 
   return (
-    <main className="min-h-screen px-[2rem] pb-[5rem] pt-[5rem]">
-      <article className="mx-auto max-w-[56rem] rounded-[1rem] border border-white/15 bg-white/5 p-[2rem] backdrop-blur-xl md:p-[2.5rem]">
+    <main className="min-h-screen px-[1rem] pb-[4rem] pt-[4.5rem] md:px-[2rem] md:pb-[5rem] md:pt-[5rem]">
+      <article className="mx-auto max-w-[56rem] p-0 md:rounded-[1rem] md:border md:border-white/15 md:bg-white/5 md:p-[2.5rem] md:backdrop-blur-xl">
         <Link
           href="/filmHome/log"
           className="mb-[1.5rem] inline-flex text-[0.9rem] text-white/70 transition-colors hover:text-white"
