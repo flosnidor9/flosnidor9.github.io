@@ -108,38 +108,38 @@ export default function LogClient({ posts }: LogClientProps) {
             </div>
           ) : (
             filteredAndSortedPosts.map((post) => (
-              <motion.article
+              <Link
                 key={post.slug}
-                className="rounded-[0.75rem] border border-white/10 bg-white/5 p-[1.5rem] transition-all hover:border-white/20 hover:bg-white/10"
-                whileHover={{ y: -2 }}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                href={`/filmHome/log/${post.slug}`}
+                className="group block rounded-[0.75rem] focus-visible:outline-none focus-visible:ring-[0.125rem] focus-visible:ring-white/40"
               >
-                <div className="mb-[0.5rem] flex items-baseline justify-between gap-[1rem]">
-                  <h2 className="min-w-0 font-serif text-[1.25rem] font-light text-white/90">
-                    <Link
-                      href={`/filmHome/log/${post.slug}`}
-                      className="underline-offset-[0.2rem] transition-colors hover:text-white hover:underline"
-                    >
+                <motion.article
+                  className="rounded-[0.75rem] border border-white/10 bg-white/5 p-[1.5rem] transition-all hover:border-white/20 hover:bg-white/10"
+                  whileHover={{ y: -2 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <div className="mb-[0.5rem] flex items-baseline justify-between gap-[1rem]">
+                    <h2 className="min-w-0 font-serif text-[1.25rem] font-light text-white/90 transition-colors group-hover:text-white">
                       {post.title}
-                    </Link>
-                  </h2>
-                  <span className="shrink-0 text-[0.85rem] text-white/40">{formatDate(post.date)}</span>
-                </div>
-
-                {post.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-[0.5rem]">
-                    {post.tags.map((tag) => (
-                      <span
-                        key={`${post.slug}-${tag}`}
-                        className="rounded-full border border-white/10 bg-white/5 px-[0.75rem] py-[0.25rem] text-[0.75rem] text-white/60"
-                      >
-                        {tag}
-                      </span>
-                    ))}
+                    </h2>
+                    <span className="shrink-0 text-[0.85rem] text-white/40">{formatDate(post.date)}</span>
                   </div>
-                )}
-              </motion.article>
+
+                  {post.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-[0.5rem]">
+                      {post.tags.map((tag) => (
+                        <span
+                          key={`${post.slug}-${tag}`}
+                          className="rounded-full border border-white/10 bg-white/5 px-[0.75rem] py-[0.25rem] text-[0.75rem] text-white/60"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </motion.article>
+              </Link>
             ))
           )}
         </div>
