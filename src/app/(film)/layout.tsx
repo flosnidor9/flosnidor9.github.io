@@ -33,7 +33,7 @@ export default function FilmLayout({
 }>) {
   return (
     <html lang="ko">
-      <body className={`${playfair.variable} ${inter.variable} antialiased bg-black`}>
+      <body className={`${playfair.variable} ${inter.variable} antialiased bg-[var(--film-bg)]`}>
         <Providers>
           <FilmFrameCursor />
           {children}

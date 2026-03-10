@@ -4,6 +4,7 @@
 :root {
   /* Color — Soft Muted Palette */
   --color-bg:        #0e0e0f;
+  --film-bg:         #151210;
   --color-surface:   #161618;
   --color-border:    rgba(255, 255, 255, 0.08);
   --color-text:      #e8e4de;

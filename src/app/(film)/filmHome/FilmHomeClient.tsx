@@ -155,7 +155,7 @@ export default function FilmHomeClient({ imagePaths }: FilmHomeClientProps) {
   const track = currentTrack || musicTracks[0];
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-black">
+    <main className="relative min-h-screen w-full overflow-hidden bg-[var(--film-bg)]">
       {/* 배경 이미지 */}
       {randomImage && (
         <div className="absolute inset-0">
@@ -164,7 +164,7 @@ export default function FilmHomeClient({ imagePaths }: FilmHomeClientProps) {
             alt="Film Background"
             fill
             className="object-cover"
-            style={{ filter: 'sepia(0.3) brightness(0.7)' }}
+            style={{ filter: 'sepia(0.28) brightness(0.78)' }}
             priority
           />
         </div>
@@ -174,7 +174,7 @@ export default function FilmHomeClient({ imagePaths }: FilmHomeClientProps) {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.7) 100%)',
+          background: 'radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.58) 100%)',
         }}
       />
 
