@@ -4,6 +4,7 @@ import {
   query,
   orderBy,
   onSnapshot,
+  serverTimestamp,
   Timestamp,
   Unsubscribe,
 } from 'firebase/firestore';
@@ -53,7 +54,7 @@ export async function addLog(entry: LogEntryInput): Promise<string> {
     content: entry.content,
     tags: entry.tags,
     images: entry.images,
-    timestamp: Timestamp.now(),
+    timestamp: serverTimestamp(),
     year,
   };
 

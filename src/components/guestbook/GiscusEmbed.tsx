@@ -1,11 +1,14 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { PUBLIC_SITE_CONFIG } from '@/lib/config/public';
 
-const REPO = process.env.NEXT_PUBLIC_GISCUS_REPO ?? '';
-const REPO_ID = process.env.NEXT_PUBLIC_GISCUS_REPO_ID ?? '';
-const CATEGORY = process.env.NEXT_PUBLIC_GISCUS_CATEGORY ?? '';
-const CATEGORY_ID = process.env.NEXT_PUBLIC_GISCUS_CATEGORY_ID ?? '';
+const {
+  repo: REPO,
+  repoId: REPO_ID,
+  category: CATEGORY,
+  categoryId: CATEGORY_ID,
+} = PUBLIC_SITE_CONFIG.giscus;
 
 const isConfigured = REPO && REPO_ID && CATEGORY && CATEGORY_ID;
 
@@ -13,7 +16,8 @@ export default function GiscusEmbed() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isConfigured || !containerRef.current) return;
+    const container = containerRef.current;
+    if (!isConfigured || !container) return;
 
     const script = document.createElement('script');
     script.src = 'https://giscus.app/client.js';
@@ -32,12 +36,10 @@ export default function GiscusEmbed() {
     script.crossOrigin = 'anonymous';
     script.async = true;
 
-    containerRef.current.appendChild(script);
+    container.appendChild(script);
 
     return () => {
-      if (containerRef.current) {
-        containerRef.current.innerHTML = '';
-      }
+      container.innerHTML = '';
     };
   }, []);
 
@@ -51,7 +53,7 @@ export default function GiscusEmbed() {
           Giscus 설정 후 이 자리에 방명록이 열립니다.
           <br />
           <code className="text-[0.78rem] text-[var(--color-accent)] bg-white/5 px-[0.4rem] py-[0.15rem] rounded">
-            NEXT_PUBLIC_GISCUS_*
+            src/lib/config/public.ts
           </code>{' '}
           환경변수를 채워주세요.
         </p>

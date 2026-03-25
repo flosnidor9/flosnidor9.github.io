@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
+import { PUBLIC_SITE_CONFIG } from '@/lib/config/public';
 
 type AuthContextType = {
   user: User | null;
@@ -18,7 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+  const adminEmail = PUBLIC_SITE_CONFIG.adminEmail;
   const isAdmin = !!user && user.email === adminEmail;
 
   useEffect(() => {
