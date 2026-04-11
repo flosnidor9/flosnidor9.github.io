@@ -238,7 +238,7 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
                   )}
                 </div>
 
-                <div className="flex min-h-full flex-col justify-center">
+                <div className="flex min-h-full min-w-0 flex-col justify-center">
                   {entry.speaker ? (
                     <p className="mb-[0.34rem] px-[0.15rem] font-sans text-[0.56rem] leading-[1.1] text-black/48 md:text-[0.6rem]">
                       {entry.speaker}
@@ -246,12 +246,12 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
                   ) : (
                     <div className="mb-[0.34rem]" />
                   )}
-                  <div
-                    className={`flex items-center overflow-hidden rounded-[0.8rem] border px-[0.58rem] py-[0.45rem] text-[0.85rem] leading-[1.42] shadow-[0_0.35rem_0.8rem_rgba(15,12,10,0.03)] md:px-[0.66rem] md:py-[0.5rem] ${
-                    entry.isAside ? 'border-black/5 bg-[#f8f6f2] text-black/48' : 'border-black/6 bg-white/82 text-black/78'
-                    }`}
-                  >
-                    <div dangerouslySetInnerHTML={{ __html: entry.contentHtml }} />
+                    <div
+                     className={`min-w-0 overflow-x-auto overflow-y-hidden rounded-[0.8rem] border px-[0.58rem] py-[0.45rem] text-[0.85rem] leading-[1.42] shadow-[0_0.35rem_0.8rem_rgba(15,12,10,0.03)] md:px-[0.66rem] md:py-[0.5rem] ${
+                     entry.isAside ? 'border-black/5 bg-[#f8f6f2] text-black/48' : 'border-black/6 bg-white/82 text-black/78'
+                     }`}
+                   >
+                    <div className="min-w-0" dangerouslySetInnerHTML={{ __html: entry.contentHtml }} />
                   </div>
                 </div>
               </>
@@ -285,6 +285,7 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
         .trpg-log-reader span {
           max-width: 100%;
           word-break: keep-all;
+          overflow-wrap: anywhere;
           margin: 0 !important;
         }
 
@@ -321,9 +322,69 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
         }
 
         .trpg-log-reader table {
-          display: block;
+          display: table !important;
+          width: 100% !important;
           max-width: 100% !important;
-          overflow-x: auto;
+          table-layout: auto !important;
+          border-collapse: collapse !important;
+        }
+
+        .trpg-log-reader tbody,
+        .trpg-log-reader thead,
+        .trpg-log-reader tr {
+          max-width: 100% !important;
+        }
+
+        .trpg-log-reader td,
+        .trpg-log-reader th {
+          width: auto !important;
+          white-space: normal !important;
+          word-break: break-word !important;
+          overflow-wrap: anywhere !important;
+          vertical-align: top !important;
+        }
+
+        .trpg-log-reader .sheet-rolltemplate-ninpo table,
+        .trpg-log-reader .sheet-container table,
+        .trpg-log-reader .sheet-common table {
+          width: 100% !important;
+        }
+
+        .trpg-log-reader .sheet-rolltable-wrapper {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: stretch !important;
+          gap: 0.5rem !important;
+          width: 100% !important;
+          max-width: 100% !important;
+        }
+
+        .trpg-log-reader .sheet-rolltable-wrapper > * {
+          min-width: 0 !important;
+          max-width: 100% !important;
+        }
+
+        .trpg-log-reader .sheet-rolltable-wrapper > .inlinerollresult {
+          width: 100% !important;
+          min-width: 0 !important;
+          flex: none !important;
+        }
+
+        .trpg-log-reader .sheet-rolltable-wrapper > .sheet-effect {
+          display: block !important;
+          width: 100% !important;
+          white-space: pre-line !important;
+          word-break: keep-all !important;
+          overflow-wrap: anywhere !important;
+        }
+
+        .trpg-log-reader .sheet-rolltemplate-ninpo td,
+        .trpg-log-reader .sheet-rolltemplate-ninpo th,
+        .trpg-log-reader .sheet-container td,
+        .trpg-log-reader .sheet-container th,
+        .trpg-log-reader .sheet-common td,
+        .trpg-log-reader .sheet-common th {
+          padding: 0.22rem 0.28rem !important;
         }
 
         .trpg-log-reader .sheet-container {
