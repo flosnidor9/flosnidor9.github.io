@@ -13,6 +13,7 @@ type LogEntry = {
   avatarSrc: string | null;
   contentHtml: string;
   isAside: boolean;
+  kind: 'chat' | 'media';
 };
 
 const MAX_PAGE_ENTRIES = 80;
@@ -38,9 +39,10 @@ function isStandaloneUnnamedAvatar(avatarSrc: string | null): boolean {
 function parseEntries(html: string): LogEntry[] {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<body>${html}</body>`, 'text/html');
-  const nodes = Array.from(doc.querySelectorAll('.message.general'));
+  const nodes = Array.from(doc.querySelectorAll('.message.general, .message.desc'));
   const parsed = nodes
     .map((node, index) => {
+      const isMedia = node.classList.contains('desc');
       const speaker = normalizeSpeaker(node.querySelector('.by')?.textContent);
       const avatarSrc = node.querySelector('.avatar img')?.getAttribute('src') ?? null;
       const clone = node.cloneNode(true) as HTMLElement;
@@ -59,6 +61,7 @@ function parseEntries(html: string): LogEntry[] {
         avatarSrc,
         contentHtml,
         isAside,
+        kind: isMedia ? 'media' : 'chat',
       };
     })
     .filter((entry): entry is LogEntry => Boolean(entry));
@@ -72,6 +75,8 @@ function parseEntries(html: string): LogEntry[] {
     const resolvedAvatar = entry.avatarSrc || lastEntry?.avatarSrc || null;
     const canMerge =
       Boolean(lastEntry) &&
+      lastEntry.kind === 'chat' &&
+      entry.kind === 'chat' &&
       (
         (!entry.speaker && !keepsEmptySpeaker) ||
         lastEntry.speaker === resolvedSpeaker
@@ -202,40 +207,55 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
         {currentPage.map((entry) => (
           <article
             key={entry.id}
-            className={`grid grid-cols-[2.35rem_minmax(0,1fr)] gap-[0.38rem] rounded-[0.8rem] border p-[0.24rem] shadow-[0_0.45rem_0.9rem_rgba(15,12,10,0.03)] md:grid-cols-[2.6rem_minmax(0,1fr)] md:p-[0.28rem] ${
-              entry.isAside ? 'border-black/6 bg-[#ece9e3]' : 'border-black/8 bg-[#f2eee7]'
-            }`}
+            className={
+              entry.kind === 'media'
+                ? 'rounded-[1rem] border border-black/6 bg-[#f2eee7] p-[0.45rem] shadow-[0_0.45rem_0.9rem_rgba(15,12,10,0.03)] md:p-[0.55rem]'
+                : `grid grid-cols-[2.35rem_minmax(0,1fr)] gap-[0.38rem] rounded-[0.8rem] border p-[0.24rem] shadow-[0_0.45rem_0.9rem_rgba(15,12,10,0.03)] md:grid-cols-[2.6rem_minmax(0,1fr)] md:p-[0.28rem] ${
+                    entry.isAside ? 'border-black/6 bg-[#ece9e3]' : 'border-black/8 bg-[#f2eee7]'
+                  }`
+            }
           >
-            <div className="flex flex-col items-center justify-center">
-              {entry.avatarSrc || fallbackAvatarSrc ? (
-                <img
-                  src={entry.avatarSrc || fallbackAvatarSrc || ''}
-                  alt={entry.speaker || 'Narration'}
-                  className="h-[2.35rem] w-[2.35rem] object-cover md:h-[2.55rem] md:w-[2.55rem]"
+            {entry.kind === 'media' ? (
+              <div className="rounded-[0.9rem] border border-black/6 bg-white/82 px-[0.45rem] py-[0.45rem] shadow-[0_0.35rem_0.8rem_rgba(15,12,10,0.03)] md:px-[0.55rem] md:py-[0.55rem]">
+                <div
+                  className="trpg-media-bubble overflow-hidden rounded-[0.7rem] bg-[#fbfaf7]"
+                  dangerouslySetInnerHTML={{ __html: entry.contentHtml }}
                 />
-              ) : (
-                <div className="flex h-[2.35rem] w-[2.35rem] items-center justify-center text-[0.46rem] text-black/35 md:h-[2.55rem] md:w-[2.55rem]">
-                  Log
-                </div>
-              )}
-            </div>
-
-            <div className="flex min-h-full flex-col justify-center">
-              {entry.speaker ? (
-                <p className="mb-[0.34rem] px-[0.15rem] font-sans text-[0.56rem] leading-[1.1] text-black/48 md:text-[0.6rem]">
-                  {entry.speaker}
-                </p>
-              ) : (
-                <div className="mb-[0.34rem]" />
-              )}
-              <div
-                className={`flex items-center overflow-hidden rounded-[0.8rem] border px-[0.58rem] py-[0.45rem] text-[0.85rem] leading-[1.42] shadow-[0_0.35rem_0.8rem_rgba(15,12,10,0.03)] md:px-[0.66rem] md:py-[0.5rem] ${
-                entry.isAside ? 'border-black/5 bg-[#f8f6f2] text-black/48' : 'border-black/6 bg-white/82 text-black/78'
-                }`}
-              >
-                <div dangerouslySetInnerHTML={{ __html: entry.contentHtml }} />
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="flex flex-col items-center justify-center">
+                  {entry.avatarSrc || fallbackAvatarSrc ? (
+                    <img
+                      src={entry.avatarSrc || fallbackAvatarSrc || ''}
+                      alt={entry.speaker || 'Narration'}
+                      className="h-[2.35rem] w-[2.35rem] object-cover md:h-[2.55rem] md:w-[2.55rem]"
+                    />
+                  ) : (
+                    <div className="flex h-[2.35rem] w-[2.35rem] items-center justify-center text-[0.46rem] text-black/35 md:h-[2.55rem] md:w-[2.55rem]">
+                      Log
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex min-h-full flex-col justify-center">
+                  {entry.speaker ? (
+                    <p className="mb-[0.34rem] px-[0.15rem] font-sans text-[0.56rem] leading-[1.1] text-black/48 md:text-[0.6rem]">
+                      {entry.speaker}
+                    </p>
+                  ) : (
+                    <div className="mb-[0.34rem]" />
+                  )}
+                  <div
+                    className={`flex items-center overflow-hidden rounded-[0.8rem] border px-[0.58rem] py-[0.45rem] text-[0.85rem] leading-[1.42] shadow-[0_0.35rem_0.8rem_rgba(15,12,10,0.03)] md:px-[0.66rem] md:py-[0.5rem] ${
+                    entry.isAside ? 'border-black/5 bg-[#f8f6f2] text-black/48' : 'border-black/6 bg-white/82 text-black/78'
+                    }`}
+                  >
+                    <div dangerouslySetInnerHTML={{ __html: entry.contentHtml }} />
+                  </div>
+                </div>
+              </>
+            )}
           </article>
         ))}
       </div>
@@ -272,10 +292,22 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
           margin-top: 0.1rem !important;
         }
 
+        .trpg-log-reader .trpg-media-bubble a {
+          display: block;
+          width: 100%;
+        }
+
         .trpg-log-reader img {
           display: block;
           max-width: min(100%, 42rem) !important;
           height: auto !important;
+        }
+
+        .trpg-log-reader .trpg-media-bubble img {
+          width: 100%;
+          max-width: none !important;
+          border-radius: 0.7rem;
+          object-fit: contain;
         }
 
         .trpg-log-reader .sheet-rolltemplate-ninpo,
