@@ -25,9 +25,17 @@ type Props = {
   description?: string;
   backHref?: string;
   backLabel?: string;
+  folderBaseHref?: string;
 };
 
-export default function FilmGalleryClient({ folders, title, description, backHref, backLabel = '이전 분류' }: Props) {
+export default function FilmGalleryClient({
+  folders,
+  title,
+  description,
+  backHref,
+  backLabel = 'Back',
+  folderBaseHref = '/filmHome/gallery',
+}: Props) {
   const cols = folders.length === 1 ? 1 : 2;
 
   return (
@@ -89,6 +97,7 @@ export default function FilmGalleryClient({ folders, title, description, backHre
                       aspectRatio={folder.aspectRatio}
                       minHeight={constraints.min}
                       maxHeight={constraints.max}
+                      folderBaseHref={folderBaseHref}
                     />
                   </motion.div>
                 </motion.div>
@@ -106,9 +115,10 @@ type FilmCardProps = {
   aspectRatio: number;
   minHeight: string;
   maxHeight: string;
+  folderBaseHref: string;
 };
 
-function FilmCard({ folder, aspectRatio, minHeight, maxHeight }: FilmCardProps) {
+function FilmCard({ folder, aspectRatio, minHeight, maxHeight, folderBaseHref }: FilmCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const normX = useMotionValue(0);
   const normY = useMotionValue(0);
@@ -136,7 +146,7 @@ function FilmCard({ folder, aspectRatio, minHeight, maxHeight }: FilmCardProps) 
     normY.set(0);
   }, [normX, normY]);
 
-  const href = `/filmHome/gallery/${toGalleryPath(folder.slug)}`;
+  const href = `${folderBaseHref}/${toGalleryPath(folder.slug)}`;
   const metaLabel = folder.isLeaf ? `${folder.count} items` : `${folder.childCount} folders`;
 
   return (

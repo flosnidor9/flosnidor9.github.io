@@ -13,16 +13,20 @@ interface MainPageContentProps {
 export default function MainPageContent({ imagePaths }: MainPageContentProps) {
   const [time, setTime] = useState<string>('');
   const [date, setDate] = useState<string>('');
-  const [mounted, setMounted] = useState(false);
   const [randomImage, setRandomImage] = useState<string | null>(null);
 
   useEffect(() => {
-    setMounted(true);
-
+    let frameId: number | null = null;
     // 랜덤 이미지 선택
     if (imagePaths.length > 0) {
       const randomIndex = Math.floor(Math.random() * imagePaths.length);
-      setRandomImage(imagePaths[randomIndex]);
+      frameId = window.requestAnimationFrame(() => {
+        setRandomImage(imagePaths[randomIndex]);
+      });
+    } else {
+      frameId = window.requestAnimationFrame(() => {
+        setRandomImage(null);
+      });
     }
 
     const updateTime = () => {
@@ -48,10 +52,13 @@ export default function MainPageContent({ imagePaths }: MainPageContentProps) {
     updateTime();
     const interval = setInterval(updateTime, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
   }, [imagePaths]);
-
-  if (!mounted) return null;
 
   return (
     <main className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-black">
@@ -145,6 +152,15 @@ export default function MainPageContent({ imagePaths }: MainPageContentProps) {
               whileTap={{ scale: 0.98 }}
             >
               Enter Film
+            </motion.button>
+          </Link>
+          <Link href="/afterTheRoll" className="w-full">
+            <motion.button
+              className="w-full rounded-[0.5rem] border border-[rgba(215,188,145,0.45)] bg-[rgba(24,17,12,0.72)] px-[2rem] py-[1rem] font-sans text-[1rem] font-medium text-[rgba(244,231,208,0.92)] transition-colors duration-300 hover:bg-[rgba(40,28,18,0.85)] md:text-[1.1rem]"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              Enter After the Roll
             </motion.button>
           </Link>
         </motion.div>

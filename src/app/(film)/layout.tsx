@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import "../globals.css";
 import Providers from "@/components/providers/Providers";
-import FilmFrameCursor from "@/components/cursor/FilmFrameCursor";
 
 const playfair = Playfair_Display({
   variable: "--font-serif",
@@ -35,7 +34,6 @@ export default function FilmLayout({
     <html lang="ko">
       <body className={`${playfair.variable} ${inter.variable} antialiased bg-[var(--film-bg)]`}>
         <Providers>
-          <FilmFrameCursor />
           {children}
         </Providers>
       </body>

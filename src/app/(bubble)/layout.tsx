@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Inter } from "next/font/google";
 import "../globals.css";
-import CursorManager from "@/components/cursor/CursorManager";
 import GNB from "@/components/layout/GNB";
 import PersistentHeroBackground from "@/components/hero/PersistentHeroBackground";
 import { getFavoriteImagePaths } from "@/lib/data/images";
@@ -42,7 +41,6 @@ export default function BubbleLayout({
         <Providers>
           <PersistentHeroBackground imagePaths={imagePaths} />
           <GNB />
-          <CursorManager />
           {children}
         </Providers>
       </body>

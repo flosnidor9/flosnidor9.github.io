@@ -3,40 +3,40 @@ import path from 'path';
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif']);
 
-export function getFavoriteImagePaths(): string[] {
-  const dir = path.join(process.cwd(), 'public', 'images', 'bubbleHome');
+function readImagePaths(dirName: string): string[] {
+  const dir = path.join(process.cwd(), 'public', 'images', dirName);
   if (!fs.existsSync(dir)) return [];
+
   return fs
     .readdirSync(dir)
     .filter((f) => IMAGE_EXTS.has(path.extname(f).toLowerCase()))
-    .map((f) => `/images/bubbleHome/${f}`);
+    .map((f) => `/images/${dirName}/${f}`);
+}
+
+export function getFavoriteImagePaths(): string[] {
+  return readImagePaths('bubbleHome');
 }
 
 export function getMainHomeImagePaths(): string[] {
-  const dir = path.join(process.cwd(), 'public', 'images', 'mainHome');
-  if (!fs.existsSync(dir)) return [];
-  return fs
-    .readdirSync(dir)
-    .filter((f) => IMAGE_EXTS.has(path.extname(f).toLowerCase()))
-    .map((f) => `/images/mainHome/${f}`);
+  return readImagePaths('mainHome');
 }
 
 export function getStickerImagePaths(): string[] {
-  const dir = path.join(process.cwd(), 'public', 'images', 'Sticker');
-  if (!fs.existsSync(dir)) return [];
-  return fs
-    .readdirSync(dir)
-    .filter((f) => IMAGE_EXTS.has(path.extname(f).toLowerCase()))
-    .map((f) => `/images/Sticker/${f}`);
+  return readImagePaths('Sticker');
 }
 
 export function getFilmHomeImagePaths(): string[] {
-  const dir = path.join(process.cwd(), 'public', 'images', 'filmHome');
-  if (!fs.existsSync(dir)) return [];
-  return fs
-    .readdirSync(dir)
-    .filter((f) => IMAGE_EXTS.has(path.extname(f).toLowerCase()))
-    .map((f) => `/images/filmHome/${f}`);
+  return readImagePaths('filmHome');
+}
+
+export function getTrpgHomeImagePaths(): string[] {
+  const trpgImages = readImagePaths('trpgHome');
+  if (trpgImages.length > 0) return trpgImages;
+
+  const fallbackImages = readImagePaths('filmHome');
+  if (fallbackImages.length > 0) return fallbackImages;
+
+  return readImagePaths('mainHome');
 }
 
 export type ImageItem = {

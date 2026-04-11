@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Inter } from "next/font/google";
 import "../globals.css";
-import CursorManager from "@/components/cursor/CursorManager";
 import PersistentHeroBackground from "@/components/hero/PersistentHeroBackground";
 import { getMainHomeImagePaths } from "@/lib/data/images";
 import Providers from "@/components/providers/Providers";
@@ -45,7 +44,6 @@ export default function MainLayout({
       <body className={`${cormorant.variable} ${inter.variable} antialiased`}>
         <Providers>
           <PersistentHeroBackground imagePaths={imagePaths} />
-          <CursorManager />
           {children}
         </Providers>
       </body>

@@ -5,11 +5,13 @@ import sizeOf from 'image-size';
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif']);
 const PUBLIC_ROOT = path.join(process.cwd(), 'public');
 const FOLDER_META_FILE = 'folder.json';
+const IGNORED_FOLDER_NAMES = new Set(['media']);
 
 // Gallery type definitions
 const GALLERY_ROOTS = {
   bubble: path.join(PUBLIC_ROOT, 'images', 'bubble'),
   film: path.join(PUBLIC_ROOT, 'images', 'film'),
+  trpg: path.join(PUBLIC_ROOT, 'images', 'trpg'),
 } as const;
 
 export type GalleryType = keyof typeof GALLERY_ROOTS;
@@ -117,14 +119,14 @@ type FolderNode = {
 };
 
 type FolderNodeBuild = FolderNode & {
-  totalImageCount: number;
+  totalPostCount: number;
   thumbnailAbs: string | null;
 };
 
 function listChildDirs(absDir: string): fs.Dirent[] {
   return fs
     .readdirSync(absDir, { withFileTypes: true })
-    .filter((d) => d.isDirectory());
+    .filter((d) => d.isDirectory() && !IGNORED_FOLDER_NAMES.has(d.name));
 }
 
 function listDirectImages(absDir: string): string[] {
@@ -132,6 +134,26 @@ function listDirectImages(absDir: string): string[] {
     .readdirSync(absDir, { withFileTypes: true })
     .filter((d) => d.isFile() && IMAGE_EXTS.has(path.extname(d.name).toLowerCase()))
     .map((d) => d.name);
+}
+
+function listDirectPostSlugs(absDir: string): string[] {
+  const slugs = new Set<string>();
+
+  for (const entry of fs.readdirSync(absDir, { withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    if (entry.name === 'content.md' || entry.name === FOLDER_META_FILE || entry.name === 'order.json') continue;
+
+    const ext = path.extname(entry.name).toLowerCase();
+    if (!IMAGE_EXTS.has(ext) && ext !== '.md') continue;
+
+    slugs.add(path.basename(entry.name, ext).normalize('NFC'));
+  }
+
+  return Array.from(slugs);
+}
+
+function getGalleryPrefix(galleryType: GalleryType): 'bubble' | 'film' | 'trpg' {
+  return galleryType;
 }
 
 function buildFolderNode(absDir: string, segments: string[], output: FolderNode[], galleryType: GalleryType): FolderNodeBuild {
@@ -142,13 +164,14 @@ function buildFolderNode(absDir: string, segments: string[], output: FolderNode[
   );
 
   const directImages = listDirectImages(absDir);
+  const directPostSlugs = listDirectPostSlugs(absDir);
   const depth = segments.length;
   const slug = segments.join('/');
   const name = segments[segments.length - 1] ?? '';
   const parentSlug = depth > 1 ? segments.slice(0, -1).join('/') : null;
   const isLeaf = childResults.length === 0;
   const childCount = childResults.length;
-  const totalImageCount = directImages.length + childResults.reduce((sum, child) => sum + child.totalImageCount, 0);
+  const totalPostCount = directPostSlugs.length + childResults.reduce((sum, child) => sum + child.totalPostCount, 0);
 
   const customThumbnailAbs = resolveCustomThumbnailAbs(absDir, folderMeta);
   const thumbnailAbs =
@@ -168,13 +191,13 @@ function buildFolderNode(absDir: string, segments: string[], output: FolderNode[
     parentSlug,
     isLeaf,
     childCount,
-    count: isLeaf ? directImages.length : totalImageCount,
+    count: isLeaf ? directPostSlugs.length : totalPostCount,
     title: formatTitle(name),
     tags: toSlugSegments(slug),
     thumbnail: thumbnailAbs ? toPublicUrl(thumbnailAbs) : null,
     orientation,
     aspectRatio,
-    totalImageCount,
+    totalPostCount,
     thumbnailAbs,
   };
 
@@ -233,7 +256,7 @@ export function getFolderImages(slug: string, galleryType: GalleryType = 'bubble
   const base = path.join(galleryRoot, ...normalized.split('/'));
   if (!fs.existsSync(base)) return [];
 
-  const galleryPrefix = galleryType === 'bubble' ? 'bubble' : 'film';
+  const galleryPrefix = getGalleryPrefix(galleryType);
   return fs
     .readdirSync(base, { withFileTypes: true })
     .filter((d) => d.isFile() && IMAGE_EXTS.has(path.extname(d.name).toLowerCase()))
@@ -270,7 +293,7 @@ export function getFolderPosts(folderSlug: string, galleryType: GalleryType = 'b
     .map((d) => d.name);
 
   const postMap = new Map<string, { image?: string; width?: number; height?: number; content?: string }>();
-  const galleryPrefix = galleryType === 'bubble' ? 'bubble' : 'film';
+  const galleryPrefix = getGalleryPrefix(galleryType);
 
   for (const file of files) {
     const ext = path.extname(file).toLowerCase();
