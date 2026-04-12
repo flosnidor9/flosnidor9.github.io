@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
@@ -8,6 +7,7 @@ import {
 } from '@/lib/data/trpg';
 import { fromGallerySegments } from '@/lib/galleryPath';
 import TrpgLogReader from '@/components/trpg/TrpgLogReader';
+import TrpgCastPanel from '@/components/trpg/TrpgCastPanel';
 
 type Props = {
   params: Promise<{ postPath: string[] }>;
@@ -78,67 +78,7 @@ export default async function TrpgReadPage({ params }: Props) {
           ) : null}
 
           {post.gmName || post.cast.length > 0 ? (
-            <div className="ledger-paper-sheet paper-grid relative mt-[1rem] rounded-[0.55rem] px-[0.9rem] py-[0.85rem]">
-              <p className="afterroll-meta relative z-[1] text-[0.86rem] uppercase tracking-[0.16em] text-[var(--ledger-soft)]">Cast</p>
-
-              <div className="relative z-[1] mt-[0.65rem] space-y-[0.45rem]">
-                {post.gmName ? (
-                  <div className="ledger-typed-box paper-plain rounded-[0.35rem] px-[0.75rem] py-[0.55rem]">
-                    <div className="flex items-center gap-[0.6rem]">
-                      {post.gmIconSrc ? (
-                        <Image
-                          src={post.gmIconSrc}
-                          alt={post.gmName}
-                          width={30}
-                          height={30}
-                          className="h-[1.9rem] w-[1.9rem] rounded-[0.2rem] border border-[rgba(87,67,48,0.18)] object-cover p-[0.1rem]"
-                        />
-                      ) : (
-                        <div className="flex h-[1.8rem] w-[1.8rem] items-center justify-center border border-[rgba(87,67,48,0.18)] bg-[rgba(127,79,42,0.08)] text-[var(--ledger-accent)]">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                            <path d="M12 3l2.35 4.76 5.25.76-3.8 3.7.9 5.23L12 15l-4.7 2.45.9-5.23-3.8-3.7 5.25-.76L12 3z" />
-                          </svg>
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="afterroll-meta text-[0.92rem] text-[var(--ledger-soft)]">GM</p>
-                        <p className="afterroll-body text-[0.82rem] text-[var(--ledger-ink)]">{post.gmName}</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-
-                {post.cast.map((entry) => (
-                  <div
-                    key={`${entry.plName}-${entry.pcName}`}
-                    className="ledger-typed-box paper-plain rounded-[0.35rem] px-[0.75rem] py-[0.55rem]"
-                  >
-                    <div className="flex items-center gap-[0.6rem]">
-                      {entry.iconSrc ? (
-                        <Image
-                          src={entry.iconSrc}
-                          alt={entry.pcName}
-                          width={30}
-                          height={30}
-                          className="h-[1.9rem] w-[1.9rem] rounded-[0.2rem] border border-[rgba(87,67,48,0.18)] object-cover p-[0.1rem]"
-                        />
-                      ) : (
-                        <div className="flex h-[1.8rem] w-[1.8rem] items-center justify-center border border-[rgba(87,67,48,0.18)] bg-[rgba(122,139,97,0.08)] text-[var(--ledger-green)]">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                            <circle cx="12" cy="8" r="3.2" />
-                            <path d="M5.5 19.5c1.6-3 4-4.5 6.5-4.5s4.9 1.5 6.5 4.5" />
-                          </svg>
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="afterroll-body text-[0.8rem] text-[var(--ledger-ink)]">{entry.plName}</p>
-                        <p className="afterroll-meta text-[0.72rem] text-[var(--ledger-muted)]">{entry.pcName}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <TrpgCastPanel gmName={post.gmName} gmIconSrc={post.gmIconSrc} cast={post.cast} />
           ) : null}
 
           <div className="mt-[1rem] flex flex-wrap gap-[0.5rem]">
