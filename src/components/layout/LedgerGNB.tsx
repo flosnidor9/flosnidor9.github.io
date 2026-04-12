@@ -14,9 +14,7 @@ export default function LedgerGNB() {
   const [hoveredHref, setHoveredHref] = useState<string | null>(null);
 
   return (
-    <nav className="film-gnb fixed top-0 left-0 right-0 z-50 flex items-center justify-center h-[3.5rem] px-[2rem]">
-      <div className="absolute top-0 left-0 right-0 h-[0.25rem] bg-gradient-to-r from-transparent via-amber-200/20 to-transparent" />
-
+    <nav className="fixed left-0 right-0 top-0 z-50 flex items-center justify-center px-[1rem] py-[0.9rem] md:px-[2rem]">
       <ul className="flex items-center gap-[2.5rem]">
         {NAV_ITEMS.map(({ label, href }) => {
           const isActive = pathname === href || pathname.startsWith(`${href}/`);
@@ -25,9 +23,11 @@ export default function LedgerGNB() {
             <li key={href} className="relative">
               <Link
                 href={href}
-                className="relative inline-block py-[0.5rem] font-serif text-[0.95rem] font-light tracking-[0.08em] transition-colors duration-300"
+                className="ledger-paper-panel ledger-dashed relative inline-block rounded-[0.5rem] px-[1.1rem] py-[0.48rem] text-[1.2rem] leading-none transition-transform duration-200"
                 style={{
-                  color: isActive ? 'rgba(255,244,228,0.94)' : 'rgba(255,232,205,0.55)',
+                  color: isActive ? 'var(--ledger-ink)' : 'var(--ledger-muted)',
+                  transform: hoveredHref === href ? 'translateY(-0.04rem) rotate(-1deg)' : 'rotate(0deg)',
+                  fontFamily: 'var(--font-hand)',
                 }}
                 onMouseEnter={() => setHoveredHref(href)}
                 onMouseLeave={() => setHoveredHref(null)}
@@ -37,7 +37,7 @@ export default function LedgerGNB() {
                 {isActive ? (
                   <motion.span
                     layoutId="ledger-nav-active"
-                    className="absolute bottom-0 left-0 right-0 h-px bg-amber-100/60"
+                    className="absolute inset-x-[0.7rem] bottom-[0.28rem] h-[0.12rem] rounded-full bg-[var(--ledger-accent)]"
                     transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                   />
                 ) : null}
@@ -45,7 +45,7 @@ export default function LedgerGNB() {
                 {!isActive && hoveredHref === href ? (
                   <motion.span
                     layoutId="ledger-nav-hover"
-                    className="absolute bottom-0 left-0 right-0 h-px bg-amber-100/30"
+                    className="absolute inset-x-[0.85rem] bottom-[0.32rem] h-[0.08rem] rounded-full bg-[var(--ledger-accent-soft)]"
                     initial={{ scaleX: 0 }}
                     animate={{ scaleX: 1 }}
                     exit={{ scaleX: 0 }}

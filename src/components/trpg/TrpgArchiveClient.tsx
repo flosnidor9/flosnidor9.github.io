@@ -30,12 +30,12 @@ export default function TrpgArchiveClient({ posts, title, description, backHref,
   const filteredPosts = activeTag === ALL_TAG ? posts : posts.filter((post) => post.tags.includes(activeTag));
 
   return (
-    <main className="min-h-screen bg-[var(--film-bg)] px-[1.25rem] pb-[4rem] pt-[5rem] text-amber-50 md:px-[2rem]">
+    <main className="min-h-screen px-[1.1rem] pb-[4rem] pt-[5.2rem] text-[var(--ledger-ink)] md:px-[2rem]">
       <div className="mx-auto max-w-[72rem]">
         {backHref && backLabel ? (
           <Link
             href={backHref}
-            className="mb-[1.25rem] inline-flex items-center gap-[0.4rem] rounded-full border border-white/30 bg-white/5 px-[0.75rem] py-[0.45rem] text-[0.82rem] text-white/80 transition-colors hover:bg-white/10"
+            className="ledger-paper-panel ledger-dashed mb-[1.25rem] inline-flex items-center gap-[0.4rem] rounded-[0.5rem] px-[0.9rem] py-[0.5rem] text-[1rem] text-[var(--ledger-muted)] transition-transform hover:-translate-y-[0.03rem]"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="15 18 9 12 15 6" />
@@ -44,15 +44,16 @@ export default function TrpgArchiveClient({ posts, title, description, backHref,
           </Link>
         ) : null}
 
-        <header className="mb-[2rem] md:mb-[2.5rem]">
-          <p className="font-sans text-[0.78rem] uppercase tracking-[0.28em] text-amber-100/48">TRPG Archive</p>
-          <h1 className="mt-[0.8rem] font-serif text-[2.5rem] leading-[0.95] text-white/95 md:text-[4.2rem]">{title}</h1>
-          <p className="mt-[1rem] max-w-[38rem] font-sans text-[0.98rem] leading-[1.8] text-white/62 md:text-[1.02rem]">
+        <header className="ledger-paper-panel relative mb-[2rem] overflow-hidden rounded-[0.9rem] px-[1.25rem] py-[1.3rem] md:mb-[2.5rem] md:px-[1.7rem] md:py-[1.6rem]">
+          <div className="pointer-events-none absolute right-[-1rem] top-[-1rem] h-[7rem] w-[7rem] rounded-full bg-[radial-gradient(circle,rgba(193,142,88,0.16),transparent_70%)]" />
+          <p className="text-[1.24rem] tracking-[0.03em] text-[var(--ledger-soft)]" style={{ fontFamily: 'var(--font-hand)' }}>TRPG Archive</p>
+          <h1 className="mt-[0.6rem] text-[3.1rem] leading-[0.92] text-[var(--ledger-ink)] md:text-[5.2rem]" style={{ fontFamily: 'var(--font-hand)' }}>{title}</h1>
+          <p className="mt-[0.85rem] max-w-[38rem] text-[1.15rem] leading-[1.65] text-[var(--ledger-muted)] md:text-[1.2rem]" style={{ fontFamily: 'var(--font-hand)' }}>
             {description}
           </p>
         </header>
 
-        <section className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-[1rem] backdrop-blur-xl md:p-[1.25rem]">
+        <section className="ledger-paper-panel rounded-[0.9rem] p-[1rem] md:p-[1.25rem]">
           <div className="mb-[1.25rem] flex flex-wrap gap-[0.55rem]">
             {tags.map((tag) => {
               const isActive = tag === activeTag;
@@ -63,11 +64,12 @@ export default function TrpgArchiveClient({ posts, title, description, backHref,
                   type="button"
                   onClick={() => setActiveTag(tag)}
                   whileTap={{ scale: 0.98 }}
-                  className={`rounded-full border px-[0.85rem] py-[0.42rem] text-[0.82rem] transition-colors ${
+                  className={`rounded-[0.5rem] border px-[0.9rem] py-[0.48rem] text-[1rem] transition-colors ${
                     isActive
-                      ? 'border-amber-100/45 bg-amber-100 text-stone-950'
-                      : 'border-white/12 bg-white/5 text-white/70 hover:bg-white/8'
+                      ? 'border-[rgba(127,79,42,0.35)] bg-[var(--ledger-accent)] text-[#fff7eb]'
+                      : 'border-[rgba(87,67,48,0.14)] bg-[rgba(255,251,243,0.82)] text-[var(--ledger-muted)] hover:bg-[rgba(255,248,235,1)]'
                   }`}
+                  style={{ fontFamily: 'var(--font-hand)' }}
                 >
                   {tag}
                 </motion.button>
@@ -75,7 +77,7 @@ export default function TrpgArchiveClient({ posts, title, description, backHref,
             })}
           </div>
 
-          <div className="mb-[1rem] text-[0.82rem] text-white/45">
+          <div className="mb-[1rem] text-[0.98rem] text-[var(--ledger-soft)]" style={{ fontFamily: 'var(--font-hand)' }}>
             {activeTag === ALL_TAG ? `All ${filteredPosts.length}` : `${activeTag} ${filteredPosts.length}`}
           </div>
 
@@ -84,17 +86,17 @@ export default function TrpgArchiveClient({ posts, title, description, backHref,
               <li key={post.fullSlug}>
                 <Link
                   href={`/afterTheRoll/archive/read/${toGalleryPath(post.fullSlug)}`}
-                  className="block rounded-[1rem] border border-white/10 bg-black/10 px-[1rem] py-[1rem] transition-colors hover:bg-white/[0.06]"
+                  className="ledger-note-card ledger-dashed block rounded-[0.7rem] px-[1rem] py-[1rem] transition-transform duration-200 hover:-translate-y-[0.03rem]"
                 >
                   <div className="flex flex-col gap-[0.6rem] md:flex-row md:items-start md:justify-between md:gap-[1rem]">
                     <div className="min-w-0">
-                      <p className="font-serif text-[1.12rem] text-white/92 md:text-[1.2rem]">{post.title}</p>
+                      <p className="text-[1.34rem] leading-[1.1] text-[var(--ledger-ink)] md:text-[1.55rem]" style={{ fontFamily: 'var(--font-hand)' }}>{post.title}</p>
                       {post.description ? (
-                        <p className="mt-[0.35rem] text-[0.9rem] leading-[1.65] text-white/55">{post.description}</p>
+                        <p className="mt-[0.35rem] text-[1.02rem] leading-[1.6] text-[var(--ledger-muted)]" style={{ fontFamily: 'var(--font-hand)' }}>{post.description}</p>
                       ) : null}
                     </div>
 
-                    <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-[0.75rem] py-[0.32rem] text-[0.74rem] text-white/52">
+                    <span className="shrink-0 rounded-[0.45rem] border border-[rgba(122,139,97,0.22)] bg-[rgba(122,139,97,0.1)] px-[0.78rem] py-[0.34rem] text-[1rem] text-[rgba(63,49,37,0.72)]" style={{ fontFamily: 'var(--font-hand)' }}>
                       {post.scenarioTitle}
                     </span>
                   </div>
@@ -104,7 +106,8 @@ export default function TrpgArchiveClient({ posts, title, description, backHref,
                       {post.tags.map((tag) => (
                         <span
                           key={`${post.fullSlug}-${tag}`}
-                          className="rounded-full border border-white/10 bg-white/5 px-[0.68rem] py-[0.24rem] text-[0.72rem] text-white/60"
+                          className="rounded-[0.45rem] border border-[rgba(87,67,48,0.12)] bg-[rgba(255,250,239,0.85)] px-[0.7rem] py-[0.24rem] text-[0.92rem] text-[var(--ledger-muted)]"
+                          style={{ fontFamily: 'var(--font-hand)' }}
                         >
                           {tag}
                         </span>

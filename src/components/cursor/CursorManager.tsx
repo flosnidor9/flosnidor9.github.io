@@ -1,20 +1,32 @@
 'use client';
 
+import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import LiquidCursor from './LiquidCursor';
 import ClassicCursor from './ClassicCursor';
+import FilmFrameCursor from './FilmFrameCursor';
 
-/**
- * 경로에 따라 적절한 커서를 렌더링하는 매니저
- */
 export default function CursorManager() {
   const pathname = usePathname();
+  const useClassicCursor = pathname === '/' || pathname.startsWith('/afterTheRoll');
 
-  // 메인 페이지(/)에서는 고전 커서 사용
-  if (pathname === '/') {
+  useEffect(() => {
+    document.documentElement.classList.add('custom-cursor-active');
+    document.body.classList.add('custom-cursor-active');
+
+    return () => {
+      document.documentElement.classList.remove('custom-cursor-active');
+      document.body.classList.remove('custom-cursor-active');
+    };
+  }, []);
+
+  if (useClassicCursor) {
     return <ClassicCursor />;
   }
 
-  // 그 외 페이지에서는 리퀴드 커서 사용
+  if (pathname.startsWith('/filmHome')) {
+    return <FilmFrameCursor />;
+  }
+
   return <LiquidCursor />;
 }

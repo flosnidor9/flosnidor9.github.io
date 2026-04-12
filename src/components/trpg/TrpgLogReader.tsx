@@ -164,7 +164,7 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
 
   if (html === null) {
     return (
-      <div className="flex min-h-[28rem] items-center justify-center text-[0.95rem] text-white/55">
+      <div className="flex min-h-[28rem] items-center justify-center text-[1.02rem] text-[var(--ledger-muted)]" style={{ fontFamily: 'var(--font-hand)' }}>
         Loading archive...
       </div>
     );
@@ -172,7 +172,7 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
 
   if (pages.length === 0) {
     return (
-      <div className="flex min-h-[28rem] items-center justify-center text-[0.95rem] text-white/55">
+      <div className="flex min-h-[28rem] items-center justify-center text-[1.02rem] text-[var(--ledger-muted)]" style={{ fontFamily: 'var(--font-hand)' }}>
         No readable messages found.
       </div>
     );
@@ -190,8 +190,8 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
         onSelect={(value) => setPageIndex(value)}
       />
 
-      <div className="mt-[0.65rem] flex items-center justify-between gap-[1rem] rounded-[1rem] border border-white/10 bg-white/[0.04] px-[0.9rem] py-[0.7rem] text-[0.78rem] text-white/68">
-        <p>{visibleEntries.length} entries</p>
+      <div className="ledger-note-card mt-[0.65rem] flex items-center justify-between gap-[1rem] rounded-[0.7rem] px-[0.9rem] py-[0.7rem] text-[0.8rem] text-[var(--ledger-muted)]">
+        <p className="text-[0.98rem]" style={{ fontFamily: 'var(--font-hand)' }}>{visibleEntries.length} entries</p>
         <label className="inline-flex items-center gap-[0.5rem]">
           <input
             type="checkbox"
@@ -209,14 +209,14 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
             key={entry.id}
             className={
               entry.kind === 'media'
-                ? 'rounded-[1rem] border border-black/6 bg-[#f2eee7] p-[0.45rem] shadow-[0_0.45rem_0.9rem_rgba(15,12,10,0.03)] md:p-[0.55rem]'
-                : `grid grid-cols-[2.35rem_minmax(0,1fr)] gap-[0.38rem] rounded-[0.8rem] border p-[0.24rem] shadow-[0_0.45rem_0.9rem_rgba(15,12,10,0.03)] md:grid-cols-[2.6rem_minmax(0,1fr)] md:p-[0.28rem] ${
+                ? 'rounded-[0.7rem] border border-black/6 bg-[#f2eee7] p-[0.45rem] md:p-[0.55rem]'
+                : `grid grid-cols-[2.35rem_minmax(0,1fr)] gap-[0.38rem] rounded-[0.65rem] border p-[0.24rem] md:grid-cols-[2.6rem_minmax(0,1fr)] md:p-[0.28rem] ${
                     entry.isAside ? 'border-black/6 bg-[#ece9e3]' : 'border-black/8 bg-[#f2eee7]'
                   }`
             }
           >
             {entry.kind === 'media' ? (
-              <div className="rounded-[0.9rem] border border-black/6 bg-white/82 px-[0.45rem] py-[0.45rem] shadow-[0_0.35rem_0.8rem_rgba(15,12,10,0.03)] md:px-[0.55rem] md:py-[0.55rem]">
+              <div className="rounded-[0.55rem] border border-black/6 bg-white/82 px-[0.45rem] py-[0.45rem] md:px-[0.55rem] md:py-[0.55rem]">
                 <div
                   className="trpg-media-bubble overflow-hidden rounded-[0.7rem] bg-[#fbfaf7]"
                   dangerouslySetInnerHTML={{ __html: entry.contentHtml }}
@@ -240,14 +240,14 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
 
                 <div className="flex min-h-full min-w-0 flex-col justify-center">
                   {entry.speaker ? (
-                    <p className="mb-[0.34rem] px-[0.15rem] font-sans text-[0.56rem] leading-[1.1] text-black/48 md:text-[0.6rem]">
+                    <p className="mb-[0.34rem] px-[0.15rem] text-[0.82rem] leading-[1.1] text-[var(--ledger-soft)] md:text-[0.88rem]" style={{ fontFamily: 'var(--font-hand)' }}>
                       {entry.speaker}
                     </p>
                   ) : (
                     <div className="mb-[0.34rem]" />
                   )}
                     <div
-                     className={`min-w-0 overflow-x-auto overflow-y-hidden rounded-[0.8rem] border px-[0.58rem] py-[0.45rem] text-[0.85rem] leading-[1.42] shadow-[0_0.35rem_0.8rem_rgba(15,12,10,0.03)] md:px-[0.66rem] md:py-[0.5rem] ${
+                     className={`min-w-0 overflow-x-auto overflow-y-hidden rounded-[0.55rem] border px-[0.58rem] py-[0.45rem] text-[0.85rem] leading-[1.42] md:px-[0.66rem] md:py-[0.5rem] ${
                      entry.isAside ? 'border-black/5 bg-[#f8f6f2] text-black/48' : 'border-black/6 bg-white/82 text-black/78'
                      }`}
                    >
@@ -412,13 +412,14 @@ function PageNav({ pageIndex, pageCount, onPrev, onNext, onFirst, onLast, onSele
   const pages = Array.from({ length: end - adjustedStart }, (_, index) => adjustedStart + index);
 
   return (
-    <div className="mt-[0.35rem] flex items-center justify-between gap-[1rem] rounded-[1rem] border border-white/10 bg-white/[0.04] px-[0.9rem] py-[0.75rem] text-[0.82rem] text-white/70">
+    <div className="ledger-note-card mt-[0.35rem] flex items-center justify-between gap-[1rem] rounded-[0.7rem] px-[0.9rem] py-[0.75rem] text-[0.84rem] text-[var(--ledger-muted)]">
       <div className="flex items-center gap-[0.4rem]">
         <button
           type="button"
           onClick={onFirst}
           disabled={pageIndex === 0}
-          className="rounded-full border border-white/15 px-[0.7rem] py-[0.35rem] transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
+          className="rounded-full border border-[rgba(87,67,48,0.14)] bg-[rgba(255,252,245,0.7)] px-[0.7rem] py-[0.35rem] text-[0.98rem] transition-colors hover:bg-[rgba(255,248,235,1)] disabled:cursor-not-allowed disabled:opacity-35"
+          style={{ fontFamily: 'var(--font-hand)' }}
         >
           First
         </button>
@@ -426,7 +427,8 @@ function PageNav({ pageIndex, pageCount, onPrev, onNext, onFirst, onLast, onSele
           type="button"
           onClick={onPrev}
           disabled={pageIndex === 0}
-          className="rounded-full border border-white/15 px-[0.7rem] py-[0.35rem] transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
+          className="rounded-full border border-[rgba(87,67,48,0.14)] bg-[rgba(255,252,245,0.7)] px-[0.7rem] py-[0.35rem] text-[0.98rem] transition-colors hover:bg-[rgba(255,248,235,1)] disabled:cursor-not-allowed disabled:opacity-35"
+          style={{ fontFamily: 'var(--font-hand)' }}
         >
           Prev
         </button>
@@ -442,9 +444,10 @@ function PageNav({ pageIndex, pageCount, onPrev, onNext, onFirst, onLast, onSele
               onClick={() => onSelect(value)}
               className={`min-w-[2rem] rounded-full border px-[0.6rem] py-[0.35rem] transition-colors ${
                 active
-                  ? 'border-amber-100/50 bg-amber-100/15 text-amber-50'
-                  : 'border-white/15 hover:bg-white/10'
+                  ? 'border-[rgba(127,79,42,0.25)] bg-[var(--ledger-accent)] text-[#fff7eb]'
+                  : 'border-[rgba(87,67,48,0.14)] bg-[rgba(255,252,245,0.7)] hover:bg-[rgba(255,248,235,1)]'
               }`}
+              style={{ fontFamily: 'var(--font-hand)' }}
             >
               {value + 1}
             </button>
@@ -457,7 +460,8 @@ function PageNav({ pageIndex, pageCount, onPrev, onNext, onFirst, onLast, onSele
           type="button"
           onClick={onNext}
           disabled={pageIndex >= pageCount - 1}
-          className="rounded-full border border-white/15 px-[0.7rem] py-[0.35rem] transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
+          className="rounded-full border border-[rgba(87,67,48,0.14)] bg-[rgba(255,252,245,0.7)] px-[0.7rem] py-[0.35rem] text-[0.98rem] transition-colors hover:bg-[rgba(255,248,235,1)] disabled:cursor-not-allowed disabled:opacity-35"
+          style={{ fontFamily: 'var(--font-hand)' }}
         >
           Next
         </button>
@@ -465,7 +469,8 @@ function PageNav({ pageIndex, pageCount, onPrev, onNext, onFirst, onLast, onSele
           type="button"
           onClick={onLast}
           disabled={pageIndex >= pageCount - 1}
-          className="rounded-full border border-white/15 px-[0.7rem] py-[0.35rem] transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"
+          className="rounded-full border border-[rgba(87,67,48,0.14)] bg-[rgba(255,252,245,0.7)] px-[0.7rem] py-[0.35rem] text-[0.98rem] transition-colors hover:bg-[rgba(255,248,235,1)] disabled:cursor-not-allowed disabled:opacity-35"
+          style={{ fontFamily: 'var(--font-hand)' }}
         >
           Last
         </button>

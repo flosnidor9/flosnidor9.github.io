@@ -224,7 +224,7 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
 
   return (
     <>
-      <section className="relative min-h-screen w-full cursor-none pb-[3rem] md:pb-[4rem]">
+      <section className="relative min-h-screen w-full pb-[3rem] md:pb-[4rem]">
         <motion.header
           className="flex flex-col items-center text-center mb-[3rem] md:mb-[4rem] px-[1.5rem] md:px-[2rem] pt-[5rem]"
           initial={{ opacity: 0, y: -20 }}
@@ -518,7 +518,7 @@ function ImageLightbox({ src, alt, scrollY, onClose, theme = 'bubble' }: Lightbo
 
   return (
     <motion.div
-      className="absolute left-0 right-0 z-50 flex h-screen items-center justify-center cursor-none"
+      className="absolute left-0 right-0 z-50 flex h-screen items-center justify-center"
       style={{ top: `${scrollY}px` }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}

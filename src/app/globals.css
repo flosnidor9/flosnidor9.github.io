@@ -19,6 +19,18 @@
   /* Typography */
   --font-serif:      "Cormorant Garamond", Georgia, serif;
   --font-sans:       "Inter", system-ui, sans-serif;
+  --font-hand:       "Nanum Pen Script", "Bradley Hand", cursive;
+
+  --ledger-bg:       #efe5cc;
+  --ledger-paper:    rgba(255, 250, 239, 0.9);
+  --ledger-paper-strong: #fbf4e3;
+  --ledger-border:   rgba(87, 67, 48, 0.16);
+  --ledger-ink:      #3f3125;
+  --ledger-muted:    rgba(63, 49, 37, 0.62);
+  --ledger-soft:     rgba(63, 49, 37, 0.38);
+  --ledger-accent:   #7f4f2a;
+  --ledger-accent-soft: #c18e58;
+  --ledger-green:    #7a8b61;
 
   /* Eraser Effect */
   --eraser-radius:   12rem;
@@ -51,6 +63,62 @@
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
   }
+}
+
+body.after-roll-theme {
+  background-color: var(--ledger-bg);
+  background-image:
+    radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.5), transparent 24rem),
+    radial-gradient(circle at 84% 12%, rgba(193, 142, 88, 0.18), transparent 22rem),
+    linear-gradient(180deg, rgba(255, 248, 235, 0.82), rgba(239, 229, 204, 0.96)),
+    repeating-linear-gradient(
+      0deg,
+      rgba(110, 87, 57, 0.05) 0,
+      rgba(110, 87, 57, 0.05) 0.08rem,
+      transparent 0.08rem,
+      transparent 2rem
+    );
+  color: var(--ledger-ink);
+}
+
+.ledger-paper-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 252, 245, 0.98), rgba(245, 235, 214, 0.96)),
+    repeating-linear-gradient(
+      0deg,
+      rgba(128, 101, 67, 0.035) 0,
+      rgba(128, 101, 67, 0.035) 0.05rem,
+      transparent 0.05rem,
+      transparent 0.45rem
+    );
+  border: 0.08rem solid var(--ledger-border);
+  box-shadow: none;
+}
+
+.ledger-note-card {
+  background:
+    linear-gradient(180deg, rgba(255, 251, 243, 1), rgba(246, 236, 214, 0.96)),
+    repeating-linear-gradient(
+      90deg,
+      rgba(130, 101, 67, 0.025) 0,
+      rgba(130, 101, 67, 0.025) 0.04rem,
+      transparent 0.04rem,
+      transparent 0.42rem
+    );
+  border: 0.08rem solid rgba(96, 71, 44, 0.14);
+  box-shadow: none;
+}
+
+.ledger-dashed {
+  border-style: dashed;
+}
+
+html.custom-cursor-active,
+html.custom-cursor-active body,
+html.custom-cursor-active body *,
+html.custom-cursor-active body *::before,
+html.custom-cursor-active body *::after {
+  cursor: none !important;
 }
 
 /* ─── Tailwind Theme Extension ───────────────────────────── */

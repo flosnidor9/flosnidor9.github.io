@@ -280,7 +280,7 @@ export default function HomeScene({ imagePaths, stickerPaths = [] }: Props) {
     <>
     <section
       ref={sectionRef}
-      className={`h-screen w-full overflow-hidden ${editMode ? 'cursor-default' : 'cursor-none'}`}
+      className="h-screen w-full overflow-hidden"
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
       onTouchMove={onTouchMove}
