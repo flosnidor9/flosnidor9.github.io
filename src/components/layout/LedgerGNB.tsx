@@ -14,7 +14,7 @@ export default function LedgerGNB() {
   const [hoveredHref, setHoveredHref] = useState<string | null>(null);
 
   return (
-    <nav className="fixed left-0 right-0 top-0 z-50 flex items-center justify-center px-[1rem] py-[0.9rem] md:px-[2rem]">
+    <nav className="relative z-50 flex items-center justify-center px-[1rem] py-[0.9rem] md:px-[2rem]">
       <ul className="flex items-center gap-[2.5rem]">
         {NAV_ITEMS.map(({ label, href }) => {
           const isActive = pathname === href || pathname.startsWith(`${href}/`);
@@ -23,11 +23,10 @@ export default function LedgerGNB() {
             <li key={href} className="relative">
               <Link
                 href={href}
-                className="ledger-paper-panel ledger-dashed relative inline-block rounded-[0.5rem] px-[1.1rem] py-[0.48rem] text-[1.2rem] leading-none transition-transform duration-200"
+                className="ledger-paper-panel ledger-dashed afterroll-note relative inline-block rounded-[0.5rem] px-[1.1rem] py-[0.48rem] text-[1.2rem] leading-none transition-transform duration-200"
                 style={{
                   color: isActive ? 'var(--ledger-ink)' : 'var(--ledger-muted)',
                   transform: hoveredHref === href ? 'translateY(-0.04rem) rotate(-1deg)' : 'rotate(0deg)',
-                  fontFamily: 'var(--font-hand)',
                 }}
                 onMouseEnter={() => setHoveredHref(href)}
                 onMouseLeave={() => setHoveredHref(null)}

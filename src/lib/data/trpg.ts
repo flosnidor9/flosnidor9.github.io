@@ -4,7 +4,7 @@ import matter from 'gray-matter';
 import { getAllFolderSlugs } from '@/lib/data/folders';
 
 const PUBLIC_ROOT = path.join(process.cwd(), 'public');
-const TRPG_ROOT = path.join(PUBLIC_ROOT, 'images', 'trpg');
+const TRPG_ROOT = path.join(PUBLIC_ROOT, 'images', 'afterTheRoll');
 
 export type TrpgPostMeta = {
   slug: string;
@@ -19,6 +19,7 @@ export type TrpgPostMeta = {
 };
 
 export type TrpgArchivePostMeta = TrpgPostMeta & {
+  year: string;
   folderSlug: string;
   fullSlug: string;
   scenarioTitle: string;
@@ -96,7 +97,7 @@ function toTrpgPublicUrl(folderSlug: string, htmlPath: string): string {
   const normalizedFolder = normalizeSlug(folderSlug);
   const normalizedPath = htmlPath.replace(/\\/g, '/').replace(/^\/+/, '');
   if (normalizedPath.startsWith('images/')) return `/${normalizedPath}`;
-  return `/images/trpg/${normalizedFolder}/${normalizedPath}`;
+  return `/images/afterTheRoll/${normalizedFolder}/${normalizedPath}`;
 }
 
 export function getTrpgPosts(folderSlug: string): TrpgPostMeta[] {
@@ -157,10 +158,13 @@ export function getAllTrpgPostParams(): Array<{ folderSlug: string; postSlug: st
 export function getAllTrpgPosts(): TrpgArchivePostMeta[] {
   return getAllFolderSlugs('trpg')
     .flatMap((folderSlug) => {
-      const scenarioTitle = folderSlug.split('/').filter(Boolean).at(-1) ?? folderSlug;
+      const segments = folderSlug.split('/').filter(Boolean);
+      const year = segments[0] ?? '';
+      const scenarioTitle = segments.at(-1) ?? folderSlug;
 
       return getTrpgPosts(folderSlug).map((post) => ({
         ...post,
+        year,
         folderSlug,
         fullSlug: `${folderSlug}/${post.slug}`,
         scenarioTitle,

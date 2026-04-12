@@ -11,7 +11,7 @@ const IGNORED_FOLDER_NAMES = new Set(['media']);
 const GALLERY_ROOTS = {
   bubble: path.join(PUBLIC_ROOT, 'images', 'bubble'),
   film: path.join(PUBLIC_ROOT, 'images', 'film'),
-  trpg: path.join(PUBLIC_ROOT, 'images', 'trpg'),
+  trpg: path.join(PUBLIC_ROOT, 'images', 'afterTheRoll'),
 } as const;
 
 export type GalleryType = keyof typeof GALLERY_ROOTS;
@@ -152,7 +152,8 @@ function listDirectPostSlugs(absDir: string): string[] {
   return Array.from(slugs);
 }
 
-function getGalleryPrefix(galleryType: GalleryType): 'bubble' | 'film' | 'trpg' {
+function getGalleryPrefix(galleryType: GalleryType): 'bubble' | 'film' | 'afterTheRoll' {
+  if (galleryType === 'trpg') return 'afterTheRoll';
   return galleryType;
 }
 
