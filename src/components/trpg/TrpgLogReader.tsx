@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type Props = {
   htmlUrl: string;
@@ -19,6 +20,7 @@ type LogEntry = {
 const MAX_PAGE_ENTRIES = 80;
 const MAX_PAGE_WEIGHT = 120000;
 const STANDALONE_UNNAMED_AVATAR_NAME = 'files-d20-io-images-455987480-ALgG0ivc0aW7C7whBPcVnQ-max.png';
+const RELOAD_STORAGE_KEY = 'trpg-log-reader-reload';
 
 function normalizeSpeaker(raw: string | null | undefined): string {
   return (raw ?? '').replace(/:\s*$/, '').trim();
@@ -77,10 +79,7 @@ function parseEntries(html: string): LogEntry[] {
       Boolean(lastEntry) &&
       lastEntry.kind === 'chat' &&
       entry.kind === 'chat' &&
-      (
-        (!entry.speaker && !keepsEmptySpeaker) ||
-        lastEntry.speaker === resolvedSpeaker
-      ) &&
+      ((!entry.speaker && !keepsEmptySpeaker) || lastEntry.speaker === resolvedSpeaker) &&
       lastEntry.isAside === entry.isAside;
 
     if (canMerge) {
@@ -130,14 +129,47 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
   const [html, setHtml] = useState<string | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
   const [showAside, setShowAside] = useState(true);
+  const readerRef = useRef<HTMLElement | null>(null);
+  const restoredPageRef = useRef(false);
+  const shouldScrollToReaderRef = useRef(false);
+
+  useEffect(() => {
+    restoredPageRef.current = false;
+    shouldScrollToReaderRef.current = false;
+
+    const savedReloadState = window.sessionStorage.getItem(RELOAD_STORAGE_KEY);
+    if (!savedReloadState) {
+      setPageIndex(0);
+      return;
+    }
+
+    window.sessionStorage.removeItem(RELOAD_STORAGE_KEY);
+
+    let parsedPageIndex = Number.NaN;
+
+    try {
+      const parsed = JSON.parse(savedReloadState) as { htmlUrl?: string; pageIndex?: number };
+      if (parsed.htmlUrl === htmlUrl && typeof parsed.pageIndex === 'number') {
+        parsedPageIndex = parsed.pageIndex;
+      }
+    } catch {
+      parsedPageIndex = Number.NaN;
+    }
+
+    setPageIndex(Number.isNaN(parsedPageIndex) ? 0 : Math.max(0, parsedPageIndex));
+  }, [htmlUrl]);
 
   useEffect(() => {
     const controller = new AbortController();
 
     fetch(htmlUrl, { signal: controller.signal })
       .then((response) => response.text())
-      .then((text) => setHtml(text))
-      .catch(() => setHtml(''));
+      .then((text) => {
+        setHtml(text);
+      })
+      .catch(() => {
+        setHtml('');
+      });
 
     return () => controller.abort();
   }, [htmlUrl]);
@@ -148,23 +180,48 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
     [entries, showAside],
   );
   const pages = useMemo(() => paginateEntries(visibleEntries), [visibleEntries]);
-  const currentPage = pages[pageIndex] ?? [];
+  const effectivePageIndex = Math.min(pageIndex, Math.max(0, pages.length - 1));
+  const currentPage = pages[effectivePageIndex] ?? [];
 
   useEffect(() => {
-    setPageIndex(0);
-  }, [htmlUrl, html]);
+    if (!restoredPageRef.current) {
+      restoredPageRef.current = true;
+      return;
+    }
+
+    const handleBeforeUnload = () => {
+      window.sessionStorage.setItem(
+        RELOAD_STORAGE_KEY,
+        JSON.stringify({
+          htmlUrl,
+          pageIndex: effectivePageIndex,
+        }),
+      );
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.sessionStorage.removeItem(RELOAD_STORAGE_KEY);
+    };
+  }, [effectivePageIndex, htmlUrl]);
 
   useEffect(() => {
-    setPageIndex((value) => Math.min(value, Math.max(0, pages.length - 1)));
-  }, [pages.length]);
+    if (!shouldScrollToReaderRef.current) return;
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [pageIndex]);
+    shouldScrollToReaderRef.current = false;
+    readerRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }, [effectivePageIndex]);
+
+  const moveToPage = (nextPageIndex: number) => {
+    shouldScrollToReaderRef.current = true;
+    setPageIndex(nextPageIndex);
+  };
 
   if (html === null) {
     return (
-      <div className="flex min-h-[28rem] items-center justify-center text-[1.02rem] text-[var(--ledger-muted)]" style={{ fontFamily: 'var(--font-hand)' }}>
+      <div className="afterroll-note flex min-h-[28rem] items-center justify-center text-[1.02rem] text-[var(--ledger-muted)]">
         Loading archive...
       </div>
     );
@@ -172,34 +229,34 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
 
   if (pages.length === 0) {
     return (
-      <div className="flex min-h-[28rem] items-center justify-center text-[1.02rem] text-[var(--ledger-muted)]" style={{ fontFamily: 'var(--font-hand)' }}>
+      <div className="afterroll-note flex min-h-[28rem] items-center justify-center text-[1.02rem] text-[var(--ledger-muted)]">
         No readable messages found.
       </div>
     );
   }
 
   return (
-    <section className="trpg-log-reader px-[0.75rem] py-[0.9rem] md:px-[1.25rem] md:py-[1.25rem]">
+    <section ref={readerRef} className="trpg-log-reader px-[0.75rem] py-[0.9rem] md:px-[1.25rem] md:py-[1.25rem]">
       <PageNav
-        pageIndex={pageIndex}
+        pageIndex={effectivePageIndex}
         pageCount={pages.length}
-        onFirst={() => setPageIndex(0)}
-        onLast={() => setPageIndex(Math.max(0, pages.length - 1))}
-        onPrev={() => setPageIndex((value) => Math.max(0, value - 1))}
-        onNext={() => setPageIndex((value) => Math.min(pages.length - 1, value + 1))}
-        onSelect={(value) => setPageIndex(value)}
+        onFirst={() => moveToPage(0)}
+        onLast={() => moveToPage(Math.max(0, pages.length - 1))}
+        onPrev={() => moveToPage(Math.max(0, effectivePageIndex - 1))}
+        onNext={() => moveToPage(Math.min(pages.length - 1, effectivePageIndex + 1))}
+        onSelect={(value) => moveToPage(value)}
       />
 
-      <div className="ledger-note-card mt-[0.65rem] flex items-center justify-between gap-[1rem] rounded-[0.7rem] px-[0.9rem] py-[0.7rem] text-[0.8rem] text-[var(--ledger-muted)]">
-        <p className="text-[0.98rem]" style={{ fontFamily: 'var(--font-hand)' }}>{visibleEntries.length} entries</p>
-        <label className="inline-flex items-center gap-[0.5rem]">
+      <div className="ledger-paper-sheet paper-memo mt-[0.65rem] flex items-center justify-between gap-[1rem] rounded-[0.55rem] px-[0.9rem] py-[0.8rem] text-[0.8rem] text-[var(--ledger-muted)]">
+        <p className="afterroll-meta relative z-[1] text-[0.84rem] uppercase tracking-[0.12em]">{visibleEntries.length} entries</p>
+        <label className="relative z-[1] inline-flex items-center gap-[0.5rem]">
           <input
             type="checkbox"
             checked={showAside}
             onChange={(event) => setShowAside(event.target.checked)}
             className="h-[0.95rem] w-[0.95rem]"
           />
-          <span>사담 포함</span>
+          <span className="afterroll-meta text-[0.84rem] uppercase tracking-[0.08em]">Aside</span>
         </label>
       </div>
 
@@ -209,48 +266,50 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
             key={entry.id}
             className={
               entry.kind === 'media'
-                ? 'rounded-[0.7rem] border border-black/6 bg-[#f2eee7] p-[0.45rem] md:p-[0.55rem]'
-                : `grid grid-cols-[2.35rem_minmax(0,1fr)] gap-[0.38rem] rounded-[0.65rem] border p-[0.24rem] md:grid-cols-[2.6rem_minmax(0,1fr)] md:p-[0.28rem] ${
-                    entry.isAside ? 'border-black/6 bg-[#ece9e3]' : 'border-black/8 bg-[#f2eee7]'
+                ? 'ledger-paper-sheet paper-plain rounded-[0.55rem] p-[0.55rem] md:p-[0.65rem]'
+                : `ledger-paper-sheet paper-memo grid grid-cols-[2.35rem_minmax(0,1fr)] gap-[0.65rem] rounded-[0.55rem] p-[0.55rem] md:grid-cols-[2.6rem_minmax(0,1fr)] md:p-[0.65rem] ${
+                    entry.isAside ? 'opacity-75' : ''
                   }`
             }
           >
             {entry.kind === 'media' ? (
-              <div className="rounded-[0.55rem] border border-black/6 bg-white/82 px-[0.45rem] py-[0.45rem] md:px-[0.55rem] md:py-[0.55rem]">
+              <div className="ledger-typed-box paper-plain relative z-[1] rounded-[0.45rem] px-[0.55rem] py-[0.55rem] md:px-[0.7rem] md:py-[0.7rem]">
                 <div
-                  className="trpg-media-bubble overflow-hidden rounded-[0.7rem] bg-[#fbfaf7]"
+                  className="trpg-media-bubble overflow-hidden rounded-[0.45rem] bg-[#fbf7ef]"
                   dangerouslySetInnerHTML={{ __html: entry.contentHtml }}
                 />
               </div>
             ) : (
               <>
-                <div className="flex flex-col items-center justify-center">
+                <div className="relative z-[1] flex flex-col items-center justify-start pt-[0.1rem]">
                   {entry.avatarSrc || fallbackAvatarSrc ? (
-                    <img
+                    <Image
                       src={entry.avatarSrc || fallbackAvatarSrc || ''}
                       alt={entry.speaker || 'Narration'}
-                      className="h-[2.35rem] w-[2.35rem] object-cover md:h-[2.55rem] md:w-[2.55rem]"
+                      width={41}
+                      height={41}
+                      className="h-[2.35rem] w-[2.35rem] rounded-[0.2rem] border border-[rgba(87,67,48,0.18)] object-cover p-[0.12rem] md:h-[2.55rem] md:w-[2.55rem]"
                     />
                   ) : (
-                    <div className="flex h-[2.35rem] w-[2.35rem] items-center justify-center text-[0.46rem] text-black/35 md:h-[2.55rem] md:w-[2.55rem]">
+                    <div className="flex h-[2.35rem] w-[2.35rem] items-center justify-center rounded-[0.2rem] border border-[rgba(87,67,48,0.18)] text-[0.46rem] uppercase tracking-[0.08em] text-black/35 md:h-[2.55rem] md:w-[2.55rem]">
                       Log
                     </div>
                   )}
                 </div>
 
-                <div className="flex min-h-full min-w-0 flex-col justify-center">
+                <div className="relative z-[1] flex min-h-full min-w-0 flex-col justify-center">
                   {entry.speaker ? (
-                    <p className="mb-[0.34rem] px-[0.15rem] text-[0.82rem] leading-[1.1] text-[var(--ledger-soft)] md:text-[0.88rem]" style={{ fontFamily: 'var(--font-hand)' }}>
+                    <p className="afterroll-meta mb-[0.34rem] px-[0.05rem] text-[0.72rem] uppercase tracking-[0.14em] text-[var(--ledger-soft)] md:text-[0.76rem]">
                       {entry.speaker}
                     </p>
                   ) : (
                     <div className="mb-[0.34rem]" />
                   )}
-                    <div
-                     className={`min-w-0 overflow-x-auto overflow-y-hidden rounded-[0.55rem] border px-[0.58rem] py-[0.45rem] text-[0.85rem] leading-[1.42] md:px-[0.66rem] md:py-[0.5rem] ${
-                     entry.isAside ? 'border-black/5 bg-[#f8f6f2] text-black/48' : 'border-black/6 bg-white/82 text-black/78'
-                     }`}
-                   >
+                  <div
+                    className={`ledger-typed-box paper-plain afterroll-body min-w-0 overflow-x-auto overflow-y-hidden rounded-[0.45rem] px-[0.7rem] py-[0.62rem] text-[0.92rem] leading-[1.72] md:px-[0.85rem] md:py-[0.72rem] ${
+                      entry.isAside ? 'text-black/48' : 'text-black/78'
+                    }`}
+                  >
                     <div className="min-w-0" dangerouslySetInnerHTML={{ __html: entry.contentHtml }} />
                   </div>
                 </div>
@@ -261,13 +320,13 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
       </div>
 
       <PageNav
-        pageIndex={pageIndex}
+        pageIndex={effectivePageIndex}
         pageCount={pages.length}
-        onFirst={() => setPageIndex(0)}
-        onLast={() => setPageIndex(Math.max(0, pages.length - 1))}
-        onPrev={() => setPageIndex((value) => Math.max(0, value - 1))}
-        onNext={() => setPageIndex((value) => Math.min(pages.length - 1, value + 1))}
-        onSelect={(value) => setPageIndex(value)}
+        onFirst={() => moveToPage(0)}
+        onLast={() => moveToPage(Math.max(0, pages.length - 1))}
+        onPrev={() => moveToPage(Math.max(0, effectivePageIndex - 1))}
+        onNext={() => moveToPage(Math.min(pages.length - 1, effectivePageIndex + 1))}
+        onSelect={(value) => moveToPage(value)}
       />
 
       <style jsx global>{`
@@ -307,7 +366,7 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
         .trpg-log-reader .trpg-media-bubble img {
           width: 100%;
           max-width: none !important;
-          border-radius: 0.7rem;
+          border-radius: 0.12rem;
           object-fit: contain;
         }
 
@@ -412,14 +471,13 @@ function PageNav({ pageIndex, pageCount, onPrev, onNext, onFirst, onLast, onSele
   const pages = Array.from({ length: end - adjustedStart }, (_, index) => adjustedStart + index);
 
   return (
-    <div className="ledger-note-card mt-[0.35rem] flex items-center justify-between gap-[1rem] rounded-[0.7rem] px-[0.9rem] py-[0.75rem] text-[0.84rem] text-[var(--ledger-muted)]">
-      <div className="flex items-center gap-[0.4rem]">
+    <div className="ledger-paper-sheet paper-grid mt-[0.35rem] flex items-center justify-between gap-[1rem] rounded-[0.55rem] px-[0.9rem] py-[0.75rem] text-[0.84rem] text-[var(--ledger-muted)]">
+      <div className="relative z-[1] flex items-center gap-[0.4rem]">
         <button
           type="button"
           onClick={onFirst}
           disabled={pageIndex === 0}
-          className="rounded-full border border-[rgba(87,67,48,0.14)] bg-[rgba(255,252,245,0.7)] px-[0.7rem] py-[0.35rem] text-[0.98rem] transition-colors hover:bg-[rgba(255,248,235,1)] disabled:cursor-not-allowed disabled:opacity-35"
-          style={{ fontFamily: 'var(--font-hand)' }}
+          className="ledger-index-tab afterroll-meta rounded-[0.15rem] px-[0.7rem] py-[0.35rem] text-[0.82rem] uppercase tracking-[0.08em] transition-colors hover:bg-[rgba(236,220,194,0.96)] disabled:cursor-not-allowed disabled:opacity-35"
         >
           First
         </button>
@@ -427,14 +485,13 @@ function PageNav({ pageIndex, pageCount, onPrev, onNext, onFirst, onLast, onSele
           type="button"
           onClick={onPrev}
           disabled={pageIndex === 0}
-          className="rounded-full border border-[rgba(87,67,48,0.14)] bg-[rgba(255,252,245,0.7)] px-[0.7rem] py-[0.35rem] text-[0.98rem] transition-colors hover:bg-[rgba(255,248,235,1)] disabled:cursor-not-allowed disabled:opacity-35"
-          style={{ fontFamily: 'var(--font-hand)' }}
+          className="ledger-index-tab afterroll-meta rounded-[0.15rem] px-[0.7rem] py-[0.35rem] text-[0.82rem] uppercase tracking-[0.08em] transition-colors hover:bg-[rgba(236,220,194,0.96)] disabled:cursor-not-allowed disabled:opacity-35"
         >
           Prev
         </button>
       </div>
 
-      <div className="flex items-center gap-[0.35rem]">
+      <div className="relative z-[1] flex items-center gap-[0.35rem]">
         {pages.map((value) => {
           const active = value === pageIndex;
           return (
@@ -442,12 +499,9 @@ function PageNav({ pageIndex, pageCount, onPrev, onNext, onFirst, onLast, onSele
               key={value}
               type="button"
               onClick={() => onSelect(value)}
-              className={`min-w-[2rem] rounded-full border px-[0.6rem] py-[0.35rem] transition-colors ${
-                active
-                  ? 'border-[rgba(127,79,42,0.25)] bg-[var(--ledger-accent)] text-[#fff7eb]'
-                  : 'border-[rgba(87,67,48,0.14)] bg-[rgba(255,252,245,0.7)] hover:bg-[rgba(255,248,235,1)]'
+              className={`afterroll-meta min-w-[2rem] rounded-[0.15rem] px-[0.6rem] py-[0.35rem] text-[0.82rem] uppercase tracking-[0.08em] transition-colors ${
+                active ? 'ledger-index-tab-active' : 'ledger-index-tab hover:bg-[rgba(236,220,194,0.96)]'
               }`}
-              style={{ fontFamily: 'var(--font-hand)' }}
             >
               {value + 1}
             </button>
@@ -455,13 +509,12 @@ function PageNav({ pageIndex, pageCount, onPrev, onNext, onFirst, onLast, onSele
         })}
       </div>
 
-      <div className="flex items-center gap-[0.4rem]">
+      <div className="relative z-[1] flex items-center gap-[0.4rem]">
         <button
           type="button"
           onClick={onNext}
           disabled={pageIndex >= pageCount - 1}
-          className="rounded-full border border-[rgba(87,67,48,0.14)] bg-[rgba(255,252,245,0.7)] px-[0.7rem] py-[0.35rem] text-[0.98rem] transition-colors hover:bg-[rgba(255,248,235,1)] disabled:cursor-not-allowed disabled:opacity-35"
-          style={{ fontFamily: 'var(--font-hand)' }}
+          className="ledger-index-tab afterroll-meta rounded-[0.15rem] px-[0.7rem] py-[0.35rem] text-[0.82rem] uppercase tracking-[0.08em] transition-colors hover:bg-[rgba(236,220,194,0.96)] disabled:cursor-not-allowed disabled:opacity-35"
         >
           Next
         </button>
@@ -469,8 +522,7 @@ function PageNav({ pageIndex, pageCount, onPrev, onNext, onFirst, onLast, onSele
           type="button"
           onClick={onLast}
           disabled={pageIndex >= pageCount - 1}
-          className="rounded-full border border-[rgba(87,67,48,0.14)] bg-[rgba(255,252,245,0.7)] px-[0.7rem] py-[0.35rem] text-[0.98rem] transition-colors hover:bg-[rgba(255,248,235,1)] disabled:cursor-not-allowed disabled:opacity-35"
-          style={{ fontFamily: 'var(--font-hand)' }}
+          className="ledger-index-tab afterroll-meta rounded-[0.15rem] px-[0.7rem] py-[0.35rem] text-[0.82rem] uppercase tracking-[0.08em] transition-colors hover:bg-[rgba(236,220,194,0.96)] disabled:cursor-not-allowed disabled:opacity-35"
         >
           Last
         </button>
