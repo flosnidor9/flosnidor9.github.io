@@ -14,6 +14,7 @@ type LogEntry = {
   avatarSrc: string | null;
   contentHtml: string;
   isAside: boolean;
+  isWhisper: boolean;
   kind: 'chat' | 'media';
 };
 
@@ -41,10 +42,11 @@ function isStandaloneUnnamedAvatar(avatarSrc: string | null): boolean {
 function parseEntries(html: string): LogEntry[] {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<body>${html}</body>`, 'text/html');
-  const nodes = Array.from(doc.querySelectorAll('.message.general, .message.desc'));
+  const nodes = Array.from(doc.querySelectorAll('.message.general, .message.desc, .message.private'));
   const parsed = nodes
     .map((node, index) => {
       const isMedia = node.classList.contains('desc');
+      const isWhisper = node.classList.contains('private') || node.classList.contains('whisper');
       const speaker = normalizeSpeaker(node.querySelector('.by')?.textContent);
       const avatarSrc = node.querySelector('.avatar img')?.getAttribute('src') ?? null;
       const clone = node.cloneNode(true) as HTMLElement;
@@ -63,6 +65,7 @@ function parseEntries(html: string): LogEntry[] {
         avatarSrc,
         contentHtml,
         isAside,
+        isWhisper,
         kind: isMedia ? 'media' : 'chat',
       };
     })
@@ -78,9 +81,10 @@ function parseEntries(html: string): LogEntry[] {
     const canMerge =
       Boolean(lastEntry) &&
       lastEntry.kind === 'chat' &&
-      entry.kind === 'chat' &&
-      ((!entry.speaker && !keepsEmptySpeaker) || lastEntry.speaker === resolvedSpeaker) &&
-      lastEntry.isAside === entry.isAside;
+       entry.kind === 'chat' &&
+       ((!entry.speaker && !keepsEmptySpeaker) || lastEntry.speaker === resolvedSpeaker) &&
+       lastEntry.isAside === entry.isAside &&
+       lastEntry.isWhisper === entry.isWhisper;
 
     if (canMerge) {
       lastEntry.contentHtml = `${lastEntry.contentHtml}<div class="trpg-log-continuation">${entry.contentHtml}</div>`;
@@ -299,17 +303,26 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
 
                 <div className="relative z-[1] flex min-h-full min-w-0 flex-col justify-center">
                   {entry.speaker ? (
-                    <p className="afterroll-meta mb-[0.34rem] px-[0.05rem] text-[0.72rem] uppercase tracking-[0.14em] text-[var(--ledger-soft)] md:text-[0.76rem]">
-                      {entry.speaker}
-                    </p>
-                  ) : (
-                    <div className="mb-[0.34rem]" />
-                  )}
+                     <p className="afterroll-meta mb-[0.34rem] px-[0.05rem] text-[0.72rem] uppercase tracking-[0.14em] text-[var(--ledger-soft)] md:text-[0.76rem]">
+                       {entry.speaker}
+                     </p>
+                   ) : (
+                     <div className="mb-[0.34rem]" />
+                   )}
                   <div
                     className={`ledger-typed-box paper-plain afterroll-body min-w-0 overflow-x-auto overflow-y-hidden rounded-[0.45rem] px-[0.7rem] py-[0.62rem] text-[0.92rem] leading-[1.72] md:px-[0.85rem] md:py-[0.72rem] ${
-                      entry.isAside ? 'text-black/48' : 'text-black/78'
+                      entry.isWhisper
+                        ? 'trpg-entry-whisper border border-[rgba(116,145,104,0.24)] text-black/72'
+                        : entry.isAside
+                          ? 'trpg-entry-aside text-black/44'
+                          : 'trpg-entry-general text-black/78'
                     }`}
                   >
+                    {entry.isWhisper ? (
+                      <p className="afterroll-meta mb-[0.34rem] text-[0.68rem] uppercase tracking-[0.14em] text-[rgba(82,112,71,0.76)]">
+                        Whisper
+                      </p>
+                    ) : null}
                     <div className="min-w-0" dangerouslySetInnerHTML={{ __html: entry.contentHtml }} />
                   </div>
                 </div>
@@ -368,6 +381,20 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
           max-width: none !important;
           border-radius: 0.12rem;
           object-fit: contain;
+        }
+
+        .trpg-log-reader .trpg-entry-general {
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.985), rgba(245, 243, 239, 0.98)) !important;
+        }
+
+        .trpg-log-reader .trpg-entry-aside {
+          background: linear-gradient(180deg, rgba(253, 251, 247, 0.96), rgba(244, 241, 235, 0.94)) !important;
+          border-color: rgba(94, 70, 45, 0.07) !important;
+        }
+
+        .trpg-log-reader .trpg-entry-whisper {
+          background: linear-gradient(180deg, rgba(231, 243, 230, 0.98), rgba(217, 234, 214, 0.96)) !important;
+          border-color: rgba(116, 145, 104, 0.28) !important;
         }
 
         .trpg-log-reader .sheet-rolltemplate-ninpo,
