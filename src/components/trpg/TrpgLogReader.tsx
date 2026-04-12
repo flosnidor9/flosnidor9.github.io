@@ -260,7 +260,7 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
             onChange={(event) => setShowAside(event.target.checked)}
             className="h-[0.95rem] w-[0.95rem]"
           />
-          <span className="afterroll-meta text-[0.84rem] uppercase tracking-[0.08em]">Aside</span>
+          <span className="afterroll-meta text-[0.84rem] tracking-[0.02em]">사담까지 보기</span>
         </label>
       </div>
 
