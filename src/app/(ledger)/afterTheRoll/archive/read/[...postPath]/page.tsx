@@ -57,7 +57,7 @@ export default async function TrpgReadPage({ params }: Props) {
   return (
     <main className="afterroll-read-shell afterroll-desk min-h-screen px-[1rem] pb-[4rem] pt-[4.7rem] text-[var(--ledger-ink)] md:px-[2rem] md:pt-[5.1rem]">
       <article className="afterroll-read-paper ledger-paper-sheet paper-lined paper-holes-left mx-auto max-w-[72rem] overflow-hidden rounded-[0.8rem]">
-        <div className="border-b border-[rgba(87,67,48,0.12)] px-[1.2rem] py-[1.1rem] md:px-[1.5rem]">
+        <div className="afterroll-read-header border-b border-[rgba(87,67,48,0.12)] px-[1.2rem] py-[1.1rem] md:px-[1.5rem]">
           <Link
             href="/afterTheRoll"
             className="ledger-note-card ledger-dashed afterroll-note mb-[1rem] inline-flex items-center gap-[0.4rem] rounded-[0.5rem] px-[0.9rem] py-[0.5rem] text-[1rem] text-[var(--ledger-muted)] transition-transform hover:-translate-y-[0.03rem]"
