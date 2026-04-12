@@ -498,23 +498,25 @@ function PageNav({ pageIndex, pageCount, onPrev, onNext, onFirst, onLast, onSele
   const pages = Array.from({ length: end - adjustedStart }, (_, index) => adjustedStart + index);
 
   return (
-    <div className="ledger-paper-sheet paper-grid mt-[0.35rem] flex items-center justify-between gap-[1rem] rounded-[0.55rem] px-[0.9rem] py-[0.75rem] text-[0.84rem] text-[var(--ledger-muted)]">
-      <div className="relative z-[1] flex items-center gap-[0.4rem]">
+    <div className="ledger-paper-sheet paper-grid mt-[0.35rem] flex flex-wrap items-center justify-center gap-[0.35rem] rounded-[0.55rem] px-[0.9rem] py-[0.75rem] text-[0.84rem] text-[var(--ledger-muted)]">
+      <div className="relative z-[1] flex items-center gap-[0.35rem]">
         <button
           type="button"
           onClick={onFirst}
           disabled={pageIndex === 0}
+          aria-label="First page"
           className="ledger-index-tab afterroll-meta rounded-[0.15rem] px-[0.7rem] py-[0.35rem] text-[0.82rem] uppercase tracking-[0.08em] transition-colors hover:bg-[rgba(236,220,194,0.96)] disabled:cursor-not-allowed disabled:opacity-35"
         >
-          First
+          {'<<'}
         </button>
         <button
           type="button"
           onClick={onPrev}
           disabled={pageIndex === 0}
+          aria-label="Previous page"
           className="ledger-index-tab afterroll-meta rounded-[0.15rem] px-[0.7rem] py-[0.35rem] text-[0.82rem] uppercase tracking-[0.08em] transition-colors hover:bg-[rgba(236,220,194,0.96)] disabled:cursor-not-allowed disabled:opacity-35"
         >
-          Prev
+          {'<'}
         </button>
       </div>
 
@@ -536,22 +538,24 @@ function PageNav({ pageIndex, pageCount, onPrev, onNext, onFirst, onLast, onSele
         })}
       </div>
 
-      <div className="relative z-[1] flex items-center gap-[0.4rem]">
+      <div className="relative z-[1] flex items-center gap-[0.35rem]">
         <button
           type="button"
           onClick={onNext}
           disabled={pageIndex >= pageCount - 1}
+          aria-label="Next page"
           className="ledger-index-tab afterroll-meta rounded-[0.15rem] px-[0.7rem] py-[0.35rem] text-[0.82rem] uppercase tracking-[0.08em] transition-colors hover:bg-[rgba(236,220,194,0.96)] disabled:cursor-not-allowed disabled:opacity-35"
         >
-          Next
+          {'>'}
         </button>
         <button
           type="button"
           onClick={onLast}
           disabled={pageIndex >= pageCount - 1}
+          aria-label="Last page"
           className="ledger-index-tab afterroll-meta rounded-[0.15rem] px-[0.7rem] py-[0.35rem] text-[0.82rem] uppercase tracking-[0.08em] transition-colors hover:bg-[rgba(236,220,194,0.96)] disabled:cursor-not-allowed disabled:opacity-35"
         >
-          Last
+          {'>>'}
         </button>
       </div>
     </div>
