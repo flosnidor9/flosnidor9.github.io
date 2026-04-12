@@ -6,6 +6,12 @@ import { getAllFolderSlugs } from '@/lib/data/folders';
 const PUBLIC_ROOT = path.join(process.cwd(), 'public');
 const TRPG_ROOT = path.join(PUBLIC_ROOT, 'images', 'afterTheRoll');
 
+export type TrpgCastEntry = {
+  plName: string;
+  pcName: string;
+  iconSrc: string;
+};
+
 export type TrpgPostMeta = {
   slug: string;
   title: string;
@@ -13,7 +19,7 @@ export type TrpgPostMeta = {
   tags: string[];
   gmName: string;
   gmIconSrc: string;
-  cast: Array<{ plName: string; pcName: string; iconSrc: string }>;
+  cast: TrpgCastEntry[];
   htmlPath: string;
   htmlUrl: string;
 };
@@ -56,7 +62,7 @@ function ensureString(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback;
 }
 
-function ensureCast(value: unknown): Array<{ plName: string; pcName: string; iconSrc: string }> {
+function ensureCast(value: unknown): TrpgCastEntry[] {
   if (!Array.isArray(value)) return [];
 
   return value
@@ -69,7 +75,7 @@ function ensureCast(value: unknown): Array<{ plName: string; pcName: string; ico
         iconSrc: ensureString(record.iconSrc),
       };
     })
-    .filter((item): item is { plName: string; pcName: string; iconSrc: string } => Boolean(item?.plName || item?.pcName));
+    .filter((item): item is TrpgCastEntry => Boolean(item?.plName || item?.pcName));
 }
 
 function parsePostMeta(folderSlug: string, fileName: string): TrpgPostMeta | null {
