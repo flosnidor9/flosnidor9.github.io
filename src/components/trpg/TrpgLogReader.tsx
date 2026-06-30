@@ -2,10 +2,13 @@
 
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { TrpgCastEntry } from '@/lib/data/trpg';
 
 type Props = {
   htmlUrl: string;
   fallbackAvatarSrc?: string;
+  gmName?: string;
+  cast?: TrpgCastEntry[];
 };
 
 type LogEntry = {
@@ -22,6 +25,83 @@ const MAX_PAGE_ENTRIES = 80;
 const MAX_PAGE_WEIGHT = 120000;
 const STANDALONE_UNNAMED_AVATAR_NAME = 'files-d20-io-images-455987480-ALgG0ivc0aW7C7whBPcVnQ-max.png';
 const RELOAD_STORAGE_KEY = 'trpg-log-reader-reload';
+
+function detectFormat(html: string): 'roll20' | 'ccfolia' {
+  if (/class="message\s/i.test(html)) return 'roll20';
+  return 'ccfolia';
+}
+
+function buildAvatarMap(
+  gmName: string | undefined,
+  fallbackAvatarSrc: string | undefined,
+  cast: TrpgCastEntry[] | undefined,
+): Record<string, string> {
+  const map: Record<string, string> = {};
+  if (gmName && fallbackAvatarSrc) map[gmName] = fallbackAvatarSrc;
+  if (cast) {
+    for (const entry of cast) {
+      if (entry.iconSrc) {
+        if (entry.pcName) map[entry.pcName] = entry.iconSrc;
+        if (entry.plName) map[entry.plName] = entry.iconSrc;
+      }
+    }
+  }
+  return map;
+}
+
+function parseCcfoliaEntries(html: string, avatarMap: Record<string, string>): LogEntry[] {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<html><body>${html}</body></html>`, 'text/html');
+  const paragraphs = Array.from(doc.querySelectorAll('body > p[style]'));
+
+  const parsed: LogEntry[] = [];
+
+  for (let i = 0; i < paragraphs.length; i++) {
+    const node = paragraphs[i];
+    const spans = Array.from(node.querySelectorAll('span'));
+    if (spans.length < 3) continue;
+
+    const channelText = spans[0]?.textContent?.trim() ?? '';
+    const channelMatch = channelText.match(/^\[\s*(.*?)\s*\]$/);
+    const channel = channelMatch?.[1]?.toLowerCase() ?? '';
+
+    const speaker = spans[1]?.textContent?.trim() ?? '';
+    const contentSpan = spans[2];
+    if (!contentSpan) continue;
+
+    const contentHtml = contentSpan.innerHTML.trim();
+    if (!contentHtml) continue;
+
+    parsed.push({
+      id: `ccfolia-${i}`,
+      speaker,
+      avatarSrc: avatarMap[speaker] ?? null,
+      contentHtml,
+      isAside: channel === 'other',
+      isWhisper: false,
+      kind: 'chat',
+    });
+  }
+
+  const merged: LogEntry[] = [];
+  for (const entry of parsed) {
+    const last = merged[merged.length - 1];
+    const canMerge =
+      Boolean(last) &&
+      last.speaker === entry.speaker &&
+      last.isAside === entry.isAside;
+
+    if (canMerge) {
+      last.contentHtml = `${last.contentHtml}<div class="trpg-log-continuation">${entry.contentHtml}</div>`;
+      if (!last.avatarSrc && entry.avatarSrc) last.avatarSrc = entry.avatarSrc;
+      continue;
+    }
+
+    merged.push({ ...entry });
+  }
+
+  return merged;
+}
 
 function normalizeSpeaker(raw: string | null | undefined): string {
   return (raw ?? '').replace(/:\s*$/, '').trim();
@@ -129,13 +209,18 @@ function paginateEntries(entries: LogEntry[]): LogEntry[][] {
   return pages;
 }
 
-export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
+export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc, gmName, cast }: Props) {
   const [html, setHtml] = useState<string | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
   const [showAside, setShowAside] = useState(true);
   const readerRef = useRef<HTMLElement | null>(null);
   const restoredPageRef = useRef(false);
   const shouldScrollToReaderRef = useRef(false);
+
+  const avatarMap = useMemo(
+    () => buildAvatarMap(gmName, fallbackAvatarSrc, cast),
+    [gmName, fallbackAvatarSrc, cast],
+  );
 
   useEffect(() => {
     restoredPageRef.current = false;
@@ -178,7 +263,12 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc }: Props) {
     return () => controller.abort();
   }, [htmlUrl]);
 
-  const entries = useMemo(() => (html ? parseEntries(html) : []), [html]);
+  const entries = useMemo(() => {
+    if (!html) return [];
+    return detectFormat(html) === 'ccfolia'
+      ? parseCcfoliaEntries(html, avatarMap)
+      : parseEntries(html);
+  }, [html, avatarMap]);
   const visibleEntries = useMemo(
     () => (showAside ? entries : entries.filter((entry) => !entry.isAside)),
     [entries, showAside],
