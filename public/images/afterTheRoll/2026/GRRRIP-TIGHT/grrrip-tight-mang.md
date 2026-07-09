@@ -1,5 +1,5 @@
 ---
-title: GRRRIP-TIGHT! (망님)
+title: GRRRIP-TIGHT!
 description: 그립타 플레이 로그 백업본
 date: "2026.07.10"
 tags:
