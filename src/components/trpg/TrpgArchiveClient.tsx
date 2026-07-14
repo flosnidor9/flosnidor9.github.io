@@ -148,7 +148,14 @@ export default function TrpgArchiveClient({ posts, title, description, backHref,
                         <span className={`afterroll-tape ${TAPE_CLASSES[(index + 2) % TAPE_CLASSES.length]}`} />
                         <div className="relative z-[1] flex flex-col gap-[0.8rem] md:flex-row md:items-start md:justify-between md:gap-[1rem]">
                           <div className="min-w-0">
-                            <p className="afterroll-title text-[1.34rem] leading-[1.1] text-[var(--ledger-ink)] md:text-[1.55rem]">{post.title}</p>
+                            <div className="flex flex-wrap items-baseline gap-x-[0.65rem] gap-y-[0.25rem]">
+                              <p className="afterroll-title text-[1.34rem] leading-[1.1] text-[var(--ledger-ink)] md:text-[1.55rem]">{post.title}</p>
+                              {post.date ? (
+                                <span className="afterroll-meta rounded-[0.2rem] border border-[rgba(87,67,48,0.14)] bg-[rgba(255,250,239,0.72)] px-[0.5rem] py-[0.12rem] text-[0.78rem] uppercase tracking-[0.08em] text-[var(--ledger-soft)]">
+                                  {post.date}
+                                </span>
+                              ) : null}
+                            </div>
                             <div className="ledger-paper-rule mt-[0.4rem] w-full max-w-[7rem]" />
                             {post.description ? (
                               <p className="afterroll-body mt-[0.45rem] text-[0.98rem] leading-[1.68] text-[var(--ledger-muted)]">{post.description}</p>

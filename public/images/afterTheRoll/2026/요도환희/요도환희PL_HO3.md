@@ -1,6 +1,7 @@
 ﻿---
-title: 요도환희 PL HO3
-description: 요도환희 플레이 로그 중 HO3 기준으로 보관하는 백업본
+title: 요도환희
+description: "GM: CENTI · PL: Viyam, 김정분, 개미, 바나나"
+date: "2026.02.06"
 tags:
   - 시노비가미
   - PL

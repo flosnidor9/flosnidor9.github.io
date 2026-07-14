@@ -16,6 +16,7 @@ export type TrpgPostMeta = {
   slug: string;
   title: string;
   description: string;
+  date: string;
   tags: string[];
   gmName: string;
   gmIconSrc: string;
@@ -90,6 +91,7 @@ function parsePostMeta(folderSlug: string, fileName: string): TrpgPostMeta | nul
     slug: postSlug,
     title: ensureString(data.title, postSlug),
     description: ensureString(data.description),
+    date: ensureString(data.date),
     tags: ensureArray(data.tags),
     gmName: ensureString(data.gmName),
     gmIconSrc: ensureString(data.gmIconSrc),
@@ -115,7 +117,10 @@ export function getTrpgPosts(folderSlug: string): TrpgPostMeta[] {
     .filter((entry) => entry.isFile() && entry.name.endsWith('.md') && entry.name !== 'content.md')
     .map((entry) => parsePostMeta(folderSlug, entry.name))
     .filter((post): post is TrpgPostMeta => Boolean(post))
-    .sort((a, b) => a.title.localeCompare(b.title, 'ko'));
+    .sort((a, b) => {
+      const dateCompare = b.date.localeCompare(a.date, 'ko');
+      return dateCompare || a.title.localeCompare(b.title, 'ko');
+    });
 }
 
 export function getTrpgPost(folderSlug: string, postSlug: string): TrpgPostMeta | null {
@@ -176,5 +181,8 @@ export function getAllTrpgPosts(): TrpgArchivePostMeta[] {
         scenarioTitle,
       }));
     })
-    .sort((a, b) => a.title.localeCompare(b.title, 'ko'));
+    .sort((a, b) => {
+      const dateCompare = b.date.localeCompare(a.date, 'ko');
+      return dateCompare || a.title.localeCompare(b.title, 'ko');
+    });
 }

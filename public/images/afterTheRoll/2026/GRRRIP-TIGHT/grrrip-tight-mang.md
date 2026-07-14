@@ -1,12 +1,12 @@
 ---
 title: GRRRIP-TIGHT!
-description: 그립타 플레이 로그 백업본
+description: "GM: 바나나 · PL: 망"
 date: "2026.07.10"
 tags:
   - CoC
   - GM
   - 타이만
-gmName: ✒️
+gmName: ✒️ (GM)
 gmIconSrc: ""
 cast:
   - plName: 바나나
