@@ -1,7 +1,7 @@
 ---
 title: GRRRIP-TIGHT!
 description: "GM: 바나나 · PL: 윌순"
-date: "2026.07.14"
+date: "2026.07.09"
 tags:
   - CoC
   - GM

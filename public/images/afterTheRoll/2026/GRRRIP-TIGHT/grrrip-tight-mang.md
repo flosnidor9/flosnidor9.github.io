@@ -1,7 +1,7 @@
 ---
 title: GRRRIP-TIGHT!
 description: "GM: 바나나 · PL: 망"
-date: "2026.07.10"
+date: "2026.06.30"
 tags:
   - CoC
   - GM
