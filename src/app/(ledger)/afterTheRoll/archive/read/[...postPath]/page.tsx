@@ -68,9 +68,16 @@ export default async function TrpgReadPage({ params }: Props) {
             <span>Home</span>
           </Link>
 
-          <h1 className="afterroll-title text-[2.8rem] leading-[0.92] text-[var(--ledger-ink)] md:text-[3.8rem]">
-            {post.title}
-          </h1>
+          <div className="flex flex-wrap items-baseline gap-x-[0.85rem] gap-y-[0.35rem]">
+            <h1 className="afterroll-title text-[2.8rem] leading-[0.92] text-[var(--ledger-ink)] md:text-[3.8rem]">
+              {post.title}
+            </h1>
+            {post.date ? (
+              <span className="afterroll-meta rounded-[0.25rem] border border-[rgba(87,67,48,0.14)] bg-[rgba(255,250,239,0.82)] px-[0.7rem] py-[0.22rem] text-[0.9rem] uppercase tracking-[0.09em] text-[var(--ledger-soft)]">
+                {post.date}
+              </span>
+            ) : null}
+          </div>
           {post.description ? (
             <p className="afterroll-body mt-[0.6rem] max-w-[42rem] text-[1.08rem] leading-[1.65] text-[var(--ledger-muted)]">
               {post.description}
