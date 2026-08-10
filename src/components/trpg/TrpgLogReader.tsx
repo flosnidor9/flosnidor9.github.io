@@ -165,8 +165,12 @@ function parseEntries(html: string): LogEntry[] {
        ((!entry.speaker && !keepsEmptySpeaker) || lastEntry.speaker === resolvedSpeaker) &&
        lastEntry.isAside === entry.isAside &&
        lastEntry.isWhisper === entry.isWhisper;
+    const canMergeMedia =
+      Boolean(lastEntry) &&
+      lastEntry.kind === 'media' &&
+      entry.kind === 'media';
 
-    if (canMerge) {
+    if (canMerge || canMergeMedia) {
       lastEntry.contentHtml = `${lastEntry.contentHtml}<div class="trpg-log-continuation">${entry.contentHtml}</div>`;
       if (!lastEntry.avatarSrc && resolvedAvatar) {
         lastEntry.avatarSrc = resolvedAvatar;
@@ -360,7 +364,7 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc, gmName, cast
             key={entry.id}
             className={
               entry.kind === 'media'
-                ? 'ledger-paper-sheet paper-plain rounded-[0.55rem] p-[0.55rem] md:p-[0.65rem]'
+                ? 'ledger-paper-sheet paper-plain rounded-[0.55rem] p-[0.55rem] text-center md:p-[0.65rem]'
                 : `ledger-paper-sheet paper-memo grid grid-cols-[2.35rem_minmax(0,1fr)] gap-[0.65rem] rounded-[0.55rem] p-[0.55rem] md:grid-cols-[2.6rem_minmax(0,1fr)] md:p-[0.65rem] ${
                     entry.isAside ? 'opacity-75' : ''
                   }`
