@@ -151,7 +151,7 @@ export default function HeroSection({ imagePaths }: Props) {
         </motion.div>
 
         {/* 블러+그레인 오버레이 */}
-        <GrainBlurOverlay normX={parallaxX} normY={parallaxY} />
+        <GrainBlurOverlay />
         
         {/* 자이로 권한 요청 프롬프트 (iOS) */}
         {permissionState === 'unknown' && (

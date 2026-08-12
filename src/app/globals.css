@@ -32,9 +32,6 @@
   --ledger-accent-soft: #c18e58;
   --ledger-green:    #7a8b61;
 
-  /* Eraser Effect */
-  --eraser-radius:   12rem;
-
   /* Animation */
   --duration-slow:   1.2s;
   --duration-medium: 0.6s;
@@ -298,13 +295,6 @@ body.after-roll-theme {
   border-style: dashed;
 }
 
-html.custom-cursor-active,
-html.custom-cursor-active body,
-html.custom-cursor-active body *,
-html.custom-cursor-active body *::before,
-html.custom-cursor-active body *::after {
-  cursor: none !important;
-}
 
 /* ─── Tailwind Theme Extension ───────────────────────────── */
 @theme inline {
