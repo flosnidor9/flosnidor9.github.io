@@ -62,7 +62,12 @@
   }
 }
 
+body.film-fonts {
+  --font-serif: "Playfair Display", Georgia, serif;
+}
+
 body.after-roll-theme {
+  --font-sans: "Noto Sans KR", system-ui, sans-serif;
   background-color: #726e69;
   font-family: var(--font-hand);
   background-image:

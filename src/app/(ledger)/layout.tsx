@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
-import { Noto_Sans_KR } from 'next/font/google';
 import '../globals.css';
 import Providers from '@/components/providers/Providers';
 
@@ -8,12 +7,6 @@ const ongleipKonkon = localFont({
   variable: '--font-hand',
   src: '../fonts/ongleip-konkon.ttf',
   display: 'swap',
-});
-
-const notoSansKr = Noto_Sans_KR({
-  variable: '--font-sans',
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '700'],
 });
 
 export const metadata: Metadata = {
@@ -33,7 +26,12 @@ export default function LedgerLayout({
 }>) {
   return (
     <html lang="ko">
-      <body className={`${ongleipKonkon.variable} ${notoSansKr.variable} after-roll-theme antialiased`}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet" />
+      </head>
+      <body className={`${ongleipKonkon.variable} after-roll-theme antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>

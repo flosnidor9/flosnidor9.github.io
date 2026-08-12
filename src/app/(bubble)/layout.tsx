@@ -1,22 +1,9 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Inter } from "next/font/google";
 import "../globals.css";
 import GNB from "@/components/layout/GNB";
 import PersistentHeroBackground from "@/components/hero/PersistentHeroBackground";
 import { getFavoriteImagePaths } from "@/lib/data/images";
 import Providers from "@/components/providers/Providers";
-
-const cormorant = Cormorant_Garamond({
-  variable: "--font-serif",
-  subsets: ["latin"],
-  weight: ["300", "400", "600", "700"],
-});
-
-const inter = Inter({
-  variable: "--font-sans",
-  subsets: ["latin"],
-  weight: ["300", "400", "500"],
-});
 
 export const metadata: Metadata = {
   title: "Bubble Home | Personal Archive",
@@ -37,7 +24,12 @@ export default function BubbleLayout({
 
   return (
     <html lang="ko">
-      <body className={`${cormorant.variable} ${inter.variable} antialiased`}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+      </head>
+      <body className="antialiased">
         <Providers>
           <PersistentHeroBackground imagePaths={imagePaths} />
           <GNB />

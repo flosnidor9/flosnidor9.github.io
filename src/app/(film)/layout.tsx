@@ -1,19 +1,6 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Inter } from "next/font/google";
 import "../globals.css";
 import Providers from "@/components/providers/Providers";
-
-const playfair = Playfair_Display({
-  variable: "--font-serif",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const inter = Inter({
-  variable: "--font-sans",
-  subsets: ["latin"],
-  weight: ["300", "400", "500"],
-});
 
 export const metadata: Metadata = {
   title: "Film Home | Personal Archive",
@@ -32,7 +19,12 @@ export default function FilmLayout({
 }>) {
   return (
     <html lang="ko">
-      <body className={`${playfair.variable} ${inter.variable} antialiased bg-[var(--film-bg)]`}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+      </head>
+      <body className="film-fonts antialiased bg-[var(--film-bg)]">
         <Providers>
           {children}
         </Providers>
