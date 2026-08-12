@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -17,7 +17,6 @@ interface GoogleCalendarEvent {
   description?: string;
   start: { date?: string; dateTime?: string };
   end: { date?: string; dateTime?: string };
-  location?: string;
 }
 
 interface ExternalEventSlot {
@@ -34,7 +33,6 @@ const EXTERNAL_CALENDAR_IDS = [
 ];
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const HOUR_REM = 3.8;
-const LS_KEY = 'afterroll-event-colors';
 
 const PALETTE = [
   '#d04545', '#d07820', '#b8a010', '#58a028',
@@ -68,71 +66,12 @@ function autoColor(name: string): string {
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0x7fffffff;
   return PALETTE[h % PALETTE.length];
 }
-function resolveColor(name: string, colorMap: Record<string, string>) {
-  const base = colorMap[name] ?? autoColor(name);
+function resolveColor(name: string) {
+  const base = autoColor(name);
   return { base, bg: hexToRgba(base, 0.14) };
 }
 
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'] as const;
-
-// ── 색상환 유틸 ────────────────────────────────────────────────
-function hslToRgb(h: number, s: number, l: number): [number, number, number] {
-  s /= 100; l /= 100;
-  const k = (n: number) => (n + h / 30) % 12;
-  const a = s * Math.min(l, 1 - l);
-  const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-  return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
-}
-
-function rgbToHex(r: number, g: number, b: number) {
-  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
-}
-
-function hexToHue(hex: string): number {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
-  if (d === 0) return 0;
-  let h = 0;
-  if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-  else if (max === g) h = ((b - r) / d + 2) / 6;
-  else h = ((r - g) / d + 4) / 6;
-  return h * 360;
-}
-
-function posToHue(x: number, y: number): number | null {
-  const center = WHEEL_SIZE / 2;
-  const dx = x - center, dy = y - center;
-  if (Math.sqrt(dx * dx + dy * dy) > center - 1) return null;
-  return ((Math.atan2(dy, dx) * 180 / Math.PI) + 360) % 360;
-}
-
-function drawWheel(canvas: HTMLCanvasElement, lightness: number) {
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-  const size = canvas.width;
-  const center = size / 2;
-  const radius = center - 1;
-  const imageData = ctx.createImageData(size, size);
-  const data = imageData.data;
-  for (let py = 0; py < size; py++) {
-    for (let px = 0; px < size; px++) {
-      const dx = px - center, dy = py - center;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const i = (py * size + px) * 4;
-      if (dist <= radius) {
-        const hue = ((Math.atan2(dy, dx) * 180 / Math.PI) + 360) % 360;
-        const sat = (dist / radius) * 100;
-        const [r, g, b] = hslToRgb(hue, sat, lightness);
-        data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255;
-      } else {
-        data[i + 3] = 0;
-      }
-    }
-  }
-  ctx.putImageData(imageData, 0, 0);
-}
 
 // ── 셀 이벤트 병합 정렬 ────────────────────────────────────────
 type CellItem =
@@ -158,85 +97,28 @@ function mergeCellItems(events: GoogleCalendarEvent[], extSlots: ExternalEventSl
   });
 }
 
-// ── 컬러 피커 ──────────────────────────────────────────────────
-interface PickerState { name: string; x: number; y: number }
+// ── 이벤트 상세 팝업 ───────────────────────────────────────────
+interface DetailState { event: GoogleCalendarEvent; x: number; y: number }
 
-const WHEEL_SIZE = 172;
-const PICKER_W = 204;
-const PICKER_H = 310;
+const DETAIL_W = 240;
+const DETAIL_MAX_H = 320;
 
-function ColorPickerContent({
-  picker, colorMap, onSelect, onReset, onClose,
+function EventDetailPanel({
+  detail, onClose,
 }: {
-  picker: PickerState;
-  colorMap: Record<string, string>;
-  onSelect: (name: string, hex: string) => void;
-  onReset: (name: string) => void;
+  detail: DetailState;
   onClose: () => void;
 }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [lightness, setLightness] = useState(45);
-  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
-  const [hoveredHue, setHoveredHue] = useState<number | null>(null);
-  const current = colorMap[picker.name] ?? autoColor(picker.name);
-  const sliderHue = hoveredHue ?? hexToHue(current);
+  const { event, x: cx, y: cy } = detail;
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 800;
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 600;
+  const x = cx + 12 + DETAIL_W > vw ? cx - DETAIL_W - 12 : cx + 12;
+  const y = Math.min(Math.max(cy - DETAIL_MAX_H / 2, 8), vh - DETAIL_MAX_H - 8);
 
-  // 색상환 + 십자선을 함께 그림
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    drawWheel(canvas, lightness);
-    if (!cursorPos) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const { x, y } = cursorPos;
-    const R = 7;
-    // difference blending → 배경색 반전으로 항상 보임
-    ctx.save();
-    ctx.globalCompositeOperation = 'difference';
-    ctx.strokeStyle = 'white';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(x - R - 3, y); ctx.lineTo(x + R + 3, y);
-    ctx.moveTo(x, y - R - 3); ctx.lineTo(x, y + R + 3);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(x, y, R, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-  }, [lightness, cursorPos]);
-
-  function getCanvasXY(e: React.MouseEvent<HTMLCanvasElement>) {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: Math.round((e.clientX - rect.left) * (WHEEL_SIZE / rect.width)),
-      y: Math.round((e.clientY - rect.top) * (WHEEL_SIZE / rect.height)),
-    };
-  }
-
-  function handleWheelClick(e: React.MouseEvent<HTMLCanvasElement>) {
-    const pos = getCanvasXY(e);
-    if (!pos) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    // 휠 데이터는 현재 imageData에서 읽어야 하므로 먼저 색상환만 그리고 읽음
-    drawWheel(canvas, lightness);
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const d = ctx.getImageData(pos.x, pos.y, 1, 1).data;
-    if (d[3] === 0) return;
-    onSelect(picker.name, rgbToHex(d[0], d[1], d[2]));
-    // 클릭 후 십자선 복원
-    setCursorPos(pos);
-  }
-
-  // fixed 오버레이(inset:0) 안에서 absolute로 배치 → transform 간섭 없음
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const x = picker.x + 12 + PICKER_W > vw ? picker.x - PICKER_W - 12 : picker.x + 12;
-  const y = Math.min(Math.max(picker.y - PICKER_H / 2, 8), vh - PICKER_H - 8);
+  const allDay = isAllDay(event);
+  const timeStr = !allDay && event.start.dateTime
+    ? `${fmt(event.start.dateTime)}${event.end.dateTime ? ` – ${fmt(event.end.dateTime)}` : ''}`
+    : '종일';
 
   return (
     <motion.div
@@ -245,65 +127,34 @@ function ColorPickerContent({
       exit={{ opacity: 0, scale: 0.93 }}
       transition={{ duration: 0.14 }}
       onClick={e => e.stopPropagation()}
-      className="ledger-paper-sheet absolute overflow-hidden rounded-[0.9rem] p-[0.9rem] shadow-xl"
-      style={{ left: x, top: y, width: PICKER_W, zIndex: 1 }}
+      className="ledger-paper-sheet absolute overflow-hidden rounded-[0.9rem] p-[1rem] shadow-xl"
+      style={{ left: x, top: y, width: DETAIL_W, zIndex: 1 }}
     >
-      {/* 이름 + 닫기 */}
-      <div className="mb-[0.65rem] flex items-center justify-between gap-[0.5rem]">
-        <p className="afterroll-meta truncate text-[0.76rem] uppercase tracking-[0.1em] text-[var(--ledger-ink)]">
-          {picker.name}
+      {/* 헤더 */}
+      <div className="mb-[0.6rem] flex items-start justify-between gap-[0.5rem]">
+        <p className="afterroll-title text-[1rem] leading-[1.3] text-[var(--ledger-ink)]">
+          {event.summary}
         </p>
-        <button type="button" onClick={onClose}
-          className="afterroll-meta shrink-0 text-[0.9rem] leading-none text-[var(--ledger-soft)] hover:text-[var(--ledger-ink)]">
+        <button
+          type="button"
+          onClick={onClose}
+          className="afterroll-meta shrink-0 text-[1rem] leading-none text-[var(--ledger-soft)] hover:text-[var(--ledger-ink)]"
+        >
           ×
         </button>
       </div>
 
-      {/* 색상환 */}
-      <canvas
-        ref={canvasRef}
-        width={WHEEL_SIZE}
-        height={WHEEL_SIZE}
-        onClick={handleWheelClick}
-        onMouseMove={e => {
-          const pos = getCanvasXY(e);
-          setCursorPos(pos);
-          setHoveredHue(pos ? posToHue(pos.x, pos.y) : null);
-        }}
-        onMouseLeave={() => { setCursorPos(null); setHoveredHue(null); }}
-        className="block rounded-full"
-        style={{ width: WHEEL_SIZE, height: WHEEL_SIZE }}
-      />
+      {/* 시간 */}
+      <p className="afterroll-meta text-[0.78rem] text-[var(--ledger-soft)]">{timeStr}</p>
 
-      {/* 밝기 슬라이더 */}
-      <div className="mt-[0.7rem]" style={{ width: WHEEL_SIZE }}>
-        <p className="afterroll-meta mb-[0.4rem] text-[0.68rem] text-[var(--ledger-soft)]">밝기</p>
-        <input
-          type="range" min={15} max={70} value={lightness}
-          onChange={e => setLightness(Number(e.target.value))}
-          className="color-picker-slider"
-          style={{
-            width: '100%',
-            background: `linear-gradient(to right,
-              hsl(${sliderHue},80%,15%) 0%,
-              hsl(${sliderHue},80%,${lightness}%) ${((lightness - 15) / 55) * 100}%,
-              hsl(${sliderHue},80%,70%) 100%)`,
-          }}
-        />
-      </div>
-
-      {/* 현재 색상 미리보기 */}
-      <div className="mt-[0.6rem] h-[1.6rem] rounded-[0.35rem]" style={{ background: current }} />
-
-      {/* 자동 초기화 */}
-      {colorMap[picker.name] && (
-        <button
-          type="button"
-          onClick={() => { onReset(picker.name); onClose(); }}
-          className="afterroll-meta mt-[0.5rem] w-full rounded-[0.3rem] border border-dashed border-[rgba(87,67,48,0.2)] py-[0.3rem] text-[0.7rem] text-[var(--ledger-soft)] transition-colors hover:border-[rgba(87,67,48,0.4)]"
-        >
-          자동으로 되돌리기
-        </button>
+      {/* 메모 */}
+      {event.description && (
+        <div className="mt-[0.65rem] border-t border-[rgba(87,67,48,0.1)] pt-[0.65rem]">
+          <p className="afterroll-meta mb-[0.3rem] text-[0.68rem] uppercase tracking-[0.1em] text-[var(--ledger-soft)]">메모</p>
+          <p className="afterroll-body whitespace-pre-wrap text-[0.85rem] leading-[1.6] text-[var(--ledger-ink)]">
+            {event.description}
+          </p>
+        </div>
       )}
     </motion.div>
   );
@@ -311,12 +162,11 @@ function ColorPickerContent({
 
 // ── 일별 타임라인 ──────────────────────────────────────────────
 function DailyTimeline({
-  events, day, month, year, colorMap, onOpenPicker, externalSlots,
+  events, day, month, year, onOpenDetail, externalSlots,
 }: {
   events: GoogleCalendarEvent[];
   day: number; month: number; year: number;
-  colorMap: Record<string, string>;
-  onOpenPicker: (name: string, x: number, y: number) => void;
+  onOpenDetail: (event: GoogleCalendarEvent, x: number, y: number) => void;
   externalSlots: ExternalEventSlot[];
 }) {
   const allDay = events.filter(isAllDay);
@@ -361,18 +211,18 @@ function DailyTimeline({
               <p className="afterroll-meta mb-[0.4rem] text-[0.72rem] uppercase tracking-[0.14em] text-[var(--ledger-soft)]">종일</p>
               <div className="flex flex-col gap-[0.3rem]">
                 {allDay.map(event => {
-                  const color = resolveColor(event.summary, colorMap);
+                  const color = resolveColor(event.summary);
                   return (
                     <button
                       key={event.id}
                       type="button"
-                      onClick={e => { e.stopPropagation(); onOpenPicker(event.summary, e.clientX, e.clientY); }}
+                      onClick={e => { e.stopPropagation(); onOpenDetail(event, e.clientX, e.clientY); }}
                       className="w-full rounded-[0.4rem] px-[0.75rem] py-[0.38rem] text-left transition-opacity hover:opacity-80"
                       style={{ background: color.bg, borderLeft: `0.18rem solid ${color.base}` }}
                     >
                       <p className="afterroll-meta text-[0.95rem] text-[var(--ledger-ink)]">{event.summary}</p>
                       {event.description ? (
-                        <p className="afterroll-body mt-[0.15rem] text-[0.8rem] text-[var(--ledger-muted)]">{event.description}</p>
+                        <p className="afterroll-body mt-[0.15rem] line-clamp-1 text-[0.8rem] text-[var(--ledger-muted)]">{event.description}</p>
                       ) : null}
                     </button>
                   );
@@ -415,7 +265,7 @@ function DailyTimeline({
                 ))}
 
                 {timed.map(event => {
-                  const color = resolveColor(event.summary, colorMap);
+                  const color = resolveColor(event.summary);
                   const startMin = toMinutes(event.start.dateTime!);
                   const rawEnd = event.end.dateTime ? toMinutes(event.end.dateTime) : startMin + 60;
                   const endMin = rawEnd <= startMin ? 24 * 60 : rawEnd;
@@ -427,7 +277,7 @@ function DailyTimeline({
                     <button
                       key={event.id}
                       type="button"
-                      onClick={e => { e.stopPropagation(); onOpenPicker(event.summary, e.clientX, e.clientY); }}
+                      onClick={e => { e.stopPropagation(); onOpenDetail(event, e.clientX, e.clientY); }}
                       className="absolute left-[0.2rem] right-[0.2rem] overflow-hidden rounded-[0.45rem] px-[0.65rem] py-[0.3rem] text-left transition-opacity hover:opacity-80"
                       style={{ top: `${topRem}rem`, height: `${heightRem}rem`, background: color.bg, borderLeft: `0.22rem solid ${color.base}` }}
                     >
@@ -440,11 +290,6 @@ function DailyTimeline({
                           {event.end.dateTime ? ` – ${fmt(event.end.dateTime)}` : ''}
                         </p>
                       )}
-                      {!isShort && event.location ? (
-                        <p className="afterroll-meta mt-[0.08rem] truncate text-[0.68rem] text-[var(--ledger-soft)]">
-                          📍 {event.location}
-                        </p>
-                      ) : null}
                     </button>
                   );
                 })}
@@ -494,30 +339,11 @@ export default function CalendarSection() {
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [colorMap, setColorMap] = useState<Record<string, string>>({});
   const [externalDates, setExternalDates] = useState<Map<string, ExternalEventSlot[]>>(new Map());
-  const [picker, setPicker] = useState<PickerState | null>(null);
+  const [detail, setDetail] = useState<DetailState | null>(null);
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(LS_KEY);
-      if (stored) setColorMap(JSON.parse(stored) as Record<string, string>);
-    } catch {}
-  }, []);
-
-  function setEventColor(name: string, hex: string) {
-    const next = { ...colorMap, [name]: hex };
-    setColorMap(next);
-    localStorage.setItem(LS_KEY, JSON.stringify(next));
-  }
-  function resetEventColor(name: string) {
-    const next = { ...colorMap };
-    delete next[name];
-    setColorMap(next);
-    localStorage.setItem(LS_KEY, JSON.stringify(next));
-  }
-  function openPicker(name: string, x: number, y: number) {
-    setPicker({ name, x, y });
+  function openDetail(event: GoogleCalendarEvent, x: number, y: number) {
+    setDetail({ event, x, y });
   }
 
   const year = baseDate.getFullYear();
@@ -717,7 +543,7 @@ export default function CalendarSection() {
                       <div className="mt-[0.25rem] hidden flex-col gap-[0.18rem] opacity-40 md:flex">
                         {ovfItems.slice(0, 3).map((item, i) => {
                           if (item.kind === 'mine') {
-                            const color = resolveColor(item.event.summary, colorMap);
+                            const color = resolveColor(item.event.summary);
                             const timeStr = !isAllDay(item.event) && item.event.start.dateTime ? fmt(item.event.start.dateTime) : '';
                             return (
                               <div key={item.event.id} className="flex min-w-0 items-center gap-[0.22rem] overflow-hidden rounded-[0.25rem] px-[0.3rem] py-[0.1rem]"
@@ -746,7 +572,7 @@ export default function CalendarSection() {
                         <div className="mt-[0.2rem] flex gap-[0.18rem] opacity-40 md:hidden">
                           {ovfItems.slice(0, 5).map((item, i) => {
                             if (item.kind === 'mine') {
-                              const color = resolveColor(item.event.summary, colorMap);
+                              const color = resolveColor(item.event.summary);
                               return <span key={item.event.id} className="h-[0.32rem] w-[0.32rem] rounded-full" style={{ background: color.base }} />;
                             }
                             return <span key={`ext-${i}`} className="h-[0.32rem] w-[0.32rem] rounded-full bg-[rgba(87,67,48,0.35)]" />;
@@ -788,11 +614,11 @@ export default function CalendarSection() {
                     <div className="mt-[0.25rem] hidden flex-col gap-[0.18rem] md:flex">
                       {dayItems.slice(0, 3).map((item, i) => {
                         if (item.kind === 'mine') {
-                          const color = resolveColor(item.event.summary, colorMap);
+                          const color = resolveColor(item.event.summary);
                           const timeStr = !isAllDay(item.event) && item.event.start.dateTime ? fmt(item.event.start.dateTime) : '';
                           return (
                             <button key={item.event.id} type="button"
-                              onClick={e => { e.stopPropagation(); openPicker(item.event.summary, e.clientX, e.clientY); }}
+                              onClick={e => { e.stopPropagation(); openDetail(item.event, e.clientX, e.clientY); }}
                               className="flex min-w-0 cursor-pointer items-center gap-[0.22rem] overflow-hidden rounded-[0.25rem] px-[0.3rem] py-[0.1rem] text-left transition-opacity hover:opacity-75"
                               style={{ background: color.bg, borderLeft: `0.18rem solid ${color.base}` }}>
                               {timeStr && <span className="afterroll-meta shrink-0 text-[0.58rem] leading-none" style={{ color: color.base }}>{timeStr}</span>}
@@ -819,7 +645,7 @@ export default function CalendarSection() {
                       <div className="mt-[0.2rem] flex gap-[0.18rem] md:hidden">
                         {dayItems.slice(0, 5).map((item, i) => {
                           if (item.kind === 'mine') {
-                            const color = resolveColor(item.event.summary, colorMap);
+                            const color = resolveColor(item.event.summary);
                             return <span key={item.event.id} className="h-[0.32rem] w-[0.32rem] rounded-full" style={{ background: color.base }} />;
                           }
                           return <span key={`ext-${i}`} className="h-[0.32rem] w-[0.32rem] rounded-full bg-[rgba(87,67,48,0.3)]" />;
@@ -841,28 +667,24 @@ export default function CalendarSection() {
               day={selectedDay}
               month={month}
               year={year}
-              colorMap={colorMap}
-              onOpenPicker={openPicker}
+              onOpenDetail={openDetail}
               externalSlots={externalDates.get(toDateKey(year, month, selectedDay)) ?? []}
             />
           )}
         </AnimatePresence>
       </div>
 
-      {/* 컬러 피커 — fixed 풀스크린 오버레이 + absolute 피커 */}
+      {/* 이벤트 상세 팝업 */}
       <Portal>
         <AnimatePresence>
-          {picker && (
+          {detail && (
             <div
               style={{ position: 'fixed', inset: 0, zIndex: 9999, cursor: 'default' }}
-              onClick={() => setPicker(null)}
+              onClick={() => setDetail(null)}
             >
-              <ColorPickerContent
-                picker={picker}
-                colorMap={colorMap}
-                onSelect={(name, hex) => setEventColor(name, hex)}
-                onReset={resetEventColor}
-                onClose={() => setPicker(null)}
+              <EventDetailPanel
+                detail={detail}
+                onClose={() => setDetail(null)}
               />
             </div>
           )}
