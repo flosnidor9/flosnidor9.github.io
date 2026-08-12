@@ -1,0 +1,478 @@
+'use client';
+
+import { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  addPlay,
+  updatePlay,
+  updatePlaysOptions,
+  type PlayEntry,
+  type PlayType,
+  type PlayStatus,
+  type PlaysOptions,
+} from '@/lib/data/firebasePlays';
+
+type TitleDates = { startDate: string; endDate: string | null };
+
+interface Props {
+  editTarget: PlayEntry | null;
+  options: PlaysOptions;
+  calendarTitles: string[];
+  titleDatesMap: Map<string, TitleDates>;
+  onClose: () => void;
+}
+
+function formatDate(d: string) {
+  return d.replace(/-/g, '.');
+}
+
+// ── 제목 드롭다운 ──────────────────────────────────────────────
+function TitleField({
+  value,
+  calendarTitles,
+  titleDatesMap,
+  onChange,
+}: {
+  value: string;
+  calendarTitles: string[];
+  titleDatesMap: Map<string, TitleDates>;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const filtered = value
+    ? calendarTitles.filter((t) => t.toLowerCase().includes(value.toLowerCase()))
+    : calendarTitles;
+
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, []);
+
+  return (
+    <div ref={ref}>
+      <label className="afterroll-meta mb-[0.4rem] block text-[0.72rem] uppercase tracking-[0.08em] text-[var(--ledger-soft)]">
+        제목
+      </label>
+      <div className="relative">
+        <input
+          value={value}
+          onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="캘린더에서 선택하거나 직접 입력..."
+          className="w-full afterroll-meta rounded-[0.5rem] border border-[rgba(87,67,48,0.25)] bg-[rgba(255,253,245,0.9)] px-[0.8rem] py-[0.5rem] text-[0.9rem] text-[var(--ledger-ink)] outline-none transition-colors placeholder:text-[var(--ledger-muted)] focus:border-[var(--ledger-accent)]"
+        />
+        <AnimatePresence>
+          {open && filtered.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.12 }}
+              className="absolute left-0 right-0 top-full z-50 mt-[0.2rem] max-h-[13rem] overflow-y-auto rounded-[0.6rem] border border-[rgba(87,67,48,0.18)] bg-[#faf7ef] shadow-lg"
+            >
+              {filtered.map((t) => {
+                const dates = titleDatesMap.get(t);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => { onChange(t); setOpen(false); }}
+                    className="flex w-full items-center justify-between border-b border-[rgba(87,67,48,0.07)] px-[0.9rem] py-[0.5rem] text-left last:border-0 hover:bg-[rgba(127,79,42,0.07)] transition-colors"
+                  >
+                    <span className="afterroll-meta text-[0.85rem] text-[var(--ledger-ink)]">{t}</span>
+                    {dates && (
+                      <span className="afterroll-meta ml-[0.5rem] shrink-0 text-[0.7rem] text-[var(--ledger-muted)]">
+                        {formatDate(dates.startDate)}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+// ── 단일 선택 + 직접 추가 ──────────────────────────────────────
+function SelectWithAdd({
+  label,
+  value,
+  options,
+  onSelect,
+  onAddOption,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onSelect: (v: string) => void;
+  onAddOption: (v: string) => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [newVal, setNewVal] = useState('');
+
+  function commitNew() {
+    const v = newVal.trim();
+    if (v) { onAddOption(v); onSelect(v); }
+    setNewVal('');
+    setAdding(false);
+  }
+
+  return (
+    <div>
+      <label className="afterroll-meta mb-[0.4rem] block text-[0.72rem] uppercase tracking-[0.08em] text-[var(--ledger-soft)]">
+        {label}
+      </label>
+      <div className="flex flex-wrap gap-[0.35rem]">
+        {options.map((opt) => (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onSelect(value === opt ? '' : opt)}
+            className={`rounded-full border px-[0.7rem] py-[0.28rem] text-[0.8rem] transition-all ${
+              value === opt
+                ? 'border-[var(--ledger-accent)] bg-[rgba(127,79,42,0.1)] text-[var(--ledger-accent)]'
+                : 'border-[rgba(87,67,48,0.2)] text-[var(--ledger-muted)] hover:border-[rgba(87,67,48,0.4)] hover:text-[var(--ledger-ink)]'
+            }`}
+          >
+            {opt}
+          </button>
+        ))}
+        {adding ? (
+          <div className="flex items-center gap-[0.3rem]">
+            <input
+              autoFocus
+              value={newVal}
+              onChange={(e) => setNewVal(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); commitNew(); }
+                if (e.key === 'Escape') { setNewVal(''); setAdding(false); }
+              }}
+              className="w-[5.5rem] rounded-full border border-[var(--ledger-accent)] bg-transparent px-[0.6rem] py-[0.26rem] text-[0.8rem] text-[var(--ledger-ink)] outline-none"
+            />
+            <button
+              type="button"
+              onClick={commitNew}
+              className="text-[0.75rem] text-[var(--ledger-accent)] hover:opacity-70"
+            >
+              추가
+            </button>
+            <button
+              type="button"
+              onClick={() => { setNewVal(''); setAdding(false); }}
+              className="text-[0.75rem] text-[var(--ledger-muted)]"
+            >
+              ×
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="rounded-full border border-dashed border-[rgba(87,67,48,0.25)] px-[0.7rem] py-[0.28rem] text-[0.8rem] text-[var(--ledger-muted)] transition-all hover:border-[rgba(87,67,48,0.45)] hover:text-[var(--ledger-ink)]"
+          >
+            +
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── 참여자 복수 선택 + 직접 추가 ──────────────────────────────
+function ParticipantsField({
+  selected,
+  options,
+  onToggle,
+  onAddOption,
+}: {
+  selected: string[];
+  options: string[];
+  onToggle: (p: string) => void;
+  onAddOption: (p: string) => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [newVal, setNewVal] = useState('');
+
+  function commitNew() {
+    const v = newVal.trim();
+    if (v) { onAddOption(v); onToggle(v); }
+    setNewVal('');
+    setAdding(false);
+  }
+
+  return (
+    <div>
+      <label className="afterroll-meta mb-[0.4rem] block text-[0.72rem] uppercase tracking-[0.08em] text-[var(--ledger-soft)]">
+        참여자
+      </label>
+      <div className="flex flex-wrap gap-[0.35rem]">
+        {options.map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => onToggle(p)}
+            className={`rounded-full border px-[0.7rem] py-[0.28rem] text-[0.8rem] transition-all ${
+              selected.includes(p)
+                ? 'border-[var(--ledger-accent)] bg-[rgba(127,79,42,0.1)] text-[var(--ledger-accent)]'
+                : 'border-[rgba(87,67,48,0.2)] text-[var(--ledger-muted)] hover:border-[rgba(87,67,48,0.4)] hover:text-[var(--ledger-ink)]'
+            }`}
+          >
+            {p}
+          </button>
+        ))}
+        {adding ? (
+          <div className="flex items-center gap-[0.3rem]">
+            <input
+              autoFocus
+              value={newVal}
+              onChange={(e) => setNewVal(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); commitNew(); }
+                if (e.key === 'Escape') { setNewVal(''); setAdding(false); }
+              }}
+              className="w-[5.5rem] rounded-full border border-[var(--ledger-accent)] bg-transparent px-[0.6rem] py-[0.26rem] text-[0.8rem] text-[var(--ledger-ink)] outline-none"
+            />
+            <button type="button" onClick={commitNew} className="text-[0.75rem] text-[var(--ledger-accent)] hover:opacity-70">추가</button>
+            <button type="button" onClick={() => { setNewVal(''); setAdding(false); }} className="text-[0.75rem] text-[var(--ledger-muted)]">×</button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="rounded-full border border-dashed border-[rgba(87,67,48,0.25)] px-[0.7rem] py-[0.28rem] text-[0.8rem] text-[var(--ledger-muted)] transition-all hover:border-[rgba(87,67,48,0.45)] hover:text-[var(--ledger-ink)]"
+          >
+            +
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── 메인 폼 ───────────────────────────────────────────────────
+const STATUS_OPTIONS: { value: PlayStatus; label: string }[] = [
+  { value: 'ongoing', label: '현행' },
+  { value: 'completed', label: '완주' },
+  { value: 'dropped', label: '하차' },
+];
+
+export default function PlaysComposer({ editTarget, options, calendarTitles, titleDatesMap, onClose }: Props) {
+  const [title, setTitle] = useState(editTarget?.title ?? '');
+  const [rule, setRule] = useState(editTarget?.rule ?? '');
+  const [playerCount, setPlayerCount] = useState(editTarget?.playerCount ?? '');
+  const [type, setType] = useState<PlayType>(editTarget?.type ?? 'PL');
+  const [participants, setParticipants] = useState<string[]>(editTarget?.participants ?? []);
+  const [status, setStatus] = useState<PlayStatus>(editTarget?.status ?? 'ongoing');
+  const [startDate, setStartDate] = useState(editTarget?.startDate ?? '');
+  const [endDate, setEndDate] = useState(editTarget?.endDate ?? '');
+  const [saving, setSaving] = useState(false);
+  const [localOptions, setLocalOptions] = useState<PlaysOptions>(options);
+
+  function handleTitleChange(v: string) {
+    setTitle(v);
+    const dates = titleDatesMap.get(v);
+    if (dates && !editTarget) {
+      setStartDate(dates.startDate);
+      setEndDate(dates.endDate ?? '');
+    }
+  }
+
+  function addRule(r: string) {
+    if (localOptions.rules.includes(r)) return;
+    const next = { ...localOptions, rules: [...localOptions.rules, r] };
+    setLocalOptions(next);
+    void updatePlaysOptions(next);
+  }
+
+  function addPlayerCount(c: string) {
+    if (localOptions.playerCounts.includes(c)) return;
+    const next = { ...localOptions, playerCounts: [...localOptions.playerCounts, c] };
+    setLocalOptions(next);
+    void updatePlaysOptions(next);
+  }
+
+  function addParticipant(p: string) {
+    if (localOptions.participants.includes(p)) return;
+    const next = { ...localOptions, participants: [...localOptions.participants, p] };
+    setLocalOptions(next);
+    void updatePlaysOptions(next);
+  }
+
+  function toggleParticipant(p: string) {
+    setParticipants((prev) =>
+      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
+    );
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setSaving(true);
+    try {
+      const data = { title: title.trim(), rule, playerCount, type, participants, status, startDate, endDate: endDate || null };
+      if (editTarget) {
+        await updatePlay(editTarget.id, data);
+      } else {
+        await addPlay(data);
+      }
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center p-[1rem]"
+      style={{ background: 'rgba(50,38,25,0.5)', backdropFilter: 'blur(4px)' }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 8 }}
+        transition={{ duration: 0.18 }}
+        className="ledger-paper-sheet paper-memo w-full max-w-[28rem] max-h-[90vh] overflow-y-auto rounded-[1.2rem] px-[1.5rem] py-[1.4rem]"
+      >
+        <div className="mb-[1.2rem] flex items-center justify-between">
+          <h2 className="afterroll-title text-[1.3rem] text-[var(--ledger-ink)]">
+            {editTarget ? '편집' : '새 플레이'}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="afterroll-meta text-[1.3rem] leading-none text-[var(--ledger-muted)] transition-colors hover:text-[var(--ledger-ink)]"
+          >
+            ×
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-[1rem]">
+          <TitleField
+            value={title}
+            calendarTitles={calendarTitles}
+            titleDatesMap={titleDatesMap}
+            onChange={handleTitleChange}
+          />
+
+          {/* 기간 */}
+          <div>
+            <label className="afterroll-meta mb-[0.4rem] block text-[0.72rem] uppercase tracking-[0.08em] text-[var(--ledger-soft)]">
+              기간
+            </label>
+            <div className="flex items-center gap-[0.5rem]">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="flex-1 afterroll-meta rounded-[0.5rem] border border-[rgba(87,67,48,0.25)] bg-[rgba(255,253,245,0.9)] px-[0.7rem] py-[0.45rem] text-[0.85rem] text-[var(--ledger-ink)] outline-none focus:border-[var(--ledger-accent)]"
+              />
+              <span className="afterroll-meta text-[0.78rem] text-[var(--ledger-muted)]">–</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="flex-1 afterroll-meta rounded-[0.5rem] border border-[rgba(87,67,48,0.25)] bg-[rgba(255,253,245,0.9)] px-[0.7rem] py-[0.45rem] text-[0.85rem] text-[var(--ledger-ink)] outline-none focus:border-[var(--ledger-accent)]"
+              />
+            </div>
+          </div>
+
+          {/* 유형 */}
+          <div>
+            <label className="afterroll-meta mb-[0.4rem] block text-[0.72rem] uppercase tracking-[0.08em] text-[var(--ledger-soft)]">
+              유형
+            </label>
+            <div className="flex gap-[0.35rem]">
+              {(['PL', 'GM'] as PlayType[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setType(t)}
+                  className={`rounded-full border px-[1rem] py-[0.28rem] text-[0.85rem] font-medium transition-all ${
+                    type === t
+                      ? 'border-[var(--ledger-accent)] bg-[rgba(127,79,42,0.1)] text-[var(--ledger-accent)]'
+                      : 'border-[rgba(87,67,48,0.2)] text-[var(--ledger-muted)] hover:border-[rgba(87,67,48,0.4)] hover:text-[var(--ledger-ink)]'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <SelectWithAdd
+            label="룰"
+            value={rule}
+            options={localOptions.rules}
+            onSelect={setRule}
+            onAddOption={addRule}
+          />
+
+          <SelectWithAdd
+            label="인원"
+            value={playerCount}
+            options={localOptions.playerCounts}
+            onSelect={setPlayerCount}
+            onAddOption={addPlayerCount}
+          />
+
+          <ParticipantsField
+            selected={participants}
+            options={localOptions.participants}
+            onToggle={toggleParticipant}
+            onAddOption={addParticipant}
+          />
+
+          {/* 상태 */}
+          <div>
+            <label className="afterroll-meta mb-[0.4rem] block text-[0.72rem] uppercase tracking-[0.08em] text-[var(--ledger-soft)]">
+              상태
+            </label>
+            <div className="flex gap-[0.35rem]">
+              {STATUS_OPTIONS.map(({ value: v, label }) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setStatus(v)}
+                  className={`rounded-full border px-[0.8rem] py-[0.28rem] text-[0.82rem] transition-all ${
+                    status === v
+                      ? 'border-[var(--ledger-accent)] bg-[rgba(127,79,42,0.1)] text-[var(--ledger-accent)]'
+                      : 'border-[rgba(87,67,48,0.2)] text-[var(--ledger-muted)] hover:border-[rgba(87,67,48,0.4)] hover:text-[var(--ledger-ink)]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-[0.5rem] border-t border-[rgba(87,67,48,0.1)] pt-[0.8rem]">
+            <button
+              type="button"
+              onClick={onClose}
+              className="afterroll-meta px-[0.9rem] py-[0.38rem] text-[0.82rem] text-[var(--ledger-muted)] transition-colors hover:text-[var(--ledger-ink)]"
+            >
+              취소
+            </button>
+            <button
+              type="submit"
+              disabled={!title.trim() || saving}
+              className="afterroll-meta rounded-[0.5rem] border border-[var(--ledger-accent)] bg-[rgba(127,79,42,0.08)] px-[1.1rem] py-[0.38rem] text-[0.82rem] text-[var(--ledger-accent)] transition-all hover:bg-[rgba(127,79,42,0.16)] disabled:opacity-40"
+            >
+              {saving ? '저장 중...' : editTarget ? '수정' : '추가'}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}

@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 const NAV_ITEMS = [
   { label: 'Home', href: '/afterTheRoll', exact: true },
   { label: 'Logs', href: '/afterTheRoll/logs', exact: false },
+  { label: 'Plays', href: '/afterTheRoll/plays', exact: false },
 ];
 
 export default function LedgerGNB() {
