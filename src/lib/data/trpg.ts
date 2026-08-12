@@ -23,6 +23,7 @@ export type TrpgPostMeta = {
   cast: TrpgCastEntry[];
   htmlPath: string;
   htmlUrl: string;
+  encrypted?: boolean;
 };
 
 export type TrpgArchivePostMeta = TrpgPostMeta & {
@@ -98,6 +99,7 @@ function parsePostMeta(folderSlug: string, fileName: string): TrpgPostMeta | nul
     cast: ensureCast(data.cast),
     htmlPath,
     htmlUrl: toTrpgPublicUrl(folderSlug, htmlPath),
+    encrypted: !!data.locked,
   };
 }
 

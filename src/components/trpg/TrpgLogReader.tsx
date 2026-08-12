@@ -5,7 +5,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { TrpgCastEntry } from '@/lib/data/trpg';
 
 type Props = {
-  htmlUrl: string;
+  htmlUrl?: string;
+  htmlContent?: string;
   fallbackAvatarSrc?: string;
   gmName?: string;
   cast?: TrpgCastEntry[];
@@ -213,8 +214,8 @@ function paginateEntries(entries: LogEntry[]): LogEntry[][] {
   return pages;
 }
 
-export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc, gmName, cast }: Props) {
-  const [html, setHtml] = useState<string | null>(null);
+export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc, gmName, cast }: Props) {
+  const [html, setHtml] = useState<string | null>(htmlContent ?? null);
   const [pageIndex, setPageIndex] = useState(0);
   const [showAside, setShowAside] = useState(true);
   const readerRef = useRef<HTMLElement | null>(null);
@@ -253,6 +254,8 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc, gmName, cast
   }, [htmlUrl]);
 
   useEffect(() => {
+    if (htmlContent !== undefined || !htmlUrl) return;
+
     const controller = new AbortController();
 
     fetch(htmlUrl, { signal: controller.signal })
@@ -265,7 +268,7 @@ export default function TrpgLogReader({ htmlUrl, fallbackAvatarSrc, gmName, cast
       });
 
     return () => controller.abort();
-  }, [htmlUrl]);
+  }, [htmlUrl, htmlContent]);
 
   const entries = useMemo(() => {
     if (!html) return [];

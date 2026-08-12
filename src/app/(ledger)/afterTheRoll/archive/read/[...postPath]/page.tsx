@@ -7,6 +7,7 @@ import {
 } from '@/lib/data/trpg';
 import { fromGallerySegments } from '@/lib/galleryPath';
 import TrpgLogReader from '@/components/trpg/TrpgLogReader';
+import EncryptedTrpgLogReader from '@/components/trpg/EncryptedTrpgLogReader';
 import TrpgCastPanel from '@/components/trpg/TrpgCastPanel';
 
 type Props = {
@@ -101,12 +102,21 @@ export default async function TrpgReadPage({ params }: Props) {
         </div>
 
         <div className="afterroll-read-log-wrap px-[0.2rem] py-[0.2rem] md:px-[0.45rem] md:py-[0.45rem]">
-          <TrpgLogReader
-            htmlUrl={htmlUrl}
-            fallbackAvatarSrc={post.gmIconSrc}
-            gmName={post.gmName}
-            cast={post.cast}
-          />
+          {post.encrypted ? (
+            <EncryptedTrpgLogReader
+              encryptedUrl={post.htmlUrl}
+              fallbackAvatarSrc={post.gmIconSrc}
+              gmName={post.gmName}
+              cast={post.cast}
+            />
+          ) : (
+            <TrpgLogReader
+              htmlUrl={htmlUrl}
+              fallbackAvatarSrc={post.gmIconSrc}
+              gmName={post.gmName}
+              cast={post.cast}
+            />
+          )}
         </div>
       </article>
     </main>

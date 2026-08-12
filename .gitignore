@@ -34,6 +34,15 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*.local
 
+# 로그 비밀번호 원본 (passwords.enc.json 만 커밋할 것)
+passwords.json
+
+# TRPG 원본 로그/이미지 (private Trpg-Logs 저장소에서 빌드 시 복사)
+/public/images/afterTheRoll/
+
+# 빌드 시 자동 생성되는 암호화 파일
+/public/encrypted/
+
 # vercel
 .vercel
 
