@@ -6,7 +6,8 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 
 const NAV_ITEMS = [
-  { label: 'Home', href: '/afterTheRoll' },
+  { label: 'Home', href: '/afterTheRoll', exact: true },
+  { label: 'Logs', href: '/afterTheRoll/logs', exact: false },
 ];
 
 export default function LedgerGNB() {
@@ -16,8 +17,10 @@ export default function LedgerGNB() {
   return (
     <nav className="relative z-50 flex items-center justify-center px-[1rem] py-[0.9rem] md:px-[2rem]">
       <ul className="flex items-center gap-[2.5rem]">
-        {NAV_ITEMS.map(({ label, href }) => {
-          const isActive = pathname === href || pathname.startsWith(`${href}/`);
+        {NAV_ITEMS.map(({ label, href, exact }) => {
+          const isActive = exact
+            ? pathname === href
+            : pathname === href || pathname.startsWith(`${href}/`) || pathname.startsWith('/afterTheRoll/archive');
 
           return (
             <li key={href} className="relative">
