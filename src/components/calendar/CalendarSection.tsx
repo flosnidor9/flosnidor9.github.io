@@ -42,6 +42,10 @@ function toMinutes(dt: string) {
 function fmt(dt: string) {
   return new Date(dt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
+function toDateKey(year: number, month: number, day: number): string {
+  const d = new Date(year, month, day);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 function hexToRgba(hex: string, alpha: number) {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
@@ -447,8 +451,17 @@ export default function CalendarSection() {
     if (!apiKey) { setError('API 키 없음'); setLoading(false); return; }
     setLoading(true);
     setError(null);
-    const timeMin = new Date(year, month, 1).toISOString();
-    const timeMax = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
+    const fDow = new Date(year, month, 1).getDay();
+    const dim = new Date(year, month + 1, 0).getDate();
+    const nextOvf = Math.ceil((fDow + dim) / 7) * 7 - fDow - dim;
+    const timeMin = (fDow > 0
+      ? new Date(year, month - 1, new Date(year, month, 0).getDate() - fDow + 1)
+      : new Date(year, month, 1)
+    ).toISOString();
+    const timeMax = (nextOvf > 0
+      ? new Date(year, month + 1, nextOvf, 23, 59, 59)
+      : new Date(year, month + 1, 0, 23, 59, 59)
+    ).toISOString();
     try {
       const res = await fetch(
         `https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events?key=${apiKey}&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime&maxResults=200`,
@@ -470,30 +483,40 @@ export default function CalendarSection() {
 
   const firstDow = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells: (number | null)[] = [
-    ...Array<null>(firstDow).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ];
-  while (cells.length % 7 !== 0) cells.push(null);
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
 
-  const eventsByDay = new Map<number, GoogleCalendarEvent[]>();
+  type CellData = { day: number; overflow?: 'prev' | 'next' };
+  const cells: CellData[] = [];
+  for (let i = firstDow - 1; i >= 0; i--) {
+    cells.push({ day: daysInPrevMonth - i, overflow: 'prev' });
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push({ day: d });
+  }
+  let nextDay = 1;
+  while (cells.length % 7 !== 0) {
+    cells.push({ day: nextDay++, overflow: 'next' });
+  }
+
+  const eventsByDate = new Map<string, GoogleCalendarEvent[]>();
   for (const event of events) {
-    const parts = getStartDate(event).split('-').map(Number);
-    if (parts.length !== 3) continue;
-    const [ey, em, ed] = parts;
-    if (ey === year && em === month + 1) {
-      const bucket = eventsByDay.get(ed) ?? [];
-      bucket.push(event);
-      eventsByDay.set(ed, bucket);
-    }
+    const dateKey = getStartDate(event);
+    if (!dateKey) continue;
+    const bucket = eventsByDate.get(dateKey) ?? [];
+    bucket.push(event);
+    eventsByDate.set(dateKey, bucket);
   }
 
   const today = new Date();
   const isThisMonth = today.getFullYear() === year && today.getMonth() === month;
   const todayDay = isThisMonth ? today.getDate() : null;
 
-  function prevMonth() { setSelectedDay(null); setBaseDate(new Date(year, month - 1, 1)); }
-  function nextMonth() { setSelectedDay(null); setBaseDate(new Date(year, month + 1, 1)); }
+  function goToMonth(y: number, m: number, d: number | null = null) {
+    setSelectedDay(d);
+    setBaseDate(new Date(y, m, 1));
+  }
+  function prevMonth() { goToMonth(year, month - 1); }
+  function nextMonth() { goToMonth(year, month + 1); }
 
   return (
     <main className="afterroll-desk min-h-screen px-[1.1rem] pb-[4rem] pt-[5rem] text-[var(--ledger-ink)] md:px-[2rem]">
@@ -546,15 +569,68 @@ export default function CalendarSection() {
             </div>
           ) : (
             <div className="relative z-[1] grid grid-cols-7">
-              {cells.map((day, index) => {
-                if (day === null) {
-                  return <div key={`e-${index}`} className="min-h-[5rem] border-b border-r border-[rgba(87,67,48,0.07)] bg-[rgba(245,240,230,0.35)] md:min-h-[7.5rem]" />;
-                }
-                const dayEvents = eventsByDay.get(day) ?? [];
-                const isToday = todayDay === day;
-                const isSelected = selectedDay === day;
+              {cells.map((cell, index) => {
+                const { day, overflow } = cell;
                 const isSun = index % 7 === 0;
                 const isSat = index % 7 === 6;
+
+                if (overflow) {
+                  const ovfDateKey = toDateKey(year, overflow === 'prev' ? month - 1 : month + 1, day);
+                  const ovfEvents = eventsByDate.get(ovfDateKey) ?? [];
+                  return (
+                    <div
+                      key={`${overflow}-${day}`}
+                      onClick={() => overflow === 'prev' ? goToMonth(year, month - 1, day) : goToMonth(year, month + 1, day)}
+                      className="relative min-h-[5rem] cursor-pointer border-b border-r border-[rgba(87,67,48,0.07)] bg-[rgba(245,240,230,0.35)] p-[0.35rem] transition-colors duration-150 hover:bg-[rgba(245,240,230,0.55)] md:min-h-[7.5rem] md:p-[0.55rem]"
+                    >
+                      <span className={`afterroll-meta inline-flex h-[1.45rem] w-[1.45rem] items-center justify-center rounded-full text-[0.78rem] md:text-[0.85rem] ${
+                        isSun ? 'text-[rgba(192,57,43,0.22)]'
+                        : isSat ? 'text-[rgba(127,79,42,0.22)]'
+                        : 'text-[rgba(87,67,48,0.22)]'
+                      }`}>
+                        {day}
+                      </span>
+
+                      {/* 데스크톱: 이벤트 칩 (흐릿하게) */}
+                      <div className="mt-[0.25rem] hidden flex-col gap-[0.18rem] opacity-40 md:flex">
+                        {ovfEvents.slice(0, 3).map(event => {
+                          const color = resolveColor(event.summary, colorMap);
+                          const timeStr = !isAllDay(event) && event.start.dateTime ? fmt(event.start.dateTime) : '';
+                          return (
+                            <div
+                              key={event.id}
+                              className="flex min-w-0 items-center gap-[0.22rem] overflow-hidden rounded-[0.25rem] px-[0.3rem] py-[0.1rem]"
+                              style={{ background: color.bg, borderLeft: `0.18rem solid ${color.base}` }}
+                            >
+                              {timeStr ? (
+                                <span className="afterroll-meta shrink-0 text-[0.58rem] leading-none" style={{ color: color.base }}>{timeStr}</span>
+                              ) : null}
+                              <span className="afterroll-meta truncate text-[0.65rem] leading-[1.3] text-[var(--ledger-ink)]">{event.summary}</span>
+                            </div>
+                          );
+                        })}
+                        {ovfEvents.length > 3 && (
+                          <span className="afterroll-meta text-[0.6rem] text-[var(--ledger-soft)]">+{ovfEvents.length - 3}개</span>
+                        )}
+                      </div>
+
+                      {/* 모바일: 컬러 도트 (흐릿하게) */}
+                      {ovfEvents.length > 0 && (
+                        <div className="mt-[0.2rem] flex gap-[0.18rem] opacity-40 md:hidden">
+                          {ovfEvents.slice(0, 4).map(event => {
+                            const color = resolveColor(event.summary, colorMap);
+                            return <span key={event.id} className="h-[0.32rem] w-[0.32rem] rounded-full" style={{ background: color.base }} />;
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                const dateKey = toDateKey(year, month, day);
+                const dayEvents = eventsByDate.get(dateKey) ?? [];
+                const isToday = todayDay === day;
+                const isSelected = selectedDay === day;
 
                 return (
                   <div
@@ -620,7 +696,7 @@ export default function CalendarSection() {
         <AnimatePresence>
           {selectedDay !== null && (
             <DailyTimeline
-              events={eventsByDay.get(selectedDay) ?? []}
+              events={eventsByDate.get(toDateKey(year, month, selectedDay)) ?? []}
               day={selectedDay}
               month={month}
               year={year}
