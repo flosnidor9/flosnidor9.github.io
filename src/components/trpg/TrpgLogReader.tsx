@@ -1,5 +1,6 @@
 'use client';
 
+import DOMPurify from 'dompurify';
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { TrpgCastEntry } from '@/lib/data/trpg';
@@ -26,6 +27,11 @@ const MAX_PAGE_ENTRIES = 80;
 const MAX_PAGE_WEIGHT = 120000;
 const STANDALONE_UNNAMED_AVATAR_NAME = 'files-d20-io-images-455987480-ALgG0ivc0aW7C7whBPcVnQ-max.png';
 const RELOAD_STORAGE_KEY = 'trpg-log-reader-reload';
+
+function sanitizeHtml(html: string): string {
+  if (typeof window === 'undefined') return html;
+  return DOMPurify.sanitize(html);
+}
 
 function detectFormat(html: string): 'roll20' | 'ccfolia' {
   if (/class="message\s/i.test(html)) return 'roll20';
@@ -70,7 +76,7 @@ function parseCcfoliaEntries(html: string, avatarMap: Record<string, string>): L
     const contentSpan = spans[2];
     if (!contentSpan) continue;
 
-    const contentHtml = contentSpan.innerHTML.trim();
+    const contentHtml = sanitizeHtml(contentSpan.innerHTML.trim());
     if (!contentHtml) continue;
 
     parsed.push({
@@ -137,7 +143,7 @@ function parseEntries(html: string): LogEntry[] {
         element.remove();
       });
 
-      const contentHtml = clone.innerHTML.trim();
+      const contentHtml = sanitizeHtml(clone.innerHTML.trim());
       if (!contentHtml) return null;
 
       return {
