@@ -20,7 +20,18 @@ interface GoogleCalendarEvent {
   location?: string;
 }
 
+interface ExternalEventSlot {
+  allDay: boolean;
+  startDateTime?: string;
+  endDateTime?: string;
+}
+
 const CALENDAR_ID = '848efa2587af083c615b7c3581e818075a6489d1d0ce70c4ac3ef60880d0fbae%40group.calendar.google.com';
+const EXTERNAL_CALENDAR_IDS = [
+  '97lincediini0nmflm951ecbv4@group.calendar.google.com',
+  'snqgnamf250qppbvim02otagjg@group.calendar.google.com',
+  '43vpniivockejo1q72qi5rcro4@group.calendar.google.com',
+];
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const HOUR_REM = 3.8;
 const LS_KEY = 'afterroll-event-colors';
@@ -121,6 +132,30 @@ function drawWheel(canvas: HTMLCanvasElement, lightness: number) {
     }
   }
   ctx.putImageData(imageData, 0, 0);
+}
+
+// ── 셀 이벤트 병합 정렬 ────────────────────────────────────────
+type CellItem =
+  | { kind: 'mine'; event: GoogleCalendarEvent }
+  | { kind: 'ext'; slot: ExternalEventSlot };
+
+function mergeCellItems(events: GoogleCalendarEvent[], extSlots: ExternalEventSlot[]): CellItem[] {
+  const items: CellItem[] = [
+    ...events.map(event => ({ kind: 'mine' as const, event })),
+    ...extSlots.map(slot => ({ kind: 'ext' as const, slot })),
+  ];
+  return items.sort((a, b) => {
+    const aAllDay = a.kind === 'mine' ? isAllDay(a.event) : a.slot.allDay;
+    const bAllDay = b.kind === 'mine' ? isAllDay(b.event) : b.slot.allDay;
+    if (aAllDay !== bAllDay) return aAllDay ? -1 : 1;
+    const aTime = a.kind === 'mine'
+      ? (a.event.start.dateTime ?? a.event.start.date ?? '')
+      : (a.slot.startDateTime ?? '');
+    const bTime = b.kind === 'mine'
+      ? (b.event.start.dateTime ?? b.event.start.date ?? '')
+      : (b.slot.startDateTime ?? '');
+    return aTime.localeCompare(bTime);
+  });
 }
 
 // ── 컬러 피커 ──────────────────────────────────────────────────
@@ -276,19 +311,24 @@ function ColorPickerContent({
 
 // ── 일별 타임라인 ──────────────────────────────────────────────
 function DailyTimeline({
-  events, day, month, year, colorMap, onOpenPicker,
+  events, day, month, year, colorMap, onOpenPicker, externalSlots,
 }: {
   events: GoogleCalendarEvent[];
   day: number; month: number; year: number;
   colorMap: Record<string, string>;
   onOpenPicker: (name: string, x: number, y: number) => void;
+  externalSlots: ExternalEventSlot[];
 }) {
   const allDay = events.filter(isAllDay);
   const timed = events.filter(e => !isAllDay(e));
+  const extAllDay = externalSlots.filter(s => s.allDay);
+  const extTimed = externalSlots.filter(s => !s.allDay && s.startDateTime);
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const totalRem = 24 * HOUR_REM;
   const d = new Date(year, month, day);
   const dayLabel = `${month + 1}월 ${day}일 (${DAY_NAMES[d.getDay()]})`;
+  const hasAnything = events.length > 0 || externalSlots.length > 0;
+  const hasTimeline = timed.length > 0 || extTimed.length > 0;
 
   return (
     <motion.section
@@ -308,7 +348,7 @@ function DailyTimeline({
         </span>
       </div>
 
-      {events.length === 0 ? (
+      {!hasAnything ? (
         <div className="relative z-[1] py-[2.5rem] text-center">
           <p className="afterroll-title text-[1.8rem] text-[rgba(87,67,48,0.18)]">—</p>
           <p className="afterroll-meta mt-[0.35rem] text-[0.85rem] text-[var(--ledger-soft)]">이 날은 일정이 없습니다</p>
@@ -316,7 +356,7 @@ function DailyTimeline({
       ) : (
         <div className="relative z-[1]">
           {/* 종일 이벤트 */}
-          {allDay.length > 0 && (
+          {(allDay.length > 0 || extAllDay.length > 0) && (
             <div className="mb-[1rem] border-b border-[rgba(87,67,48,0.1)] pb-[0.8rem]">
               <p className="afterroll-meta mb-[0.4rem] text-[0.72rem] uppercase tracking-[0.14em] text-[var(--ledger-soft)]">종일</p>
               <div className="flex flex-col gap-[0.3rem]">
@@ -337,12 +377,21 @@ function DailyTimeline({
                     </button>
                   );
                 })}
+                {extAllDay.map((_, i) => (
+                  <div
+                    key={`ext-allday-${i}`}
+                    className="w-full rounded-[0.4rem] px-[0.75rem] py-[0.38rem]"
+                    style={{ background: 'rgba(87,67,48,0.05)', borderLeft: '0.18rem dashed rgba(87,67,48,0.25)' }}
+                  >
+                    <p className="afterroll-meta text-[0.95rem] text-[var(--ledger-soft)]">일정있음</p>
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
           {/* 시간 타임라인 */}
-          {timed.length > 0 && (
+          {hasTimeline && (
             <div className="relative flex gap-[0.75rem]" style={{ height: `${totalRem}rem` }}>
               <div className="relative w-[2.8rem] shrink-0">
                 {hours.map((h, i) => (
@@ -399,6 +448,33 @@ function DailyTimeline({
                     </button>
                   );
                 })}
+
+                {extTimed.map((slot, i) => {
+                  const startMin = toMinutes(slot.startDateTime!);
+                  const rawEnd = slot.endDateTime ? toMinutes(slot.endDateTime) : startMin + 60;
+                  const endMin = rawEnd <= startMin ? 24 * 60 : rawEnd;
+                  const topRem = (startMin / 60) * HOUR_REM;
+                  const heightRem = Math.max(((endMin - startMin) / 60) * HOUR_REM, HOUR_REM * 0.38);
+                  const isShort = heightRem < HOUR_REM * 0.7;
+
+                  return (
+                    <div
+                      key={`ext-${i}`}
+                      className="absolute left-[0.2rem] right-[0.2rem] overflow-hidden rounded-[0.45rem] px-[0.65rem] py-[0.3rem]"
+                      style={{ top: `${topRem}rem`, height: `${heightRem}rem`, background: 'rgba(87,67,48,0.05)', borderLeft: '0.22rem dashed rgba(87,67,48,0.25)' }}
+                    >
+                      <p className="afterroll-title truncate text-[0.88rem] leading-[1.2] text-[var(--ledger-soft)]">
+                        일정있음
+                      </p>
+                      {!isShort && (
+                        <p className="afterroll-meta mt-[0.08rem] text-[0.7rem] text-[rgba(87,67,48,0.4)]">
+                          {fmt(slot.startDateTime!)}
+                          {slot.endDateTime ? ` – ${fmt(slot.endDateTime)}` : ''}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -419,6 +495,7 @@ export default function CalendarSection() {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [colorMap, setColorMap] = useState<Record<string, string>>({});
+  const [externalDates, setExternalDates] = useState<Map<string, ExternalEventSlot[]>>(new Map());
   const [picker, setPicker] = useState<PickerState | null>(null);
 
   useEffect(() => {
@@ -480,6 +557,48 @@ export default function CalendarSection() {
   }, [year, month]);
 
   useEffect(() => { void fetchEvents(); }, [fetchEvents]);
+
+  const fetchExternalEvents = useCallback(async () => {
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_API_KEY;
+    if (!apiKey) return;
+    const fDow = new Date(year, month, 1).getDay();
+    const dim = new Date(year, month + 1, 0).getDate();
+    const nextOvf = Math.ceil((fDow + dim) / 7) * 7 - fDow - dim;
+    const timeMin = (fDow > 0
+      ? new Date(year, month - 1, new Date(year, month, 0).getDate() - fDow + 1)
+      : new Date(year, month, 1)
+    ).toISOString();
+    const timeMax = (nextOvf > 0
+      ? new Date(year, month + 1, nextOvf, 23, 59, 59)
+      : new Date(year, month + 1, 0, 23, 59, 59)
+    ).toISOString();
+    const dateMap = new Map<string, ExternalEventSlot[]>();
+    await Promise.all(EXTERNAL_CALENDAR_IDS.map(async (calId) => {
+      try {
+        const encodedId = encodeURIComponent(calId);
+        const res = await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/${encodedId}/events?key=${apiKey}&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&maxResults=200`,
+        );
+        if (!res.ok) return;
+        const data = await res.json() as { items?: GoogleCalendarEvent[] };
+        for (const event of data.items ?? []) {
+          const dateKey = getStartDate(event);
+          if (!dateKey) continue;
+          const slot: ExternalEventSlot = {
+            allDay: !!event.start.date,
+            startDateTime: event.start.dateTime,
+            endDateTime: event.end.dateTime,
+          };
+          const existing = dateMap.get(dateKey) ?? [];
+          existing.push(slot);
+          dateMap.set(dateKey, existing);
+        }
+      } catch {}
+    }));
+    setExternalDates(new Map(dateMap));
+  }, [year, month]);
+
+  useEffect(() => { void fetchExternalEvents(); }, [fetchExternalEvents]);
 
   const firstDow = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -576,7 +695,10 @@ export default function CalendarSection() {
 
                 if (overflow) {
                   const ovfDateKey = toDateKey(year, overflow === 'prev' ? month - 1 : month + 1, day);
-                  const ovfEvents = eventsByDate.get(ovfDateKey) ?? [];
+                  const ovfItems = mergeCellItems(
+                    eventsByDate.get(ovfDateKey) ?? [],
+                    externalDates.get(ovfDateKey) ?? [],
+                  );
                   return (
                     <div
                       key={`${overflow}-${day}`}
@@ -593,33 +715,41 @@ export default function CalendarSection() {
 
                       {/* 데스크톱: 이벤트 칩 (흐릿하게) */}
                       <div className="mt-[0.25rem] hidden flex-col gap-[0.18rem] opacity-40 md:flex">
-                        {ovfEvents.slice(0, 3).map(event => {
-                          const color = resolveColor(event.summary, colorMap);
-                          const timeStr = !isAllDay(event) && event.start.dateTime ? fmt(event.start.dateTime) : '';
+                        {ovfItems.slice(0, 3).map((item, i) => {
+                          if (item.kind === 'mine') {
+                            const color = resolveColor(item.event.summary, colorMap);
+                            const timeStr = !isAllDay(item.event) && item.event.start.dateTime ? fmt(item.event.start.dateTime) : '';
+                            return (
+                              <div key={item.event.id} className="flex min-w-0 items-center gap-[0.22rem] overflow-hidden rounded-[0.25rem] px-[0.3rem] py-[0.1rem]"
+                                style={{ background: color.bg, borderLeft: `0.18rem solid ${color.base}` }}>
+                                {timeStr && <span className="afterroll-meta shrink-0 text-[0.58rem] leading-none" style={{ color: color.base }}>{timeStr}</span>}
+                                <span className="afterroll-meta truncate text-[0.65rem] leading-[1.3] text-[var(--ledger-ink)]">{item.event.summary}</span>
+                              </div>
+                            );
+                          }
+                          const timeStr = !item.slot.allDay && item.slot.startDateTime ? fmt(item.slot.startDateTime) : '';
                           return (
-                            <div
-                              key={event.id}
-                              className="flex min-w-0 items-center gap-[0.22rem] overflow-hidden rounded-[0.25rem] px-[0.3rem] py-[0.1rem]"
-                              style={{ background: color.bg, borderLeft: `0.18rem solid ${color.base}` }}
-                            >
-                              {timeStr ? (
-                                <span className="afterroll-meta shrink-0 text-[0.58rem] leading-none" style={{ color: color.base }}>{timeStr}</span>
-                              ) : null}
-                              <span className="afterroll-meta truncate text-[0.65rem] leading-[1.3] text-[var(--ledger-ink)]">{event.summary}</span>
+                            <div key={`ext-${i}`} className="flex min-w-0 items-center gap-[0.22rem] overflow-hidden rounded-[0.25rem] px-[0.3rem] py-[0.1rem]"
+                              style={{ background: 'rgba(87,67,48,0.04)', borderLeft: '0.18rem dashed rgba(87,67,48,0.2)' }}>
+                              {timeStr && <span className="afterroll-meta shrink-0 text-[0.58rem] leading-none text-[rgba(87,67,48,0.4)]">{timeStr}</span>}
+                              <span className="afterroll-meta truncate text-[0.65rem] leading-[1.3] text-[var(--ledger-soft)]">일정있음</span>
                             </div>
                           );
                         })}
-                        {ovfEvents.length > 3 && (
-                          <span className="afterroll-meta text-[0.6rem] text-[var(--ledger-soft)]">+{ovfEvents.length - 3}개</span>
+                        {ovfItems.length > 3 && (
+                          <span className="afterroll-meta text-[0.6rem] text-[var(--ledger-soft)]">+{ovfItems.length - 3}개</span>
                         )}
                       </div>
 
                       {/* 모바일: 컬러 도트 (흐릿하게) */}
-                      {ovfEvents.length > 0 && (
+                      {ovfItems.length > 0 && (
                         <div className="mt-[0.2rem] flex gap-[0.18rem] opacity-40 md:hidden">
-                          {ovfEvents.slice(0, 4).map(event => {
-                            const color = resolveColor(event.summary, colorMap);
-                            return <span key={event.id} className="h-[0.32rem] w-[0.32rem] rounded-full" style={{ background: color.base }} />;
+                          {ovfItems.slice(0, 5).map((item, i) => {
+                            if (item.kind === 'mine') {
+                              const color = resolveColor(item.event.summary, colorMap);
+                              return <span key={item.event.id} className="h-[0.32rem] w-[0.32rem] rounded-full" style={{ background: color.base }} />;
+                            }
+                            return <span key={`ext-${i}`} className="h-[0.32rem] w-[0.32rem] rounded-full bg-[rgba(87,67,48,0.35)]" />;
                           })}
                         </div>
                       )}
@@ -628,7 +758,10 @@ export default function CalendarSection() {
                 }
 
                 const dateKey = toDateKey(year, month, day);
-                const dayEvents = eventsByDate.get(dateKey) ?? [];
+                const dayItems = mergeCellItems(
+                  eventsByDate.get(dateKey) ?? [],
+                  externalDates.get(dateKey) ?? [],
+                );
                 const isToday = todayDay === day;
                 const isSelected = selectedDay === day;
 
@@ -653,35 +786,43 @@ export default function CalendarSection() {
 
                     {/* 데스크톱: 이벤트 칩 */}
                     <div className="mt-[0.25rem] hidden flex-col gap-[0.18rem] md:flex">
-                      {dayEvents.slice(0, 3).map(event => {
-                        const color = resolveColor(event.summary, colorMap);
-                        const timeStr = !isAllDay(event) && event.start.dateTime ? fmt(event.start.dateTime) : '';
+                      {dayItems.slice(0, 3).map((item, i) => {
+                        if (item.kind === 'mine') {
+                          const color = resolveColor(item.event.summary, colorMap);
+                          const timeStr = !isAllDay(item.event) && item.event.start.dateTime ? fmt(item.event.start.dateTime) : '';
+                          return (
+                            <button key={item.event.id} type="button"
+                              onClick={e => { e.stopPropagation(); openPicker(item.event.summary, e.clientX, e.clientY); }}
+                              className="flex min-w-0 cursor-pointer items-center gap-[0.22rem] overflow-hidden rounded-[0.25rem] px-[0.3rem] py-[0.1rem] text-left transition-opacity hover:opacity-75"
+                              style={{ background: color.bg, borderLeft: `0.18rem solid ${color.base}` }}>
+                              {timeStr && <span className="afterroll-meta shrink-0 text-[0.58rem] leading-none" style={{ color: color.base }}>{timeStr}</span>}
+                              <span className="afterroll-meta truncate text-[0.65rem] leading-[1.3] text-[var(--ledger-ink)]">{item.event.summary}</span>
+                            </button>
+                          );
+                        }
+                        const timeStr = !item.slot.allDay && item.slot.startDateTime ? fmt(item.slot.startDateTime) : '';
                         return (
-                          <button
-                            key={event.id}
-                            type="button"
-                            onClick={e => { e.stopPropagation(); openPicker(event.summary, e.clientX, e.clientY); }}
-                            className="flex min-w-0 cursor-pointer items-center gap-[0.22rem] overflow-hidden rounded-[0.25rem] px-[0.3rem] py-[0.1rem] text-left transition-opacity hover:opacity-75"
-                            style={{ background: color.bg, borderLeft: `0.18rem solid ${color.base}` }}
-                          >
-                            {timeStr ? (
-                              <span className="afterroll-meta shrink-0 text-[0.58rem] leading-none" style={{ color: color.base }}>{timeStr}</span>
-                            ) : null}
-                            <span className="afterroll-meta truncate text-[0.65rem] leading-[1.3] text-[var(--ledger-ink)]">{event.summary}</span>
-                          </button>
+                          <div key={`ext-${i}`} className="flex min-w-0 items-center gap-[0.22rem] overflow-hidden rounded-[0.25rem] px-[0.3rem] py-[0.1rem]"
+                            style={{ background: 'rgba(87,67,48,0.05)', borderLeft: '0.18rem dashed rgba(87,67,48,0.22)' }}>
+                            {timeStr && <span className="afterroll-meta shrink-0 text-[0.58rem] leading-none text-[rgba(87,67,48,0.4)]">{timeStr}</span>}
+                            <span className="afterroll-meta truncate text-[0.65rem] leading-[1.3] text-[var(--ledger-soft)]">일정있음</span>
+                          </div>
                         );
                       })}
-                      {dayEvents.length > 3 && (
-                        <span className="afterroll-meta text-[0.6rem] text-[var(--ledger-soft)]">+{dayEvents.length - 3}개</span>
+                      {dayItems.length > 3 && (
+                        <span className="afterroll-meta text-[0.6rem] text-[var(--ledger-soft)]">+{dayItems.length - 3}개</span>
                       )}
                     </div>
 
                     {/* 모바일: 컬러 도트 */}
-                    {dayEvents.length > 0 && (
+                    {dayItems.length > 0 && (
                       <div className="mt-[0.2rem] flex gap-[0.18rem] md:hidden">
-                        {dayEvents.slice(0, 4).map(event => {
-                          const color = resolveColor(event.summary, colorMap);
-                          return <span key={event.id} className="h-[0.32rem] w-[0.32rem] rounded-full" style={{ background: color.base }} />;
+                        {dayItems.slice(0, 5).map((item, i) => {
+                          if (item.kind === 'mine') {
+                            const color = resolveColor(item.event.summary, colorMap);
+                            return <span key={item.event.id} className="h-[0.32rem] w-[0.32rem] rounded-full" style={{ background: color.base }} />;
+                          }
+                          return <span key={`ext-${i}`} className="h-[0.32rem] w-[0.32rem] rounded-full bg-[rgba(87,67,48,0.3)]" />;
                         })}
                       </div>
                     )}
@@ -702,6 +843,7 @@ export default function CalendarSection() {
               year={year}
               colorMap={colorMap}
               onOpenPicker={openPicker}
+              externalSlots={externalDates.get(toDateKey(year, month, selectedDay)) ?? []}
             />
           )}
         </AnimatePresence>
