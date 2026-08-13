@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, Fragment } from 'react';
+import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
@@ -166,18 +166,22 @@ export default function PlaysSection() {
     return () => { u1(); u2(); };
   }, []);
 
+  const optionsRef = useRef(options);
+  useEffect(() => { optionsRef.current = options; }, [options]);
+
   useEffect(() => {
     if (playsLoading) return;
+    const cur = optionsRef.current;
     const usedRules = new Set(plays.map((p) => p.rule).filter(Boolean));
     const usedPlayerCounts = new Set(plays.map((p) => p.playerCount).filter(Boolean));
-    const usedParticipants = new Set(plays.flatMap((p) => p.participants));
-    const cleanedRules = options.rules.filter((r) => usedRules.has(r));
-    const cleanedPlayerCounts = options.playerCounts.filter((c) => usedPlayerCounts.has(c));
-    const cleanedParticipants = options.participants.filter((p) => usedParticipants.has(p));
+    const usedParticipants = new Set(plays.flatMap((p) => p.participants ?? []));
+    const cleanedRules = cur.rules.filter((r) => usedRules.has(r));
+    const cleanedPlayerCounts = cur.playerCounts.filter((c) => usedPlayerCounts.has(c));
+    const cleanedParticipants = cur.participants.filter((p) => usedParticipants.has(p));
     const changed =
-      cleanedRules.length !== options.rules.length ||
-      cleanedPlayerCounts.length !== options.playerCounts.length ||
-      cleanedParticipants.length !== options.participants.length;
+      cleanedRules.length !== cur.rules.length ||
+      cleanedPlayerCounts.length !== cur.playerCounts.length ||
+      cleanedParticipants.length !== cur.participants.length;
     if (changed) {
       void updatePlaysOptions({
         rules: cleanedRules,
@@ -185,7 +189,7 @@ export default function PlaysSection() {
         participants: cleanedParticipants,
       });
     }
-  }, [plays, options, playsLoading]);
+  }, [plays, playsLoading]);
 
   useEffect(() => {
     async function fetchAll() {
@@ -243,19 +247,30 @@ export default function PlaysSection() {
   }, [plays, titleDatesMap]);
 
   const filteredPlays = useMemo(() => {
-    return plays.filter((p) => {
-      if (filterStatus !== 'all' && p.status !== filterStatus) return false;
-      if (filterType !== 'all' && p.type !== filterType) return false;
-      if (filterRule !== 'all' && p.rule !== filterRule) return false;
-      if (filterPlayerCount !== 'all' && p.playerCount !== filterPlayerCount) return false;
-      if (filterTitleSearch && !p.title.toLowerCase().includes(filterTitleSearch.toLowerCase()))
-        return false;
-      if (filterStartYear !== 'all') {
-        const dates = getEntryDates(p, titleDatesMap.get(p.title));
-        if (!dates || dates.startDate.slice(0, 4) !== filterStartYear) return false;
-      }
-      return true;
-    });
+    return plays
+      .filter((p) => {
+        if (filterStatus !== 'all' && p.status !== filterStatus) return false;
+        if (filterType !== 'all' && p.type !== filterType) return false;
+        if (filterRule !== 'all' && p.rule !== filterRule) return false;
+        if (filterPlayerCount !== 'all' && p.playerCount !== filterPlayerCount) return false;
+        if (filterTitleSearch && !p.title.toLowerCase().includes(filterTitleSearch.toLowerCase()))
+          return false;
+        if (filterStartYear !== 'all') {
+          const dates = getEntryDates(p, titleDatesMap.get(p.title));
+          if (!dates || dates.startDate.slice(0, 4) !== filterStartYear) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const aOngoing = a.status === 'ongoing';
+        const bOngoing = b.status === 'ongoing';
+        if (aOngoing !== bOngoing) return aOngoing ? -1 : 1;
+        const aDates = getEntryDates(a, titleDatesMap.get(a.title));
+        const bDates = getEntryDates(b, titleDatesMap.get(b.title));
+        const aEnd = aDates ? (aDates.endDate ?? aDates.startDate) : '';
+        const bEnd = bDates ? (bDates.endDate ?? bDates.startDate) : '';
+        return bEnd.localeCompare(aEnd);
+      });
   }, [plays, filterStatus, filterType, filterRule, filterPlayerCount, filterTitleSearch, filterStartYear, titleDatesMap]);
 
   function openFilter(col: string, e: React.MouseEvent<HTMLButtonElement>) {
