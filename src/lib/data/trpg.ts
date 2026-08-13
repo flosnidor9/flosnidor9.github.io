@@ -24,6 +24,7 @@ export type TrpgPostMeta = {
   htmlPath: string;
   htmlUrl: string;
   encrypted?: boolean;
+  mainChannels?: string[];
 };
 
 export type TrpgArchivePostMeta = TrpgPostMeta & {
@@ -100,6 +101,7 @@ function parsePostMeta(folderSlug: string, fileName: string): TrpgPostMeta | nul
     htmlPath,
     htmlUrl: toTrpgPublicUrl(folderSlug, htmlPath),
     encrypted: !!data.locked,
+    mainChannels: ensureArray(data.mainChannels).length > 0 ? ensureArray(data.mainChannels) : undefined,
   };
 }
 

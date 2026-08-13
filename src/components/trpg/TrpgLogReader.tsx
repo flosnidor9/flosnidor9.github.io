@@ -11,6 +11,7 @@ type Props = {
   fallbackAvatarSrc?: string;
   gmName?: string;
   cast?: TrpgCastEntry[];
+  mainChannels?: string[];
 };
 
 type LogEntry = {
@@ -56,7 +57,7 @@ function buildAvatarMap(
   return map;
 }
 
-function parseCcfoliaEntries(html: string, avatarMap: Record<string, string>): LogEntry[] {
+function parseCcfoliaEntries(html: string, avatarMap: Record<string, string>, mainChannels: string[]): LogEntry[] {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<html><body>${html}</body></html>`, 'text/html');
   const paragraphs = Array.from(doc.querySelectorAll('body > p[style]'));
@@ -84,7 +85,7 @@ function parseCcfoliaEntries(html: string, avatarMap: Record<string, string>): L
       speaker,
       avatarSrc: avatarMap[speaker] ?? null,
       contentHtml,
-      isAside: channel !== 'main' && channel !== 'pc1' && channel !== 'pc2',
+      isAside: !mainChannels.includes(channel),
       isWhisper: false,
       kind: 'chat',
     });
@@ -220,7 +221,7 @@ function paginateEntries(entries: LogEntry[]): LogEntry[][] {
   return pages;
 }
 
-export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc, gmName, cast }: Props) {
+export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc, gmName, cast, mainChannels = ['main'] }: Props) {
   const [html, setHtml] = useState<string | null>(htmlContent ?? null);
   const [pageIndex, setPageIndex] = useState(0);
   const [showAside, setShowAside] = useState(true);
@@ -279,7 +280,7 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
   const entries = useMemo(() => {
     if (!html) return [];
     return detectFormat(html) === 'ccfolia'
-      ? parseCcfoliaEntries(html, avatarMap)
+      ? parseCcfoliaEntries(html, avatarMap, mainChannels)
       : parseEntries(html);
   }, [html, avatarMap]);
   const visibleEntries = useMemo(

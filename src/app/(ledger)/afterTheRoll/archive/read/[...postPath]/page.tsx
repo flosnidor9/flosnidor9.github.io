@@ -108,6 +108,7 @@ export default async function TrpgReadPage({ params }: Props) {
               fallbackAvatarSrc={post.gmIconSrc}
               gmName={post.gmName}
               cast={post.cast}
+              mainChannels={post.mainChannels}
             />
           ) : (
             <TrpgLogReader
@@ -115,6 +116,7 @@ export default async function TrpgReadPage({ params }: Props) {
               fallbackAvatarSrc={post.gmIconSrc}
               gmName={post.gmName}
               cast={post.cast}
+              mainChannels={post.mainChannels}
             />
           )}
         </div>
