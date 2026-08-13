@@ -84,7 +84,7 @@ function parseCcfoliaEntries(html: string, avatarMap: Record<string, string>): L
       speaker,
       avatarSrc: avatarMap[speaker] ?? null,
       contentHtml,
-      isAside: channel === 'other',
+      isAside: channel !== 'main' && channel !== 'pc1' && channel !== 'pc2',
       isWhisper: false,
       kind: 'chat',
     });
