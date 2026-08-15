@@ -359,7 +359,7 @@ export default function PlaysSection() {
           <button className={optCls(filterPlayerCount === 'all')} onClick={() => { setFilterPlayerCount('all'); closeFilter(); }}>전체</button>
           {uniquePlayerCounts.length > 0 && divEl}
           {uniquePlayerCounts.map((c) => (
-            <button key={c} className={optCls(filterPlayerCount === c)} onClick={() => { setFilterPlayerCount(c); closeFilter(); }}>{c}인</button>
+            <button key={c} className={optCls(filterPlayerCount === c)} onClick={() => { setFilterPlayerCount(c); closeFilter(); }}>{c}</button>
           ))}
         </div>
       );
@@ -500,7 +500,7 @@ export default function PlaysSection() {
                               )}
                             </span>
                           </td>
-                          <td className={TD}>{entry.playerCount ? `${entry.playerCount}인` : '—'}</td>
+                          <td className={TD}>{entry.playerCount ? `${entry.playerCount}` : '—'}</td>
                           <td className={TD}>{entry.type}</td>
                           <td className={TD}>
                             <span className={`rounded-full border px-[0.45rem] py-[0.1rem] text-[0.67rem] ${STATUS_STYLE[entry.status]}`}>
