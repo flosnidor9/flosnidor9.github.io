@@ -119,7 +119,7 @@ export default function TrpgCastPanel({ gmName, gmIconSrc, cast }: Props) {
                     alt={card.primaryLabel}
                     width={96}
                     height={96}
-                    className="h-[6rem] w-[6rem] rounded-[0.4rem] border border-[rgba(87,67,48,0.18)] object-cover p-[0.14rem] shadow-[0_0.2rem_0.7rem_rgba(87,67,48,0.08)]"
+                    className="h-[6rem] w-[6rem] rounded-[0.4rem] border border-[rgba(87,67,48,0.18)] object-cover object-top p-[0.14rem] shadow-[0_0.2rem_0.7rem_rgba(87,67,48,0.08)]"
                   />
                 ) : (
                   <div
@@ -183,7 +183,7 @@ export default function TrpgCastPanel({ gmName, gmIconSrc, cast }: Props) {
                     alt={activePreview.card.primaryLabel}
                     width={240}
                     height={240}
-                    className="h-[min(15rem,58vw)] w-[min(15rem,58vw)] rounded-[0.75rem] border border-[rgba(87,67,48,0.18)] object-cover p-[0.16rem] shadow-[0_0.4rem_1.4rem_rgba(87,67,48,0.12)]"
+                    className="h-[min(15rem,58vw)] w-[min(15rem,58vw)] rounded-[0.75rem] border border-[rgba(87,67,48,0.18)] object-cover object-top p-[0.16rem] shadow-[0_0.4rem_1.4rem_rgba(87,67,48,0.12)]"
                     priority
                   />
                 ) : (

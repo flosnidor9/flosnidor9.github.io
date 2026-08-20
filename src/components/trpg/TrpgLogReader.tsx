@@ -34,9 +34,57 @@ function sanitizeHtml(html: string): string {
   return DOMPurify.sanitize(html);
 }
 
-function detectFormat(html: string): 'roll20' | 'ccfolia' {
+function detectFormat(html: string): 'roll20' | 'ccfolia' | 'cca' {
+  if (/class="cca-wrap"/.test(html)) return 'cca';
   if (/class="message\s/i.test(html)) return 'roll20';
   return 'ccfolia';
+}
+
+function parseCcaEntries(html: string, avatarMap: Record<string, string>): LogEntry[] {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<html><body>${html}</body></html>`, 'text/html');
+  const articles = Array.from(doc.querySelectorAll('article.row'));
+  const entries: LogEntry[] = [];
+
+  for (let i = 0; i < articles.length; i++) {
+    const article = articles[i];
+    const isAside = article.closest('details.fold') !== null;
+
+    if (article.classList.contains('dice-result-row')) {
+      const speaker = article.querySelector('.dice-result-card b')?.textContent?.trim() ?? '';
+      const diceBox = article.querySelector('.dice-roll-box');
+      if (!diceBox) continue;
+      entries.push({
+        id: `cca-${i}`,
+        speaker,
+        avatarSrc: avatarMap[speaker] ?? null,
+        contentHtml: sanitizeHtml(diceBox.outerHTML),
+        isAside,
+        isWhisper: false,
+        kind: 'chat',
+      });
+      continue;
+    }
+
+    const speaker = article.querySelector('.copy header b')?.textContent?.trim() ?? '';
+    const contentDiv = article.querySelector('.copy > div');
+    if (!contentDiv) continue;
+    const contentHtml = sanitizeHtml(contentDiv.innerHTML.trim());
+    if (!contentHtml) continue;
+    const avatarSrc = article.querySelector('.portrait img')?.getAttribute('src') ?? avatarMap[speaker] ?? null;
+
+    entries.push({
+      id: `cca-${i}`,
+      speaker,
+      avatarSrc,
+      contentHtml,
+      isAside,
+      isWhisper: false,
+      kind: 'chat',
+    });
+  }
+
+  return entries;
 }
 
 function buildAvatarMap(
@@ -279,10 +327,11 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
 
   const entries = useMemo(() => {
     if (!html) return [];
-    return detectFormat(html) === 'ccfolia'
-      ? parseCcfoliaEntries(html, avatarMap, mainChannels)
-      : parseEntries(html);
-  }, [html, avatarMap]);
+    const format = detectFormat(html);
+    if (format === 'cca') return parseCcaEntries(html, avatarMap);
+    if (format === 'ccfolia') return parseCcfoliaEntries(html, avatarMap, mainChannels);
+    return parseEntries(html);
+  }, [html, avatarMap, mainChannels]);
   const visibleEntries = useMemo(
     () => (showAside ? entries : entries.filter((entry) => !entry.isAside)),
     [entries, showAside],
