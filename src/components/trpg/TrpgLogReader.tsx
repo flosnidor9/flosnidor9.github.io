@@ -50,6 +50,23 @@ function parseCcaEntries(html: string, avatarMap: Record<string, string>): LogEn
     const article = articles[i];
     const isAside = article.closest('details.fold') !== null;
 
+    if (article.classList.contains('narrator')) {
+      const narratorText = article.querySelector('.narrator-text');
+      if (!narratorText) continue;
+      const contentHtml = sanitizeHtml(narratorText.innerHTML.trim());
+      if (!contentHtml) continue;
+      entries.push({
+        id: `cca-${i}`,
+        speaker: '',
+        avatarSrc: null,
+        contentHtml,
+        isAside,
+        isWhisper: false,
+        kind: 'media',
+      });
+      continue;
+    }
+
     if (article.classList.contains('dice-result-row')) {
       const speaker = article.querySelector('.dice-result-card b')?.textContent?.trim() ?? '';
       const diceBox = article.querySelector('.dice-roll-box');
