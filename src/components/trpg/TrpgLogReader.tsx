@@ -28,6 +28,8 @@ const MAX_PAGE_ENTRIES = 80;
 const MAX_PAGE_WEIGHT = 120000;
 const STANDALONE_UNNAMED_AVATAR_NAME = 'files-d20-io-images-455987480-ALgG0ivc0aW7C7whBPcVnQ-max.png';
 const RELOAD_STORAGE_KEY = 'trpg-log-reader-reload';
+const PORTRAIT_CROP_RATIO = 1.15;
+const EMPTY_LOG_ENTRIES: LogEntry[] = [];
 
 function sanitizeHtml(html: string): string {
   if (typeof window === 'undefined') return html;
@@ -286,6 +288,17 @@ function paginateEntries(entries: LogEntry[]): LogEntry[][] {
   return pages;
 }
 
+function wrapPortraitLogImage(img: HTMLImageElement) {
+  if (img.closest('.trpg-portrait-frame')) return;
+  if (!img.naturalWidth || !img.naturalHeight) return;
+  if (img.naturalHeight / img.naturalWidth < PORTRAIT_CROP_RATIO) return;
+
+  const frame = document.createElement('span');
+  frame.className = 'trpg-portrait-frame';
+  img.parentNode?.insertBefore(frame, img);
+  frame.appendChild(img);
+}
+
 export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc, gmName, cast, mainChannels = ['main'] }: Props) {
   const [html, setHtml] = useState<string | null>(htmlContent ?? null);
   const [pageIndex, setPageIndex] = useState(0);
@@ -302,11 +315,19 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
   useEffect(() => {
     restoredPageRef.current = false;
     shouldScrollToReaderRef.current = false;
+    let cancelled = false;
+    const restorePageIndex = (nextPageIndex: number) => {
+      queueMicrotask(() => {
+        if (!cancelled) setPageIndex(nextPageIndex);
+      });
+    };
 
     const savedReloadState = window.sessionStorage.getItem(RELOAD_STORAGE_KEY);
     if (!savedReloadState) {
-      setPageIndex(0);
-      return;
+      restorePageIndex(0);
+      return () => {
+        cancelled = true;
+      };
     }
 
     window.sessionStorage.removeItem(RELOAD_STORAGE_KEY);
@@ -322,7 +343,11 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
       parsedPageIndex = Number.NaN;
     }
 
-    setPageIndex(Number.isNaN(parsedPageIndex) ? 0 : Math.max(0, parsedPageIndex));
+    restorePageIndex(Number.isNaN(parsedPageIndex) ? 0 : Math.max(0, parsedPageIndex));
+
+    return () => {
+      cancelled = true;
+    };
   }, [htmlUrl]);
 
   useEffect(() => {
@@ -355,7 +380,7 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
   );
   const pages = useMemo(() => paginateEntries(visibleEntries), [visibleEntries]);
   const effectivePageIndex = Math.min(pageIndex, Math.max(0, pages.length - 1));
-  const currentPage = pages[effectivePageIndex] ?? [];
+  const currentPage = useMemo(() => pages[effectivePageIndex] ?? EMPTY_LOG_ENTRIES, [effectivePageIndex, pages]);
 
   useEffect(() => {
     if (!restoredPageRef.current) {
@@ -387,6 +412,31 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
     shouldScrollToReaderRef.current = false;
     readerRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }, [effectivePageIndex]);
+
+  useEffect(() => {
+    const reader = readerRef.current;
+    if (!reader) return;
+
+    const images = Array.from(
+      reader.querySelectorAll<HTMLImageElement>('.trpg-entry-content img, .trpg-media-bubble img'),
+    );
+    const cleanups: Array<() => void> = [];
+
+    for (const img of images) {
+      if (img.complete) {
+        wrapPortraitLogImage(img);
+        continue;
+      }
+
+      const handleLoad = () => wrapPortraitLogImage(img);
+      img.addEventListener('load', handleLoad, { once: true });
+      cleanups.push(() => img.removeEventListener('load', handleLoad));
+    }
+
+    return () => {
+      for (const cleanup of cleanups) cleanup();
+    };
+  }, [currentPage, effectivePageIndex]);
 
   const moveToPage = (nextPageIndex: number) => {
     shouldScrollToReaderRef.current = true;
@@ -441,7 +491,7 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
             className={
               entry.kind === 'media'
                 ? 'ledger-paper-sheet paper-plain rounded-[0.55rem] p-[0.55rem] text-center md:p-[0.65rem]'
-                : `ledger-paper-sheet paper-memo grid grid-cols-[2.35rem_minmax(0,1fr)] gap-[0.65rem] rounded-[0.55rem] p-[0.55rem] md:grid-cols-[2.6rem_minmax(0,1fr)] md:p-[0.65rem] ${
+                : `ledger-paper-sheet paper-memo grid grid-cols-[3.75rem_minmax(0,1fr)] gap-[0.65rem] rounded-[0.55rem] p-[0.55rem] md:grid-cols-[4.1rem_minmax(0,1fr)] md:p-[0.65rem] ${
                     entry.isAside ? 'opacity-75' : ''
                   }`
             }
@@ -457,15 +507,17 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
               <>
                 <div className="relative z-[1] flex flex-col items-center justify-start pt-[0.1rem]">
                   {entry.avatarSrc || fallbackAvatarSrc ? (
-                    <Image
-                      src={entry.avatarSrc || fallbackAvatarSrc || ''}
-                      alt={entry.speaker || 'Narration'}
-                      width={41}
-                      height={41}
-                      className="h-[2.35rem] w-[2.35rem] rounded-[0.2rem] border border-[rgba(87,67,48,0.18)] object-cover p-[0.12rem] md:h-[2.55rem] md:w-[2.55rem]"
-                    />
+                    <div className="h-[3.75rem] w-[3.75rem] overflow-hidden rounded-[0.2rem] border border-[rgba(87,67,48,0.18)] p-[0.12rem] md:h-[4.1rem] md:w-[4.1rem]">
+                      <Image
+                        src={entry.avatarSrc || fallbackAvatarSrc || ''}
+                        alt={entry.speaker || 'Narration'}
+                        width={66}
+                        height={66}
+                        className="h-full w-full scale-[1.08] rounded-[0.12rem] object-cover"
+                      />
+                    </div>
                   ) : (
-                    <div className="flex h-[2.35rem] w-[2.35rem] items-center justify-center rounded-[0.2rem] border border-[rgba(87,67,48,0.18)] text-[0.46rem] uppercase tracking-[0.08em] text-black/35 md:h-[2.55rem] md:w-[2.55rem]">
+                    <div className="flex h-[3.75rem] w-[3.75rem] items-center justify-center rounded-[0.2rem] border border-[rgba(87,67,48,0.18)] text-[0.55rem] uppercase tracking-[0.08em] text-black/35 md:h-[4.1rem] md:w-[4.1rem]">
                       Log
                     </div>
                   )}
@@ -493,7 +545,7 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
                         Whisper
                       </p>
                     ) : null}
-                    <div className="min-w-0" dangerouslySetInnerHTML={{ __html: entry.contentHtml }} />
+                    <div className="trpg-entry-content min-w-0" dangerouslySetInnerHTML={{ __html: entry.contentHtml }} />
                   </div>
                 </div>
               </>
@@ -551,6 +603,24 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
           max-width: none !important;
           border-radius: 0.12rem;
           object-fit: contain;
+        }
+
+        .trpg-log-reader .trpg-portrait-frame {
+          display: block;
+          width: 100%;
+          max-width: min(100%, 36rem);
+          aspect-ratio: 1 / 1;
+          overflow: hidden;
+          border-radius: 0.16rem;
+          background: #fbf7ef;
+        }
+
+        .trpg-log-reader .trpg-portrait-frame img {
+          width: 100% !important;
+          max-width: none !important;
+          height: 100% !important;
+          object-fit: cover !important;
+          object-position: center top !important;
         }
 
         .trpg-log-reader .trpg-entry-general {

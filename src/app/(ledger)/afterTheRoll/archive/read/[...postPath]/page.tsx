@@ -55,6 +55,8 @@ export default async function TrpgReadPage({ params }: Props) {
   const htmlUrl = getTrpgPostHtmlUrl(resolved.folderSlug, resolved.postSlug);
   if (!post || !htmlUrl) notFound();
 
+  const shouldUseEncryptedReader = post.encrypted && process.env.NODE_ENV !== 'development';
+
   return (
     <main className="afterroll-read-shell afterroll-desk min-h-screen px-[1rem] pb-[4rem] pt-[4.7rem] text-[var(--ledger-ink)] md:px-[2rem] md:pt-[5.1rem]">
       <article className="afterroll-read-paper ledger-paper-sheet paper-lined paper-holes-left mx-auto max-w-[72rem] overflow-hidden rounded-[0.8rem]">
@@ -102,7 +104,7 @@ export default async function TrpgReadPage({ params }: Props) {
         </div>
 
         <div className="afterroll-read-log-wrap px-[0.2rem] py-[0.2rem] md:px-[0.45rem] md:py-[0.45rem]">
-          {post.encrypted ? (
+          {shouldUseEncryptedReader ? (
             <EncryptedTrpgLogReader
               encryptedUrl={post.htmlUrl}
               fallbackAvatarSrc={post.gmIconSrc}
