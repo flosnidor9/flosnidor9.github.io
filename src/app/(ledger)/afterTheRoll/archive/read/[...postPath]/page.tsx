@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import {
   getAllTrpgPostParams,
   getTrpgPost,
@@ -9,6 +9,8 @@ import { fromGallerySegments } from '@/lib/galleryPath';
 import TrpgLogReader from '@/components/trpg/TrpgLogReader';
 import EncryptedTrpgLogReader from '@/components/trpg/EncryptedTrpgLogReader';
 import TrpgCastPanel from '@/components/trpg/TrpgCastPanel';
+
+const EMPTY_EXPORT_POST_PATH = ['__empty__', '__empty__'];
 
 type Props = {
   params: Promise<{ postPath: string[] }>;
@@ -28,10 +30,14 @@ function splitPostPath(postPath: string[]) {
   };
 }
 
+export const dynamicParams = false;
+
 export async function generateStaticParams() {
-  return getAllTrpgPostParams().map(({ folderSlug, postSlug }) => ({
+  const params = getAllTrpgPostParams().map(({ folderSlug, postSlug }) => ({
     postPath: [...folderSlug.split('/'), postSlug],
   }));
+
+  return params.length > 0 ? params : [{ postPath: EMPTY_EXPORT_POST_PATH }];
 }
 
 export async function generateMetadata({ params }: Props) {
@@ -48,7 +54,10 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function TrpgReadPage({ params }: Props) {
-  const resolved = splitPostPath((await params).postPath);
+  const postPath = (await params).postPath;
+  if (postPath.join('/') === EMPTY_EXPORT_POST_PATH.join('/')) redirect('/afterTheRoll');
+
+  const resolved = splitPostPath(postPath);
   if (!resolved) notFound();
 
   const post = getTrpgPost(resolved.folderSlug, resolved.postSlug);

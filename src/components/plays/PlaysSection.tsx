@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,12 +23,28 @@ interface CalendarEvent {
   id: string;
   summary: string;
   start: { date?: string; dateTime?: string };
+  end?: { date?: string; dateTime?: string };
+  updated?: string;
 }
 
 export type TitleDates = { startDate: string; endDate: string | null };
+type PlaySession = {
+  id: string;
+  date: string;
+  startTime: string | null;
+  endTime: string | null;
+  durationMinutes: number | null;
+};
 
 function getEventDate(e: CalendarEvent): string {
-  return (e.start.date ?? e.start.dateTime ?? '').slice(0, 10);
+  if (e.start.date) return e.start.date;
+  if (!e.start.dateTime) return '';
+  return new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'Asia/Seoul',
+  }).format(new Date(e.start.dateTime));
 }
 
 function buildTitleDatesMap(events: CalendarEvent[]): Map<string, TitleDates> {
@@ -51,8 +67,72 @@ function buildTitleDatesMap(events: CalendarEvent[]): Map<string, TitleDates> {
   return result;
 }
 
+function formatClock(iso: string): string {
+  return new Intl.DateTimeFormat('ko-KR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Asia/Seoul',
+  }).format(new Date(iso));
+}
+
+function getDurationMinutes(e: CalendarEvent): number | null {
+  if (!e.start.dateTime || !e.end?.dateTime) return null;
+  const diff = new Date(e.end.dateTime).getTime() - new Date(e.start.dateTime).getTime();
+  if (!Number.isFinite(diff) || diff <= 0) return null;
+  return Math.round(diff / 60000);
+}
+
+function buildTitleSessionsMap(events: CalendarEvent[]): Map<string, PlaySession[]> {
+  const result = new Map<string, PlaySession[]>();
+  for (const e of events) {
+    const title = e.summary?.trim();
+    const date = getEventDate(e);
+    if (!title || !date) continue;
+
+    const sessions = result.get(title) ?? [];
+    sessions.push({
+      id: e.id,
+      date,
+      startTime: e.start.dateTime ? formatClock(e.start.dateTime) : null,
+      endTime: e.end?.dateTime ? formatClock(e.end.dateTime) : null,
+      durationMinutes: getDurationMinutes(e),
+    });
+    result.set(title, sessions);
+  }
+
+  for (const sessions of result.values()) {
+    sessions.sort((a, b) => {
+      const byDate = a.date.localeCompare(b.date);
+      if (byDate !== 0) return byDate;
+      return (a.startTime ?? '').localeCompare(b.startTime ?? '');
+    });
+  }
+
+  return result;
+}
+
+function getTotalDurationMinutes(sessions: PlaySession[]): number | null {
+  const total = sessions.reduce((sum, session) => sum + (session.durationMinutes ?? 0), 0);
+  return total > 0 ? total : null;
+}
+
 function formatDate(d: string): string {
   return d.replace(/-/g, '.');
+}
+
+function formatDuration(minutes: number | null): string {
+  if (minutes === null) return '시간 정보 없음';
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours && mins) return `${hours}시간 ${mins}분`;
+  if (hours) return `${hours}시간`;
+  return `${mins}분`;
+}
+
+function formatSessionTime(session: PlaySession): string {
+  if (!session.startTime || !session.endTime) return '시간 정보 없음';
+  return `${session.startTime}-${session.endTime}`;
 }
 
 function getEntryDates(entry: PlayEntry, fallback: TitleDates | undefined): TitleDates | null {
@@ -138,13 +218,13 @@ export default function PlaysSection() {
   });
   const [calEvents, setCalEvents] = useState<CalendarEvent[]>([]);
   const [calLoading, setCalLoading] = useState(true);
+  const [calError, setCalError] = useState<string | null>(null);
   const [playsLoading, setPlaysLoading] = useState(true);
   const [tab, setTab] = useState<'list' | 'stats'>('list');
   const [composerOpen, setComposerOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<PlayEntry | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
 
   // 드롭다운
   const [openColumn, setOpenColumn] = useState<string | null>(null);
@@ -157,8 +237,6 @@ export default function PlaysSection() {
   const [filterPlayerCount, setFilterPlayerCount] = useState('all');
   const [filterTitleSearch, setFilterTitleSearch] = useState('');
   const [filterStartYear, setFilterStartYear] = useState('all');
-
-  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     const u1 = subscribeToPlays((entries) => { setPlays(entries); setPlaysLoading(false); });
@@ -191,32 +269,50 @@ export default function PlaysSection() {
     }
   }, [plays, playsLoading]);
 
-  useEffect(() => {
-    async function fetchAll() {
-      const apiKey = process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_API_KEY;
-      if (!apiKey) { setCalLoading(false); return; }
-      const timeMin = encodeURIComponent('2018-01-01T00:00:00Z');
-      const timeMax = encodeURIComponent('2030-12-31T23:59:59Z');
-      const all: CalendarEvent[] = [];
-      let pageToken: string | undefined;
-      try {
-        do {
-          const tokenParam = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '';
-          const url = `https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events?key=${apiKey}&timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&maxResults=2500${tokenParam}`;
-          const res = await fetch(url);
-          if (!res.ok) break;
-          const data = await res.json() as { items?: CalendarEvent[]; nextPageToken?: string };
-          all.push(...(data.items ?? []));
-          pageToken = data.nextPageToken;
-        } while (pageToken);
-      } catch { /* 조용히 실패 */ }
+  const fetchCalendarEvents = useCallback(async () => {
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_API_KEY;
+    if (!apiKey) {
+      setCalError('Google Calendar API 키가 설정되지 않았습니다.');
+      setCalLoading(false);
+      return;
+    }
+    setCalLoading(true);
+    setCalError(null);
+
+    const timeMin = encodeURIComponent('2018-01-01T00:00:00Z');
+    const timeMax = encodeURIComponent('2030-12-31T23:59:59Z');
+    const cacheBust = Date.now();
+    const all: CalendarEvent[] = [];
+    let pageToken: string | undefined;
+    try {
+      do {
+        const tokenParam = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '';
+        const url = `https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events?key=${apiKey}&timeMin=${timeMin}&timeMax=${timeMax}&timeZone=Asia%2FSeoul&singleEvents=true&orderBy=startTime&maxResults=2500&cacheBust=${cacheBust}${tokenParam}`;
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({})) as { error?: { message?: string } };
+          throw new Error(body.error?.message ?? `Google Calendar API 요청 실패: HTTP ${res.status}`);
+        }
+        const data = await res.json() as { items?: CalendarEvent[]; nextPageToken?: string };
+        all.push(...(data.items ?? []));
+        pageToken = data.nextPageToken;
+      } while (pageToken);
       setCalEvents(all);
+    } catch (e) {
+      setCalEvents([]);
+      setCalError(e instanceof Error ? e.message : 'Google Calendar 정보를 불러오지 못했습니다.');
+    }
+    finally {
       setCalLoading(false);
     }
-    void fetchAll();
   }, []);
 
+  useEffect(() => {
+    queueMicrotask(() => { void fetchCalendarEvents(); });
+  }, [fetchCalendarEvents]);
+
   const titleDatesMap = useMemo(() => buildTitleDatesMap(calEvents), [calEvents]);
+  const titleSessionsMap = useMemo(() => buildTitleSessionsMap(calEvents), [calEvents]);
 
   const calendarTitles = useMemo(() => {
     const registered = new Set(plays.map((p) => p.title));
@@ -420,6 +516,12 @@ export default function PlaysSection() {
         </div>
       )}
 
+      {calError && (
+        <div className="ledger-paper-panel mb-[1rem] rounded-[0.65rem] border border-[rgba(160,50,50,0.24)] bg-[rgba(180,60,60,0.06)] px-[1rem] py-[0.7rem] afterroll-meta text-[0.82rem] text-[rgba(150,45,45,0.9)]">
+          캘린더 정보를 불러오지 못했습니다: {calError}
+        </div>
+      )}
+
       {loading ? (
         <div className="ledger-paper-panel rounded-[0.8rem] p-[2rem] text-center afterroll-meta text-[var(--ledger-muted)]">
           불러오는 중...
@@ -471,14 +573,18 @@ export default function PlaysSection() {
                 ) : (
                   filteredPlays.map((entry, i) => {
                     const dates = getEntryDates(entry, titleDatesMap.get(entry.title));
+                    const sessions = titleSessionsMap.get(entry.title) ?? [];
+                    const totalDurationMinutes = getTotalDurationMinutes(sessions);
                     const isExpanded = expandedId === entry.id;
                     const hasParticipants = entry.participants.length > 0;
+                    const hasSessions = sessions.length > 0;
+                    const canExpand = hasParticipants || hasSessions;
                     return (
                       <Fragment key={entry.id}>
                         <tr
-                          onClick={() => hasParticipants && toggleExpand(entry.id)}
+                          onClick={() => canExpand && toggleExpand(entry.id)}
                           className={`transition-colors ${i > 0 ? 'border-t border-[rgba(87,67,48,0.07)]' : ''} ${
-                            hasParticipants
+                            canExpand
                               ? 'cursor-pointer hover:bg-[rgba(127,79,42,0.05)]'
                               : 'hover:bg-[rgba(127,79,42,0.02)]'
                           } ${isExpanded ? 'bg-[rgba(127,79,42,0.04)]' : ''}`}
@@ -489,7 +595,7 @@ export default function PlaysSection() {
                           <td className={`${TD} afterroll-title text-[var(--ledger-ink)] whitespace-normal`}>
                             <span className="flex items-center gap-[0.35rem]">
                               {entry.title}
-                              {hasParticipants && (
+                              {canExpand && (
                                 <span
                                   className={`text-[0.62rem] transition-transform duration-200 text-[var(--ledger-muted)] ${
                                     isExpanded ? 'rotate-180' : ''
@@ -545,7 +651,7 @@ export default function PlaysSection() {
                         </tr>
 
                         <AnimatePresence>
-                          {isExpanded && hasParticipants && (
+                          {isExpanded && canExpand && (
                             <tr
                               key={`${entry.id}-p`}
                               className="border-t border-[rgba(87,67,48,0.07)] bg-[rgba(127,79,42,0.03)]"
@@ -558,18 +664,46 @@ export default function PlaysSection() {
                                   transition={{ duration: 0.18 }}
                                   className="overflow-hidden"
                                 >
-                                  <div className="flex flex-wrap gap-[0.3rem] py-[0.55rem]">
-                                    <span className="afterroll-meta mr-[0.2rem] text-[0.7rem] text-[var(--ledger-soft)]">
-                                      참여자
-                                    </span>
-                                    {entry.participants.map((p) => (
-                                      <span
-                                        key={p}
-                                        className="afterroll-meta rounded-full border border-[rgba(87,67,48,0.15)] bg-[rgba(87,67,48,0.06)] px-[0.5rem] py-[0.1rem] text-[0.72rem] text-[var(--ledger-soft)]"
-                                      >
-                                        {p}
-                                      </span>
-                                    ))}
+                                  <div className="flex flex-col gap-[0.65rem] py-[0.65rem]">
+                                    {hasSessions && (
+                                      <div>
+                                        <div className="afterroll-meta mb-[0.35rem] text-[0.7rem] text-[var(--ledger-soft)]">
+                                          캘린더 플레이 기록
+                                          <span className="ml-[0.45rem] text-[var(--ledger-accent)]">
+                                            총 {formatDuration(totalDurationMinutes)}
+                                          </span>
+                                        </div>
+                                        <div className="grid gap-[0.25rem] sm:grid-cols-2 lg:grid-cols-3">
+                                          {sessions.map((session) => (
+                                            <div
+                                              key={session.id}
+                                              className="afterroll-meta rounded-[0.45rem] border border-[rgba(87,67,48,0.12)] bg-[rgba(255,253,245,0.45)] px-[0.55rem] py-[0.38rem] text-[0.72rem] text-[var(--ledger-muted)]"
+                                            >
+                                              <span className="text-[var(--ledger-ink)]">{formatDate(session.date)}</span>
+                                              <span className="mx-[0.35rem] text-[rgba(87,67,48,0.35)]">·</span>
+                                              <span>{formatSessionTime(session)}</span>
+                                              <span className="mx-[0.35rem] text-[rgba(87,67,48,0.35)]">·</span>
+                                              <span>{formatDuration(session.durationMinutes)}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                    {hasParticipants && (
+                                      <div className="flex flex-wrap gap-[0.3rem]">
+                                        <span className="afterroll-meta mr-[0.2rem] text-[0.7rem] text-[var(--ledger-soft)]">
+                                          참여자
+                                        </span>
+                                        {entry.participants.map((p) => (
+                                          <span
+                                            key={p}
+                                            className="afterroll-meta rounded-full border border-[rgba(87,67,48,0.15)] bg-[rgba(87,67,48,0.06)] px-[0.5rem] py-[0.1rem] text-[0.72rem] text-[var(--ledger-soft)]"
+                                          >
+                                            {p}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
                                 </motion.div>
                               </td>
@@ -589,7 +723,7 @@ export default function PlaysSection() {
       )}
 
       {/* 컬럼 필터 드롭다운 (portal) */}
-      {mounted &&
+      {typeof document !== 'undefined' &&
         openColumn &&
         createPortal(
           <>
