@@ -1,12 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function Portal({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setMounted(true), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
   if (!mounted) return null;
   return createPortal(children, document.body);
 }
@@ -32,6 +35,9 @@ const EXTERNAL_CALENDAR_IDS = [
   '43vpniivockejo1q72qi5rcro4@group.calendar.google.com',
 ];
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+const MONTH_LABELS = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'] as const;
+const GRAPH_CELL_REM = 0.72;
+const GRAPH_GAP_REM = 0.18;
 const HOUR_REM = 3.8;
 
 const PALETTE = [
@@ -55,6 +61,9 @@ function toDateKey(year: number, month: number, day: number): string {
   const d = new Date(year, month, day);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+function getDateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
 function hexToRgba(hex: string, alpha: number) {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
@@ -69,6 +78,33 @@ function autoColor(name: string): string {
 function resolveColor(name: string) {
   const base = autoColor(name);
   return { base, bg: hexToRgba(base, 0.14) };
+}
+
+function getContributionColor(count: number): string {
+  if (count >= 4) return 'rgba(88, 97, 56, 0.86)';
+  if (count === 3) return 'rgba(122, 139, 97, 0.68)';
+  if (count === 2) return 'rgba(127, 79, 42, 0.42)';
+  if (count === 1) return 'rgba(193, 142, 88, 0.34)';
+  return 'rgba(87, 67, 48, 0.055)';
+}
+
+function buildYearWeeks(year: number): Date[][] {
+  const start = new Date(year, 0, 1);
+  start.setDate(start.getDate() - start.getDay());
+  const end = new Date(year, 11, 31);
+  end.setDate(end.getDate() + (6 - end.getDay()));
+
+  const weeks: Date[][] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const week: Date[] = [];
+    for (let i = 0; i < 7; i++) {
+      week.push(new Date(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    weeks.push(week);
+  }
+  return weeks;
 }
 
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'] as const;
@@ -157,6 +193,157 @@ function EventDetailPanel({
         </div>
       )}
     </motion.div>
+  );
+}
+
+// ── 연간 플레이 히트맵 ─────────────────────────────────────────
+function AnnualPlayGraph({
+  year,
+  countsByDate,
+  loading,
+  error,
+  onSelectDate,
+  onPrevYear,
+  onNextYear,
+}: {
+  year: number;
+  countsByDate: Map<string, number>;
+  loading: boolean;
+  error: string | null;
+  onSelectDate: (date: Date) => void;
+  onPrevYear: () => void;
+  onNextYear: () => void;
+}) {
+  const weeks = useMemo(() => buildYearWeeks(year), [year]);
+  const monthLabels = useMemo(() => {
+    const labels: { month: number; weekIndex: number }[] = [];
+    for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
+      const firstDayKey = toDateKey(year, monthIndex, 1);
+      const weekIndex = weeks.findIndex(week => week.some(day => getDateKey(day) === firstDayKey));
+      if (weekIndex >= 0) labels.push({ month: monthIndex, weekIndex });
+    }
+    return labels;
+  }, [weeks, year]);
+
+  const totalPlays = useMemo(() => {
+    let total = 0;
+    countsByDate.forEach(count => { total += count; });
+    return total;
+  }, [countsByDate]);
+  const playedDays = countsByDate.size;
+
+  return (
+    <section className="ledger-paper-sheet paper-memo relative mb-[1.1rem] overflow-hidden rounded-[1.2rem] px-[1.1rem] py-[1rem] md:px-[1.6rem] md:py-[1.35rem]">
+      <span className="afterroll-tape afterroll-tape-lime left-[3.2rem] rotate-[-5deg]" />
+
+      <div className="relative z-[1] mb-[0.9rem] grid grid-cols-[2.6rem_minmax(0,1fr)_2.6rem] items-center gap-[0.6rem] md:grid-cols-[3rem_minmax(0,1fr)_3rem]">
+        <motion.button
+          type="button"
+          onClick={onPrevYear}
+          whileTap={{ scale: 0.9 }}
+          aria-label="이전 연도"
+          className="ledger-paper-panel ledger-dashed afterroll-note rounded-[0.5rem] px-[0.7rem] py-[0.42rem] text-[1rem] text-[var(--ledger-muted)] transition-transform hover:-translate-y-[0.03rem]"
+        >
+          ←
+        </motion.button>
+
+        <div className="min-w-0 text-center">
+          <p className="afterroll-meta text-[0.78rem] uppercase tracking-[0.14em] text-[var(--ledger-soft)]">Yearly Play Map</p>
+          <h1 className="afterroll-title mt-[0.15rem] text-[2.1rem] leading-none text-[var(--ledger-ink)] md:text-[2.7rem]">
+            {year} 플레이 기록
+          </h1>
+          <p className="afterroll-meta mt-[0.35rem] text-[0.82rem] text-[var(--ledger-muted)]">
+            {loading ? '불러오는 중' : error ? '연간 기록을 불러오지 못했습니다' : `${playedDays}일 · ${totalPlays}회`}
+          </p>
+        </div>
+
+        <motion.button
+          type="button"
+          onClick={onNextYear}
+          whileTap={{ scale: 0.9 }}
+          aria-label="다음 연도"
+          className="ledger-paper-panel ledger-dashed afterroll-note rounded-[0.5rem] px-[0.7rem] py-[0.42rem] text-[1rem] text-[var(--ledger-muted)] transition-transform hover:-translate-y-[0.03rem]"
+        >
+          →
+        </motion.button>
+      </div>
+
+      <div className="relative z-[1] overflow-x-auto pb-[0.2rem]">
+        <div className="mx-auto w-max min-w-max">
+          <div
+            className="afterroll-meta ml-[2.05rem] grid h-[1rem] text-[0.62rem] leading-none text-[var(--ledger-soft)]"
+            style={{
+              gridTemplateColumns: `repeat(${weeks.length}, ${GRAPH_CELL_REM}rem)`,
+              columnGap: `${GRAPH_GAP_REM}rem`,
+            }}
+          >
+            {monthLabels.map(({ month, weekIndex }) => (
+              <span key={month} style={{ gridColumn: `${weekIndex + 1} / span 4` }}>
+                {MONTH_LABELS[month]}
+              </span>
+            ))}
+          </div>
+
+          <div className="flex justify-center gap-[0.45rem]">
+            <div className="afterroll-meta grid grid-rows-7 gap-[0.18rem] pt-[0.02rem] text-[0.58rem] leading-[0.72rem] text-[var(--ledger-soft)]">
+              {DAYS.map((day, index) => (
+                <span key={day} className={index % 2 === 0 ? 'opacity-0' : ''}>{day}</span>
+              ))}
+            </div>
+
+            <div
+              className="grid grid-flow-col grid-rows-7 gap-[0.18rem]"
+              style={{
+                gridTemplateColumns: `repeat(${weeks.length}, ${GRAPH_CELL_REM}rem)`,
+              }}
+            >
+              {weeks.flatMap(week => week.map(day => {
+                const dateKey = getDateKey(day);
+                const inYear = day.getFullYear() === year;
+                const count = countsByDate.get(dateKey) ?? 0;
+                const label = `${day.getMonth() + 1}월 ${day.getDate()}일: ${count}회`;
+
+                return (
+                  <motion.button
+                    key={dateKey}
+                    type="button"
+                    aria-label={label}
+                    title={label}
+                    disabled={!inYear}
+                    onClick={() => onSelectDate(day)}
+                    whileHover={inYear ? { scale: 1.28 } : undefined}
+                    whileTap={inYear ? { scale: 0.92 } : undefined}
+                    className="rounded-[0.16rem] border border-[rgba(87,67,48,0.08)] outline-none transition-opacity focus-visible:ring-[0.12rem] focus-visible:ring-[rgba(127,79,42,0.34)] disabled:cursor-default"
+                    style={{
+                      width: `${GRAPH_CELL_REM}rem`,
+                      height: `${GRAPH_CELL_REM}rem`,
+                      background: inYear ? getContributionColor(count) : 'transparent',
+                      opacity: inYear ? 1 : 0.24,
+                    }}
+                  />
+                );
+              }))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative z-[1] mt-[0.75rem] flex items-center justify-center gap-[0.32rem]">
+        <span className="afterroll-meta text-[0.62rem] text-[var(--ledger-soft)]">적게</span>
+        {[0, 1, 2, 3, 4].map(level => (
+          <span
+            key={level}
+            className="rounded-[0.14rem] border border-[rgba(87,67,48,0.08)]"
+            style={{
+              width: `${GRAPH_CELL_REM}rem`,
+              height: `${GRAPH_CELL_REM}rem`,
+              background: getContributionColor(level),
+            }}
+          />
+        ))}
+        <span className="afterroll-meta text-[0.62rem] text-[var(--ledger-soft)]">많이</span>
+      </div>
+    </section>
   );
 }
 
@@ -336,9 +523,12 @@ export default function CalendarSection() {
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [events, setEvents] = useState<GoogleCalendarEvent[]>([]);
+  const [annualEvents, setAnnualEvents] = useState<GoogleCalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [annualLoading, setAnnualLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [annualError, setAnnualError] = useState<string | null>(null);
   const [externalDates, setExternalDates] = useState<Map<string, ExternalEventSlot[]>>(new Map());
   const [detail, setDetail] = useState<DetailState | null>(null);
 
@@ -383,6 +573,41 @@ export default function CalendarSection() {
   }, [year, month]);
 
   useEffect(() => { void fetchEvents(); }, [fetchEvents]);
+
+  const fetchAnnualEvents = useCallback(async () => {
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_API_KEY;
+    if (!apiKey) { setAnnualError('API 키 없음'); setAnnualLoading(false); return; }
+    setAnnualLoading(true);
+    setAnnualError(null);
+
+    const timeMin = new Date(year, 0, 1).toISOString();
+    const timeMax = new Date(year + 1, 0, 1).toISOString();
+    const allEvents: GoogleCalendarEvent[] = [];
+    let pageToken: string | undefined;
+
+    try {
+      do {
+        const tokenParam = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '';
+        const res = await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events?key=${apiKey}&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime&maxResults=2500${tokenParam}`,
+        );
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({})) as { error?: { message?: string } };
+          throw new Error(body.error?.message ?? `HTTP ${res.status}`);
+        }
+        const data = await res.json() as { items?: GoogleCalendarEvent[]; nextPageToken?: string };
+        allEvents.push(...(data.items ?? []));
+        pageToken = data.nextPageToken;
+      } while (pageToken);
+      setAnnualEvents(allEvents);
+    } catch (e) {
+      setAnnualError(e instanceof Error ? e.message : '오류 발생');
+    } finally {
+      setAnnualLoading(false);
+    }
+  }, [year]);
+
+  useEffect(() => { void fetchAnnualEvents(); }, [fetchAnnualEvents]);
 
   const fetchExternalEvents = useCallback(async () => {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_API_KEY;
@@ -452,6 +677,16 @@ export default function CalendarSection() {
     eventsByDate.set(dateKey, bucket);
   }
 
+  const annualCountsByDate = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const event of annualEvents) {
+      const dateKey = getStartDate(event);
+      if (!dateKey) continue;
+      counts.set(dateKey, (counts.get(dateKey) ?? 0) + 1);
+    }
+    return counts;
+  }, [annualEvents]);
+
   const today = new Date();
   const isThisMonth = today.getFullYear() === year && today.getMonth() === month;
   const todayDay = isThisMonth ? today.getDate() : null;
@@ -460,12 +695,26 @@ export default function CalendarSection() {
     setSelectedDay(d);
     setBaseDate(new Date(y, m, 1));
   }
+  function selectGraphDate(date: Date) {
+    goToMonth(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+  function prevYear() { goToMonth(year - 1, month); }
+  function nextYear() { goToMonth(year + 1, month); }
   function prevMonth() { goToMonth(year, month - 1); }
   function nextMonth() { goToMonth(year, month + 1); }
 
   return (
     <main className="afterroll-desk min-h-screen px-[1.1rem] pb-[4rem] pt-[5rem] text-[var(--ledger-ink)] md:px-[2rem]">
       <div className="mx-auto max-w-[72rem]">
+        <AnnualPlayGraph
+          year={year}
+          countsByDate={annualCountsByDate}
+          loading={annualLoading}
+          error={annualError}
+          onSelectDate={selectGraphDate}
+          onPrevYear={prevYear}
+          onNextYear={nextYear}
+        />
 
         {/* 달력 */}
         <section className="ledger-paper-sheet paper-grid relative overflow-hidden rounded-[1.2rem]">
