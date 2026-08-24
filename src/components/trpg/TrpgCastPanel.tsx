@@ -97,7 +97,7 @@ export default function TrpgCastPanel({ gmName, gmIconSrc, cast }: Props) {
 
   return (
     <>
-      <div className="ledger-paper-sheet relative mt-[1rem] rounded-[0.35rem] px-[0.9rem] py-[0.85rem]">
+      <div className="trpg-cast-panel ledger-paper-sheet relative mt-[1rem] px-[0.9rem] py-[0.85rem]">
         <p className="afterroll-meta relative z-[1] text-[0.86rem] uppercase tracking-[0.16em] text-[var(--ledger-soft)]">
           Cast Channel
         </p>
@@ -109,7 +109,7 @@ export default function TrpgCastPanel({ gmName, gmIconSrc, cast }: Props) {
               type="button"
               onPointerUp={handlePointerOpen(card)}
               onClick={handleKeyboardOpen(card)}
-              className="ledger-typed-box flex min-h-[10rem] flex-col items-center rounded-[0.3rem] px-[0.55rem] py-[0.55rem] text-center transition duration-200 hover:border-[var(--atr-line-strong)] hover:shadow-[0_0_1.2rem_rgba(88, 125, 163,0.12)]"
+              className="trpg-cast-card ledger-typed-box flex min-h-[10rem] flex-col items-center px-[0.55rem] py-[0.55rem] text-center transition duration-200 hover:border-[var(--atr-line-strong)]"
               aria-label={`${card.primaryLabel} icon preview open`}
             >
               <div className="flex flex-1 flex-col items-center justify-center gap-[0.45rem]">
@@ -119,11 +119,11 @@ export default function TrpgCastPanel({ gmName, gmIconSrc, cast }: Props) {
                     alt={card.primaryLabel}
                     width={96}
                     height={96}
-                    className="h-[6rem] w-[6rem] rounded-[0.2rem] border border-[var(--atr-line)] object-cover object-top p-[0.12rem] shadow-[0_0_1rem_rgba(88, 125, 163,0.12)]"
+                    className="h-[6rem] w-[6rem] rounded-[0.2rem] border border-[var(--atr-line)] object-cover object-top p-[0.12rem]"
                   />
                 ) : (
                   <div
-                    className={`flex h-[6rem] w-[6rem] items-center justify-center rounded-[0.2rem] border border-[var(--atr-line)] shadow-[0_0_1rem_rgba(88, 125, 163,0.12)] ${
+                    className={`flex h-[6rem] w-[6rem] items-center justify-center rounded-[0.2rem] border border-[var(--atr-line)] ${
                       card.tone === 'gm'
                         ? 'bg-[rgba(127,79,42,0.08)] text-[var(--ledger-accent)]'
                         : 'bg-[rgba(141,151,161,0.1)] text-[var(--atr-accent)]'
@@ -163,7 +163,7 @@ export default function TrpgCastPanel({ gmName, gmIconSrc, cast }: Props) {
             onClick={() => setActivePreview(null)}
           >
             <motion.div
-              className="absolute w-[min(20rem,calc(100vw-2rem))] rounded-[0.45rem] border border-[var(--atr-line)] bg-[rgba(251,252,253,0.98)] p-[0.8rem] shadow-[0_1rem_2.4rem_rgba(38,50,60,0.16)]"
+              className="absolute w-[min(20rem,calc(100vw-2rem))] rounded-[0.45rem] border border-[var(--atr-line)] bg-[rgba(251,252,253,0.98)] p-[0.8rem]"
               style={{
                 left: activePreview.x,
                 top: activePreview.y,
@@ -183,12 +183,12 @@ export default function TrpgCastPanel({ gmName, gmIconSrc, cast }: Props) {
                     alt={activePreview.card.primaryLabel}
                     width={240}
                     height={240}
-                    className="h-[min(15rem,58vw)] w-[min(15rem,58vw)] rounded-[0.3rem] border border-[var(--atr-line)] object-cover object-top p-[0.12rem] shadow-[0_0_1.5rem_rgba(88, 125, 163,0.16)]"
+                    className="h-[min(15rem,58vw)] w-[min(15rem,58vw)] rounded-[0.3rem] border border-[var(--atr-line)] object-cover object-top p-[0.12rem]"
                     priority
                   />
                 ) : (
                   <div
-                    className={`flex h-[min(15rem,58vw)] w-[min(15rem,58vw)] items-center justify-center rounded-[0.3rem] border border-[var(--atr-line)] shadow-[0_0_1.5rem_rgba(88, 125, 163,0.16)] ${
+                    className={`flex h-[min(15rem,58vw)] w-[min(15rem,58vw)] items-center justify-center rounded-[0.3rem] border border-[var(--atr-line)] ${
                       activePreview.card.tone === 'gm'
                         ? 'bg-[rgba(127,79,42,0.08)] text-[var(--ledger-accent)]'
                         : 'bg-[rgba(141,151,161,0.1)] text-[var(--atr-accent)]'

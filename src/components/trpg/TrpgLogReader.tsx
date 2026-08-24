@@ -3,6 +3,7 @@
 import DOMPurify from 'dompurify';
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import type { TrpgCastEntry } from '@/lib/data/trpg';
 
 type Props = {
@@ -23,6 +24,15 @@ type LogEntry = {
   isWhisper: boolean;
   kind: 'chat' | 'media';
 };
+
+const LOG_FONT_OPTIONS = [
+  { value: 'default', label: '기본', fontFamily: 'var(--atr-font-ui)' },
+  { value: 'sans', label: '고딕', fontFamily: 'var(--font-sans)' },
+  { value: 'serif', label: '명조', fontFamily: 'var(--font-serif)' },
+  { value: 'hand', label: '손글씨', fontFamily: 'var(--font-hand)' },
+] as const;
+
+type LogFontValue = (typeof LOG_FONT_OPTIONS)[number]['value'];
 
 const MAX_PAGE_ENTRIES = 80;
 const MAX_PAGE_WEIGHT = 120000;
@@ -303,6 +313,7 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
   const [html, setHtml] = useState<string | null>(htmlContent ?? null);
   const [pageIndex, setPageIndex] = useState(0);
   const [showAside, setShowAside] = useState(true);
+  const [logFont, setLogFont] = useState<LogFontValue>('default');
   const readerRef = useRef<HTMLElement | null>(null);
   const restoredPageRef = useRef(false);
   const shouldScrollToReaderRef = useRef(false);
@@ -381,6 +392,10 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
   const pages = useMemo(() => paginateEntries(visibleEntries), [visibleEntries]);
   const effectivePageIndex = Math.min(pageIndex, Math.max(0, pages.length - 1));
   const currentPage = useMemo(() => pages[effectivePageIndex] ?? EMPTY_LOG_ENTRIES, [effectivePageIndex, pages]);
+  const selectedLogFont = LOG_FONT_OPTIONS.find((option) => option.value === logFont) ?? LOG_FONT_OPTIONS[0];
+  const readerStyle = {
+    '--trpg-log-font-family': selectedLogFont.fontFamily,
+  } as CSSProperties;
 
   useEffect(() => {
     if (!restoredPageRef.current) {
@@ -460,7 +475,11 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
   }
 
   return (
-    <section ref={readerRef} className="trpg-log-reader px-[0.75rem] py-[0.9rem] md:px-[1.25rem] md:py-[1.25rem]">
+    <section
+      ref={readerRef}
+      className="trpg-log-reader px-[0.75rem] py-[0.9rem] md:px-[1.25rem] md:py-[1.25rem]"
+      style={readerStyle}
+    >
       <PageNav
         pageIndex={effectivePageIndex}
         pageCount={pages.length}
@@ -471,35 +490,52 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
         onSelect={(value) => moveToPage(value)}
       />
 
-      <div className="ledger-paper-sheet mt-[0.65rem] flex items-center justify-between gap-[1rem] rounded-[0.35rem] px-[0.9rem] py-[0.8rem] text-[0.8rem] text-[var(--ledger-muted)]">
+      <div className="trpg-reader-toolbar ledger-paper-sheet mt-[0.65rem] flex items-center justify-between gap-[1rem] px-[0.9rem] py-[0.8rem] text-[0.8rem] text-[var(--ledger-muted)]">
         <p className="afterroll-meta relative z-[1] text-[0.84rem] uppercase tracking-[0.12em]">{visibleEntries.length} transcript lines</p>
-        <label className="relative z-[1] inline-flex items-center gap-[0.5rem]">
-          <input
-            type="checkbox"
-            checked={showAside}
-            onChange={(event) => setShowAside(event.target.checked)}
-            className="h-[0.95rem] w-[0.95rem]"
-          />
-          <span className="afterroll-meta text-[0.84rem] uppercase tracking-[0.08em]">Side Channel</span>
-        </label>
+        <div className="relative z-[1] flex flex-wrap items-center justify-end gap-[0.65rem]">
+          <label className="inline-flex items-center gap-[0.45rem]">
+            <span className="afterroll-meta text-[0.84rem] tracking-[0.08em]">글씨체</span>
+            <select
+              value={logFont}
+              onChange={(event) => setLogFont(event.target.value as LogFontValue)}
+              className="afterroll-meta min-w-[5.6rem] border border-[var(--atr-line)] bg-transparent px-[0.45rem] py-[0.28rem] text-[0.8rem] text-[var(--ledger-muted)]"
+              aria-label="로그 글씨체"
+            >
+              {LOG_FONT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="inline-flex items-center gap-[0.5rem]">
+            <input
+              type="checkbox"
+              checked={showAside}
+              onChange={(event) => setShowAside(event.target.checked)}
+              className="h-[0.95rem] w-[0.95rem]"
+            />
+            <span className="afterroll-meta text-[0.84rem] tracking-[0.08em]">사담</span>
+          </label>
+        </div>
       </div>
 
-      <div className="mt-[0.7rem] space-y-[0.4rem]">
+      <div className="mt-[0.7rem]">
         {currentPage.map((entry) => (
           <article
             key={entry.id}
             className={
               entry.kind === 'media'
-                ? 'ledger-paper-sheet rounded-[0.35rem] p-[0.55rem] text-center md:p-[0.65rem]'
-                : `ledger-paper-sheet grid grid-cols-[3.75rem_minmax(0,1fr)] gap-[0.65rem] rounded-[0.35rem] p-[0.55rem] md:grid-cols-[4.1rem_minmax(0,1fr)] md:p-[0.65rem] ${
-                    entry.isAside ? 'opacity-75' : ''
+                ? 'trpg-log-row trpg-log-media-row px-[0.25rem] py-[0.5rem] text-center md:px-[0.35rem] md:py-[0.6rem]'
+                : `trpg-log-row grid grid-cols-[3.75rem_minmax(0,1fr)] gap-[0.65rem] px-[0.25rem] py-[0.5rem] md:grid-cols-[4.1rem_minmax(0,1fr)] md:px-[0.35rem] md:py-[0.6rem] ${
+                    entry.isAside ? 'trpg-log-row-aside' : ''
                   }`
             }
           >
             {entry.kind === 'media' ? (
-              <div className="ledger-typed-box relative z-[1] rounded-[0.3rem] px-[0.55rem] py-[0.55rem] md:px-[0.7rem] md:py-[0.7rem]">
+              <div className="relative z-[1] px-[0.05rem] py-[0.05rem] md:px-[0.08rem] md:py-[0.08rem]">
                 <div
-                  className="trpg-media-bubble overflow-hidden rounded-[0.45rem] bg-[#fbf7ef]"
+                  className="trpg-media-bubble overflow-hidden"
                   dangerouslySetInnerHTML={{ __html: entry.contentHtml }}
                 />
               </div>
@@ -525,18 +561,18 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
 
                 <div className="relative z-[1] flex min-h-full min-w-0 flex-col justify-center">
                   {entry.speaker ? (
-                     <p className="afterroll-meta mb-[0.34rem] px-[0.05rem] text-[0.72rem] uppercase tracking-[0.14em] text-[var(--ledger-soft)] md:text-[0.76rem]">
+                     <p className="trpg-speaker-name afterroll-meta mb-[0.34rem] px-[0.05rem] text-[0.72rem] uppercase tracking-[0.14em] text-[var(--ledger-soft)] md:text-[0.76rem]">
                        {entry.speaker}
                      </p>
                    ) : (
                      <div className="mb-[0.34rem]" />
                    )}
                   <div
-                    className={`ledger-typed-box afterroll-body min-w-0 overflow-x-auto overflow-y-hidden rounded-[0.3rem] px-[0.7rem] py-[0.62rem] text-[0.92rem] leading-[1.72] md:px-[0.85rem] md:py-[0.72rem] ${
+                    className={`trpg-entry-bubble afterroll-body min-w-0 overflow-x-auto overflow-y-hidden rounded-[0.12rem] px-[0.05rem] py-[0.08rem] text-[0.92rem] leading-[1.72] md:px-[0.08rem] md:py-[0.1rem] ${
                       entry.isWhisper
-                        ? 'trpg-entry-whisper border border-[rgba(137,120,158,0.24)] text-black/72'
+                        ? 'trpg-entry-whisper text-black/72'
                         : entry.isAside
-                          ? 'trpg-entry-aside text-black/44'
+                          ? 'trpg-entry-aside text-black/72'
                           : 'trpg-entry-general text-black/78'
                     }`}
                   >
@@ -587,6 +623,31 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
           margin-top: 0.1rem !important;
         }
 
+        .trpg-log-reader .trpg-entry-content,
+        .trpg-log-reader .trpg-entry-content *,
+        .trpg-log-reader .trpg-media-bubble,
+        .trpg-log-reader .trpg-media-bubble *,
+        .trpg-log-reader .trpg-speaker-name {
+          font-family: var(--trpg-log-font-family) !important;
+        }
+
+        .trpg-log-reader .trpg-log-row {
+          border-bottom: 0.05rem solid rgba(88, 125, 163, 0.18);
+          background: transparent !important;
+          box-shadow: none !important;
+          text-shadow: none !important;
+        }
+
+        .trpg-log-reader .trpg-log-row-aside {
+          border-left: 0.16rem solid rgba(104, 116, 128, 0.24);
+          background: rgba(104, 116, 128, 0.035) !important;
+          padding-left: 0.55rem;
+        }
+
+        .trpg-log-reader .trpg-log-row:first-child {
+          border-top: 0.05rem solid rgba(88, 125, 163, 0.12);
+        }
+
         .trpg-log-reader .trpg-media-bubble a {
           display: block;
           width: 100%;
@@ -624,18 +685,21 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
         }
 
         .trpg-log-reader .trpg-entry-general {
-          background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 250, 0.98)) !important;
-          border-color: rgba(192, 202, 212, 0.9) !important;
+          background: transparent !important;
+          border: 0 !important;
+          box-shadow: none !important;
         }
 
         .trpg-log-reader .trpg-entry-aside {
-          background: linear-gradient(180deg, rgba(239, 243, 247, 0.96), rgba(229, 235, 241, 0.96)) !important;
-          border-color: rgba(192, 202, 212, 0.72) !important;
+          background: transparent !important;
+          border: 0 !important;
+          box-shadow: none !important;
         }
 
         .trpg-log-reader .trpg-entry-whisper {
-          background: linear-gradient(180deg, rgba(245, 240, 249, 0.98), rgba(235, 228, 242, 0.98)) !important;
-          border-color: rgba(139, 120, 165, 0.34) !important;
+          background: transparent !important;
+          border: 0 !important;
+          box-shadow: none !important;
         }
 
         .trpg-log-reader .sheet-rolltemplate-ninpo,
@@ -739,7 +803,7 @@ function PageNav({ pageIndex, pageCount, onPrev, onNext, onFirst, onLast, onSele
   const pages = Array.from({ length: end - adjustedStart }, (_, index) => adjustedStart + index);
 
   return (
-    <div className="ledger-paper-sheet mt-[0.35rem] flex flex-wrap items-center justify-center gap-[0.35rem] rounded-[0.35rem] px-[0.9rem] py-[0.75rem] text-[0.84rem] text-[var(--ledger-muted)]">
+    <div className="trpg-page-nav ledger-paper-sheet mt-[0.35rem] flex flex-wrap items-center justify-center gap-[0.35rem] px-[0.9rem] py-[0.75rem] text-[0.84rem] text-[var(--ledger-muted)]">
       <div className="relative z-[1] flex items-center gap-[0.35rem]">
         <button
           type="button"

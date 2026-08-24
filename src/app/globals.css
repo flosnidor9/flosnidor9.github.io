@@ -379,10 +379,7 @@ body.after-roll-theme .ledger-typed-box {
     linear-gradient(180deg, rgba(88, 125, 163, 0.035) 1px, transparent 1px) !important;
   background-size: auto, 2.25rem 2.25rem, 2.25rem 2.25rem !important;
   border: 0.06rem solid var(--atr-line) !important;
-  box-shadow:
-    0 0 0 0.06rem rgba(88, 125, 163, 0.045),
-    0 1.2rem 3rem rgba(0, 0, 0, 0.42),
-    inset 0 0 2rem rgba(88, 125, 163, 0.045) !important;
+  box-shadow: none !important;
 }
 
 body.after-roll-theme .ledger-paper-sheet::before {
@@ -449,6 +446,17 @@ body.after-roll-theme .ledger-index-tab-active {
   border: 0.06rem solid var(--atr-line);
   color: var(--atr-muted);
   box-shadow: inset 0 0 1rem rgba(88, 125, 163, 0.035);
+}
+
+body.after-roll-theme [class*="shadow"],
+body.after-roll-theme .ledger-paper-panel,
+body.after-roll-theme .ledger-note-card,
+body.after-roll-theme .ledger-paper-sheet,
+body.after-roll-theme .ledger-typed-box,
+body.after-roll-theme .ledger-index-tab,
+body.after-roll-theme .ledger-index-tab-active {
+  box-shadow: none !important;
+  text-shadow: none !important;
 }
 
 body.after-roll-theme .ledger-index-tab-active {
@@ -1216,11 +1224,15 @@ body.after-roll-theme .trpg-log-reader .trpg-entry-content *,
 body.after-roll-theme .trpg-log-reader .trpg-media-bubble,
 body.after-roll-theme .trpg-log-reader .trpg-media-bubble * {
   color: var(--atr-text) !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
 }
 
 body.after-roll-theme .trpg-log-reader .trpg-entry-aside,
 body.after-roll-theme .trpg-log-reader .trpg-entry-aside * {
-  color: rgba(217, 247, 232, 0.48) !important;
+  color: #8b949e !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
 }
 
 body.after-roll-theme .trpg-log-reader .trpg-entry-whisper,
@@ -1230,7 +1242,7 @@ body.after-roll-theme .trpg-log-reader .trpg-entry-whisper * {
 
 body.after-roll-theme .trpg-log-reader img {
   border: 0.06rem solid var(--atr-line);
-  box-shadow: 0 0 1.4rem rgba(88, 125, 163, 0.1);
+  box-shadow: none !important;
 }
 
 body.after-roll-theme .trpg-media-bubble {
@@ -1251,9 +1263,7 @@ body.after-roll-theme td {
 }
 
 body.after-roll-theme .afterroll-shadow-soft {
-  box-shadow:
-    0 1rem 2rem rgba(0, 0, 0, 0.34),
-    0 0 1.4rem rgba(88, 125, 163, 0.08);
+  box-shadow: none !important;
 }
 
 body.after-roll-theme [style*="rgba(255,253,245"],
@@ -2273,6 +2283,30 @@ body.after-roll-theme::after {
   box-shadow: none !important;
 }
 
+.atr-file-content .afterroll-read-paper,
+.atr-file-content .afterroll-read-paper *,
+.atr-file-content .afterroll-read-header,
+.atr-file-content .afterroll-read-header *,
+.atr-file-content .afterroll-read-log-wrap,
+.atr-file-content .afterroll-read-log-wrap * {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+.atr-file-content .trpg-cast-panel,
+.atr-file-content .trpg-reader-toolbar,
+.atr-file-content .trpg-page-nav {
+  border-top: 0.05rem solid rgba(88, 125, 163, 0.16) !important;
+  border-bottom: 0.05rem solid rgba(88, 125, 163, 0.16) !important;
+  background: transparent !important;
+}
+
+.atr-file-content .trpg-cast-card {
+  border-bottom: 0.05rem solid rgba(88, 125, 163, 0.14) !important;
+  background: transparent !important;
+}
+
 .atr-file-content .ledger-paper-sheet::before,
 .atr-file-content .afterroll-desk::before {
   display: none !important;
@@ -2374,16 +2408,26 @@ body.after-roll-theme a::after {
   color: var(--atr-soft) !important;
 }
 
+.atr-file-content .trpg-log-reader,
+.atr-file-content .trpg-log-reader * {
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
 .atr-file-content .trpg-log-reader .trpg-entry-content,
 .atr-file-content .trpg-log-reader .trpg-entry-content *,
 .atr-file-content .trpg-log-reader .trpg-media-bubble,
 .atr-file-content .trpg-log-reader .trpg-media-bubble * {
   color: var(--atr-text) !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
 }
 
 .atr-file-content .trpg-log-reader .trpg-entry-aside,
 .atr-file-content .trpg-log-reader .trpg-entry-aside * {
-  color: var(--atr-soft) !important;
+  color: #8b949e !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
 }
 
 .atr-file-content .trpg-log-reader .trpg-entry-whisper,
