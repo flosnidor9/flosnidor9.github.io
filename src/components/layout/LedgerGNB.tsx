@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 
 const NAV_ITEMS = [
-  { label: 'Home', href: '/afterTheRoll', exact: true },
+  { label: 'Calendar', href: '/afterTheRoll', exact: true },
   { label: 'Logs', href: '/afterTheRoll/logs', exact: false },
   { label: 'Plays', href: '/afterTheRoll/plays', exact: false },
 ];
@@ -16,8 +16,15 @@ export default function LedgerGNB() {
   const [hoveredHref, setHoveredHref] = useState<string | null>(null);
 
   return (
-    <nav className="relative z-50 flex items-center justify-center px-[1rem] py-[0.9rem] md:px-[2rem]">
-      <ul className="flex items-center gap-[2.5rem]">
+    <nav className="fixed inset-x-0 top-0 z-50 border-b border-[var(--atr-line)] bg-[rgba(2,7,6,0.76)] px-[0.8rem] py-[0.65rem] backdrop-blur-[1rem] md:px-[2rem]">
+      <div className="mx-auto flex max-w-[72rem] items-center justify-between gap-[1rem]">
+        <Link
+          href="/afterTheRoll"
+          className="afterroll-meta shrink-0 text-[0.72rem] uppercase tracking-[0.18em] text-[var(--atr-accent)]"
+        >
+          Afterimage Archive
+        </Link>
+        <ul className="flex items-center gap-[0.35rem] md:gap-[0.55rem]">
         {NAV_ITEMS.map(({ label, href, exact }) => {
           const isActive = exact
             ? pathname === href
@@ -27,10 +34,12 @@ export default function LedgerGNB() {
             <li key={href} className="relative">
               <Link
                 href={href}
-                className="ledger-paper-panel ledger-dashed afterroll-note relative inline-block rounded-[0.5rem] px-[1.1rem] py-[0.48rem] text-[1.2rem] leading-none transition-transform duration-200"
+                className="afterroll-note relative inline-flex h-[2rem] items-center rounded-[0.25rem] border px-[0.72rem] text-[0.72rem] uppercase tracking-[0.12em] transition-colors duration-200 md:px-[0.9rem]"
                 style={{
-                  color: isActive ? 'var(--ledger-ink)' : 'var(--ledger-muted)',
-                  transform: hoveredHref === href ? 'translateY(-0.04rem) rotate(-1deg)' : 'rotate(0deg)',
+                  borderColor: isActive ? 'var(--atr-line-strong)' : 'var(--atr-line)',
+                  color: isActive ? 'var(--atr-accent)' : 'var(--atr-muted)',
+                  background: hoveredHref === href || isActive ? 'rgba(88, 125, 163, 0.075)' : 'rgba(245, 248, 251, 0.72)',
+                  boxShadow: isActive ? '0 0 1rem rgba(88, 125, 163, 0.16)' : 'none',
                 }}
                 onMouseEnter={() => setHoveredHref(href)}
                 onMouseLeave={() => setHoveredHref(null)}
@@ -40,7 +49,7 @@ export default function LedgerGNB() {
                 {isActive ? (
                   <motion.span
                     layoutId="ledger-nav-active"
-                    className="absolute inset-x-[0.7rem] bottom-[0.28rem] h-[0.12rem] rounded-full bg-[var(--ledger-accent)]"
+                    className="absolute inset-x-[0.45rem] bottom-[0.22rem] h-[0.08rem] rounded-full bg-[var(--atr-accent)]"
                     transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                   />
                 ) : null}
@@ -48,7 +57,7 @@ export default function LedgerGNB() {
                 {!isActive && hoveredHref === href ? (
                   <motion.span
                     layoutId="ledger-nav-hover"
-                    className="absolute inset-x-[0.85rem] bottom-[0.32rem] h-[0.08rem] rounded-full bg-[var(--ledger-accent-soft)]"
+                    className="absolute inset-x-[0.5rem] bottom-[0.24rem] h-[0.06rem] rounded-full bg-[var(--atr-accent-2)]"
                     initial={{ scaleX: 0 }}
                     animate={{ scaleX: 1 }}
                     exit={{ scaleX: 0 }}
@@ -59,7 +68,8 @@ export default function LedgerGNB() {
             </li>
           );
         })}
-      </ul>
+        </ul>
+      </div>
     </nav>
   );
 }

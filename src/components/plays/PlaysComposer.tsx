@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   addPlay,
   updatePlay,
   updatePlaysOptions,
   type PlayEntry,
-  type PlayType,
-  type PlayStatus,
   type PlaysOptions,
+  type PlayStatus,
+  type PlayType,
 } from '@/lib/data/firebasePlays';
 
 type TitleDates = { startDate: string; endDate: string | null };
@@ -26,7 +26,6 @@ function formatDate(d: string) {
   return d.replace(/-/g, '.');
 }
 
-// ── 제목 드롭다운 ──────────────────────────────────────────────
 function TitleField({
   value,
   calendarTitles,
@@ -61,10 +60,13 @@ function TitleField({
       <div className="relative">
         <input
           value={value}
-          onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setOpen(true);
+          }}
           onFocus={() => setOpen(true)}
           placeholder="캘린더에서 선택하거나 직접 입력..."
-          className="w-full afterroll-meta rounded-[0.5rem] border border-[rgba(87,67,48,0.25)] bg-[rgba(255,253,245,0.9)] px-[0.8rem] py-[0.5rem] text-[0.9rem] text-[var(--ledger-ink)] outline-none transition-colors placeholder:text-[var(--ledger-muted)] focus:border-[var(--ledger-accent)]"
+          className="w-full afterroll-meta rounded-[0.5rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] px-[0.8rem] py-[0.5rem] text-[0.9rem] text-[var(--ledger-ink)] outline-none transition-colors placeholder:text-[var(--ledger-muted)] focus:border-[var(--ledger-accent)]"
         />
         <AnimatePresence>
           {open && filtered.length > 0 && (
@@ -73,7 +75,7 @@ function TitleField({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.12 }}
-              className="absolute left-0 right-0 top-full z-50 mt-[0.2rem] max-h-[13rem] overflow-y-auto rounded-[0.6rem] border border-[rgba(87,67,48,0.18)] bg-[#faf7ef] shadow-lg"
+              className="absolute left-0 right-0 top-full z-50 mt-[0.2rem] max-h-[13rem] overflow-y-auto rounded-[0.6rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] shadow-none"
             >
               {filtered.map((t) => {
                 const dates = titleDatesMap.get(t);
@@ -82,8 +84,11 @@ function TitleField({
                     key={t}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => { onChange(t); setOpen(false); }}
-                    className="flex w-full items-center justify-between border-b border-[rgba(87,67,48,0.07)] px-[0.9rem] py-[0.5rem] text-left last:border-0 hover:bg-[rgba(127,79,42,0.07)] transition-colors"
+                    onClick={() => {
+                      onChange(t);
+                      setOpen(false);
+                    }}
+                    className="flex w-full items-center justify-between border-b border-[rgba(200,121,147,0.12)] px-[0.9rem] py-[0.5rem] text-left transition-colors last:border-0 hover:bg-[rgba(232,169,186,0.18)]"
                   >
                     <span className="afterroll-meta text-[0.85rem] text-[var(--ledger-ink)]">{t}</span>
                     {dates && (
@@ -102,7 +107,6 @@ function TitleField({
   );
 }
 
-// ── 단일 선택 + 직접 추가 ──────────────────────────────────────
 function SelectWithAdd({
   label,
   value,
@@ -121,7 +125,10 @@ function SelectWithAdd({
 
   function commitNew() {
     const v = newVal.trim();
-    if (v) { onAddOption(v); onSelect(v); }
+    if (v) {
+      onAddOption(v);
+      onSelect(v);
+    }
     setNewVal('');
     setAdding(false);
   }
@@ -139,8 +146,8 @@ function SelectWithAdd({
             onClick={() => onSelect(value === opt ? '' : opt)}
             className={`rounded-full border px-[0.7rem] py-[0.28rem] text-[0.8rem] transition-all ${
               value === opt
-                ? 'border-[var(--ledger-accent)] bg-[rgba(127,79,42,0.1)] text-[var(--ledger-accent)]'
-                : 'border-[rgba(87,67,48,0.2)] text-[var(--ledger-muted)] hover:border-[rgba(87,67,48,0.4)] hover:text-[var(--ledger-ink)]'
+                ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.22)] text-[var(--ledger-accent)]'
+                : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)] hover:border-[rgba(200,121,147,0.42)] hover:text-[var(--ledger-ink)]'
             }`}
           >
             {opt}
@@ -153,31 +160,29 @@ function SelectWithAdd({
               value={newVal}
               onChange={(e) => setNewVal(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); commitNew(); }
-                if (e.key === 'Escape') { setNewVal(''); setAdding(false); }
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  commitNew();
+                }
+                if (e.key === 'Escape') {
+                  setNewVal('');
+                  setAdding(false);
+                }
               }}
               className="w-[5.5rem] rounded-full border border-[var(--ledger-accent)] bg-transparent px-[0.6rem] py-[0.26rem] text-[0.8rem] text-[var(--ledger-ink)] outline-none"
             />
-            <button
-              type="button"
-              onClick={commitNew}
-              className="text-[0.75rem] text-[var(--ledger-accent)] hover:opacity-70"
-            >
+            <button type="button" onClick={commitNew} className="text-[0.75rem] text-[var(--ledger-accent)] hover:opacity-70">
               추가
             </button>
-            <button
-              type="button"
-              onClick={() => { setNewVal(''); setAdding(false); }}
-              className="text-[0.75rem] text-[var(--ledger-muted)]"
-            >
-              ×
+            <button type="button" onClick={() => { setNewVal(''); setAdding(false); }} className="text-[0.75rem] text-[var(--ledger-muted)]">
+              취소
             </button>
           </div>
         ) : (
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="rounded-full border border-dashed border-[rgba(87,67,48,0.25)] px-[0.7rem] py-[0.28rem] text-[0.8rem] text-[var(--ledger-muted)] transition-all hover:border-[rgba(87,67,48,0.45)] hover:text-[var(--ledger-ink)]"
+            className="rounded-full border border-dashed border-[rgba(200,121,147,0.26)] px-[0.7rem] py-[0.28rem] text-[0.8rem] text-[var(--ledger-muted)] transition-all hover:border-[rgba(200,121,147,0.45)] hover:text-[var(--ledger-ink)]"
           >
             +
           </button>
@@ -187,7 +192,6 @@ function SelectWithAdd({
   );
 }
 
-// ── 참여자 복수 선택 + 직접 추가 ──────────────────────────────
 function ParticipantsField({
   selected,
   options,
@@ -204,7 +208,10 @@ function ParticipantsField({
 
   function commitNew() {
     const v = newVal.trim();
-    if (v) { onAddOption(v); onToggle(v); }
+    if (v) {
+      onAddOption(v);
+      onToggle(v);
+    }
     setNewVal('');
     setAdding(false);
   }
@@ -222,8 +229,8 @@ function ParticipantsField({
             onClick={() => onToggle(p)}
             className={`rounded-full border px-[0.7rem] py-[0.28rem] text-[0.8rem] transition-all ${
               selected.includes(p)
-                ? 'border-[var(--ledger-accent)] bg-[rgba(127,79,42,0.1)] text-[var(--ledger-accent)]'
-                : 'border-[rgba(87,67,48,0.2)] text-[var(--ledger-muted)] hover:border-[rgba(87,67,48,0.4)] hover:text-[var(--ledger-ink)]'
+                ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.22)] text-[var(--ledger-accent)]'
+                : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)] hover:border-[rgba(200,121,147,0.42)] hover:text-[var(--ledger-ink)]'
             }`}
           >
             {p}
@@ -236,19 +243,29 @@ function ParticipantsField({
               value={newVal}
               onChange={(e) => setNewVal(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); commitNew(); }
-                if (e.key === 'Escape') { setNewVal(''); setAdding(false); }
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  commitNew();
+                }
+                if (e.key === 'Escape') {
+                  setNewVal('');
+                  setAdding(false);
+                }
               }}
               className="w-[5.5rem] rounded-full border border-[var(--ledger-accent)] bg-transparent px-[0.6rem] py-[0.26rem] text-[0.8rem] text-[var(--ledger-ink)] outline-none"
             />
-            <button type="button" onClick={commitNew} className="text-[0.75rem] text-[var(--ledger-accent)] hover:opacity-70">추가</button>
-            <button type="button" onClick={() => { setNewVal(''); setAdding(false); }} className="text-[0.75rem] text-[var(--ledger-muted)]">×</button>
+            <button type="button" onClick={commitNew} className="text-[0.75rem] text-[var(--ledger-accent)] hover:opacity-70">
+              추가
+            </button>
+            <button type="button" onClick={() => { setNewVal(''); setAdding(false); }} className="text-[0.75rem] text-[var(--ledger-muted)]">
+              취소
+            </button>
           </div>
         ) : (
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="rounded-full border border-dashed border-[rgba(87,67,48,0.25)] px-[0.7rem] py-[0.28rem] text-[0.8rem] text-[var(--ledger-muted)] transition-all hover:border-[rgba(87,67,48,0.45)] hover:text-[var(--ledger-ink)]"
+            className="rounded-full border border-dashed border-[rgba(200,121,147,0.26)] px-[0.7rem] py-[0.28rem] text-[0.8rem] text-[var(--ledger-muted)] transition-all hover:border-[rgba(200,121,147,0.45)] hover:text-[var(--ledger-ink)]"
           >
             +
           </button>
@@ -258,9 +275,8 @@ function ParticipantsField({
   );
 }
 
-// ── 메인 폼 ───────────────────────────────────────────────────
 const STATUS_OPTIONS: { value: PlayStatus; label: string }[] = [
-  { value: 'ongoing', label: '현행' },
+  { value: 'ongoing', label: '진행' },
   { value: 'completed', label: '완주' },
   { value: 'dropped', label: '하차' },
 ];
@@ -308,9 +324,7 @@ export default function PlaysComposer({ editTarget, options, calendarTitles, tit
   }
 
   function toggleParticipant(p: string) {
-    setParticipants((prev) =>
-      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
-    );
+    setParticipants((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -318,7 +332,16 @@ export default function PlaysComposer({ editTarget, options, calendarTitles, tit
     if (!title.trim()) return;
     setSaving(true);
     try {
-      const data = { title: title.trim(), rule, playerCount, type, participants, status, startDate, endDate: endDate || null };
+      const data = {
+        title: title.trim(),
+        rule,
+        playerCount,
+        type,
+        participants,
+        status,
+        startDate,
+        endDate: endDate || null,
+      };
       if (editTarget) {
         await updatePlay(editTarget.id, data);
       } else {
@@ -333,26 +356,28 @@ export default function PlaysComposer({ editTarget, options, calendarTitles, tit
   return (
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center p-[1rem]"
-      style={{ background: 'rgba(50,38,25,0.5)', backdropFilter: 'blur(4px)' }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ background: 'rgba(76,51,61,0.28)', backdropFilter: 'blur(4px)' }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 8 }}
         transition={{ duration: 0.18 }}
-        className="ledger-paper-sheet paper-memo w-full max-w-[28rem] max-h-[90vh] overflow-y-auto rounded-[1.2rem] px-[1.5rem] py-[1.4rem]"
+        className="ledger-paper-sheet paper-memo max-h-[90vh] w-full max-w-[28rem] overflow-y-auto rounded-[1.2rem] px-[1.5rem] py-[1.4rem]"
       >
         <div className="mb-[1.2rem] flex items-center justify-between">
           <h2 className="afterroll-title text-[1.3rem] text-[var(--ledger-ink)]">
-            {editTarget ? '편집' : '새 플레이'}
+            {editTarget ? '플레이 편집' : '새 플레이'}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="afterroll-meta text-[1.3rem] leading-none text-[var(--ledger-muted)] transition-colors hover:text-[var(--ledger-ink)]"
+            className="afterroll-meta text-[0.8rem] text-[var(--ledger-muted)] transition-colors hover:text-[var(--ledger-ink)]"
           >
-            ×
+            닫기
           </button>
         </div>
 
@@ -364,7 +389,6 @@ export default function PlaysComposer({ editTarget, options, calendarTitles, tit
             onChange={handleTitleChange}
           />
 
-          {/* 기간 */}
           <div>
             <label className="afterroll-meta mb-[0.4rem] block text-[0.72rem] uppercase tracking-[0.08em] text-[var(--ledger-soft)]">
               기간
@@ -374,19 +398,18 @@ export default function PlaysComposer({ editTarget, options, calendarTitles, tit
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="flex-1 afterroll-meta rounded-[0.5rem] border border-[rgba(87,67,48,0.25)] bg-[rgba(255,253,245,0.9)] px-[0.7rem] py-[0.45rem] text-[0.85rem] text-[var(--ledger-ink)] outline-none focus:border-[var(--ledger-accent)]"
+                className="flex-1 afterroll-meta rounded-[0.5rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] px-[0.7rem] py-[0.45rem] text-[0.85rem] text-[var(--ledger-ink)] outline-none focus:border-[var(--ledger-accent)]"
               />
-              <span className="afterroll-meta text-[0.78rem] text-[var(--ledger-muted)]">–</span>
+              <span className="afterroll-meta text-[0.78rem] text-[var(--ledger-muted)]">-</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="flex-1 afterroll-meta rounded-[0.5rem] border border-[rgba(87,67,48,0.25)] bg-[rgba(255,253,245,0.9)] px-[0.7rem] py-[0.45rem] text-[0.85rem] text-[var(--ledger-ink)] outline-none focus:border-[var(--ledger-accent)]"
+                className="flex-1 afterroll-meta rounded-[0.5rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] px-[0.7rem] py-[0.45rem] text-[0.85rem] text-[var(--ledger-ink)] outline-none focus:border-[var(--ledger-accent)]"
               />
             </div>
           </div>
 
-          {/* 유형 */}
           <div>
             <label className="afterroll-meta mb-[0.4rem] block text-[0.72rem] uppercase tracking-[0.08em] text-[var(--ledger-soft)]">
               유형
@@ -399,8 +422,8 @@ export default function PlaysComposer({ editTarget, options, calendarTitles, tit
                   onClick={() => setType(t)}
                   className={`rounded-full border px-[1rem] py-[0.28rem] text-[0.85rem] font-medium transition-all ${
                     type === t
-                      ? 'border-[var(--ledger-accent)] bg-[rgba(127,79,42,0.1)] text-[var(--ledger-accent)]'
-                      : 'border-[rgba(87,67,48,0.2)] text-[var(--ledger-muted)] hover:border-[rgba(87,67,48,0.4)] hover:text-[var(--ledger-ink)]'
+                      ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.22)] text-[var(--ledger-accent)]'
+                      : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)] hover:border-[rgba(200,121,147,0.42)] hover:text-[var(--ledger-ink)]'
                   }`}
                 >
                   {t}
@@ -432,7 +455,6 @@ export default function PlaysComposer({ editTarget, options, calendarTitles, tit
             onAddOption={addParticipant}
           />
 
-          {/* 상태 */}
           <div>
             <label className="afterroll-meta mb-[0.4rem] block text-[0.72rem] uppercase tracking-[0.08em] text-[var(--ledger-soft)]">
               상태
@@ -445,8 +467,8 @@ export default function PlaysComposer({ editTarget, options, calendarTitles, tit
                   onClick={() => setStatus(v)}
                   className={`rounded-full border px-[0.8rem] py-[0.28rem] text-[0.82rem] transition-all ${
                     status === v
-                      ? 'border-[var(--ledger-accent)] bg-[rgba(127,79,42,0.1)] text-[var(--ledger-accent)]'
-                      : 'border-[rgba(87,67,48,0.2)] text-[var(--ledger-muted)] hover:border-[rgba(87,67,48,0.4)] hover:text-[var(--ledger-ink)]'
+                      ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.22)] text-[var(--ledger-accent)]'
+                      : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)] hover:border-[rgba(200,121,147,0.42)] hover:text-[var(--ledger-ink)]'
                   }`}
                 >
                   {label}
@@ -455,7 +477,7 @@ export default function PlaysComposer({ editTarget, options, calendarTitles, tit
             </div>
           </div>
 
-          <div className="flex justify-end gap-[0.5rem] border-t border-[rgba(87,67,48,0.1)] pt-[0.8rem]">
+          <div className="flex justify-end gap-[0.5rem] border-t border-[rgba(200,121,147,0.18)] pt-[0.8rem]">
             <button
               type="button"
               onClick={onClose}
@@ -466,7 +488,7 @@ export default function PlaysComposer({ editTarget, options, calendarTitles, tit
             <button
               type="submit"
               disabled={!title.trim() || saving}
-              className="afterroll-meta rounded-[0.5rem] border border-[var(--ledger-accent)] bg-[rgba(127,79,42,0.08)] px-[1.1rem] py-[0.38rem] text-[0.82rem] text-[var(--ledger-accent)] transition-all hover:bg-[rgba(127,79,42,0.16)] disabled:opacity-40"
+              className="afterroll-meta rounded-[0.5rem] border border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.18)] px-[1.1rem] py-[0.38rem] text-[0.82rem] text-[var(--ledger-accent)] shadow-none transition-all hover:bg-[rgba(232,169,186,0.28)] disabled:opacity-40"
             >
               {saving ? '저장 중...' : editTarget ? '수정' : '추가'}
             </button>

@@ -125,9 +125,9 @@ function formatDuration(minutes: number | null): string {
   if (minutes === null) return '시간 정보 없음';
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  if (hours && mins) return `${hours}시간 ${mins}분`;
-  if (hours) return `${hours}시간`;
-  return `${mins}분`;
+  if (hours && mins) return `${hours}h ${mins}m`;
+  if (hours) return `${hours}h`;
+  return `${mins}m`;
 }
 
 function formatSessionTime(session: PlaySession): string {
@@ -141,25 +141,25 @@ function getEntryDates(entry: PlayEntry, fallback: TitleDates | undefined): Titl
 }
 
 function formatStart(dates: TitleDates | null): string {
-  return dates ? formatDate(dates.startDate) : '—';
+  return dates ? formatDate(dates.startDate) : '-';
 }
 
 function formatEnd(entry: PlayEntry, dates: TitleDates | null): string {
-  if (!dates) return '—';
+  if (!dates) return '-';
   if (entry.status === 'ongoing') return '~';
   return formatDate(dates.endDate ?? dates.startDate);
 }
 
 const STATUS_LABEL: Record<PlayEntry['status'], string> = {
   completed: '완주',
-  ongoing: '현행',
+  ongoing: '진행',
   dropped: '하차',
 };
 
 const STATUS_STYLE: Record<PlayEntry['status'], string> = {
-  completed: 'bg-[rgba(70,150,70,0.12)] text-[rgba(40,110,40,0.85)] border-[rgba(70,150,70,0.28)]',
-  ongoing: 'bg-[rgba(127,79,42,0.1)] text-[var(--ledger-accent)] border-[rgba(127,79,42,0.3)]',
-  dropped: 'bg-[rgba(87,67,48,0.06)] text-[var(--ledger-muted)] border-[rgba(87,67,48,0.18)]',
+  completed: 'bg-[rgba(94,132,146,0.12)] text-[rgba(61,95,111,0.85)] border-[rgba(94,132,146,0.28)]',
+  ongoing: 'bg-[rgba(232,169,186,0.2)] text-[var(--ledger-accent)] border-[rgba(200,121,147,0.32)]',
+  dropped: 'bg-[rgba(128,96,107,0.07)] text-[var(--ledger-muted)] border-[rgba(128,96,107,0.18)]',
 };
 
 const TH = 'px-[0.75rem] py-[0.55rem] text-left whitespace-nowrap';
@@ -170,7 +170,7 @@ function colCount(isAdmin: boolean) {
   return isAdmin ? 8 : 7;
 }
 
-// ── 클릭 가능한 컬럼 헤더 ────────────────────────────────────────
+// 클릭 가능한 컬럼 헤더
 function ColHeader({
   col,
   label,
@@ -199,7 +199,7 @@ function ColHeader({
           openColumn === col ? 'rotate-180' : ''
         }`}
       >
-        ▾
+                                  v
       </span>
       {isActive && (
         <span className="h-[0.28rem] w-[0.28rem] rounded-full bg-[var(--ledger-accent)]" />
@@ -395,14 +395,14 @@ export default function PlaysSection() {
 
   const loading = authLoading || playsLoading || calLoading;
 
-  // ── 드롭다운 콘텐츠 ───────────────────────────────────────────
+  // 드롭다운 콘텐츠
   const ddClass =
-    'min-w-[8rem] overflow-hidden rounded-[0.6rem] border border-[rgba(87,67,48,0.18)] bg-[#faf7ef] shadow-[0_4px_16px_rgba(87,67,48,0.14)]';
+    'min-w-[8rem] overflow-hidden rounded-[0.6rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] shadow-none';
   const optCls = (active: boolean) =>
-    `block w-full text-left px-[0.85rem] py-[0.42rem] afterroll-meta text-[0.82rem] transition-colors hover:bg-[rgba(127,79,42,0.08)] ${
-      active ? 'bg-[rgba(127,79,42,0.05)] text-[var(--ledger-accent)]' : 'text-[var(--ledger-ink)]'
+    `block w-full text-left px-[0.85rem] py-[0.42rem] afterroll-meta text-[0.82rem] transition-colors hover:bg-[rgba(232,169,186,0.18)] ${
+      active ? 'bg-[rgba(232,169,186,0.16)] text-[var(--ledger-accent)]' : 'text-[var(--ledger-ink)]'
     }`;
-  const divEl = <div className="border-b border-[rgba(87,67,48,0.08)]" />;
+  const divEl = <div className="border-b border-[rgba(200,121,147,0.14)]" />;
 
   function renderDropdown() {
     if (openColumn === 'startYear') {
@@ -436,7 +436,7 @@ export default function PlaysSection() {
             onChange={(e) => setFilterTitleSearch(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Escape') closeFilter(); }}
             placeholder="이름 검색..."
-            className="w-full afterroll-meta rounded-[0.4rem] border border-[rgba(87,67,48,0.2)] bg-[rgba(255,253,245,0.9)] px-[0.6rem] py-[0.38rem] text-[0.82rem] text-[var(--ledger-ink)] outline-none placeholder:text-[var(--ledger-muted)] focus:border-[var(--ledger-accent)]"
+            className="w-full afterroll-meta rounded-[0.4rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] px-[0.6rem] py-[0.38rem] text-[0.82rem] text-[var(--ledger-ink)] outline-none placeholder:text-[var(--ledger-muted)] focus:border-[var(--ledger-accent)]"
           />
           {filterTitleSearch && (
             <button
@@ -474,7 +474,7 @@ export default function PlaysSection() {
     if (openColumn === 'status') {
       return (
         <div className={ddClass}>
-          {([['all', '전체'], ['ongoing', '현행'], ['completed', '완주'], ['dropped', '하차']] as const).map(([v, l]) => (
+          {([['all', '전체'], ['ongoing', '진행'], ['completed', '완주'], ['dropped', '하차']] as const).map(([v, l]) => (
             <button key={v} className={optCls(filterStatus === v)} onClick={() => { setFilterStatus(v); closeFilter(); }}>{l}</button>
           ))}
         </div>
@@ -485,8 +485,8 @@ export default function PlaysSection() {
 
   return (
     <div>
-      {/* 탭 + 로그인 */}
-      <div className="mb-[1.2rem] flex items-center justify-between gap-[1rem]">
+      {/* 탭과 관리 액션 */}
+      <div className="mb-[1.2rem] flex flex-wrap items-center justify-between gap-[0.7rem]">
         <div className="flex gap-[0.4rem]">
           {(['list', 'stats'] as const).map((t) => (
             <button
@@ -494,31 +494,30 @@ export default function PlaysSection() {
               onClick={() => setTab(t)}
               className={`afterroll-meta rounded-[0.4rem] border px-[0.85rem] py-[0.35rem] text-[0.8rem] transition-all ${
                 tab === t
-                  ? 'border-[var(--ledger-accent)] bg-[rgba(127,79,42,0.08)] text-[var(--ledger-accent)]'
-                  : 'border-[rgba(87,67,48,0.18)] text-[var(--ledger-muted)] hover:text-[var(--ledger-ink)]'
+                  ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.18)] text-[var(--ledger-accent)]'
+                  : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)] hover:text-[var(--ledger-ink)]'
               }`}
             >
               {t === 'list' ? '목록' : '통계'}
             </button>
           ))}
         </div>
-        <AdminLoginButton />
-      </div>
-
-      {tab === 'list' && isAdmin && !loading && (
-        <div className="mb-[1rem]">
-          <button
-            onClick={openAdd}
-            className="ledger-paper-panel ledger-dashed afterroll-note rounded-[0.5rem] px-[1rem] py-[0.42rem] text-[0.82rem] text-[var(--ledger-muted)] transition-all hover:text-[var(--ledger-ink)]"
-          >
-            + 새 플레이 추가
-          </button>
+        <div className="flex flex-wrap items-center justify-end gap-[0.45rem]">
+          {tab === 'list' && isAdmin && !loading && (
+            <button
+              onClick={openAdd}
+              className="afterroll-meta rounded-[0.4rem] border border-[rgba(200,121,147,0.24)] bg-transparent px-[0.85rem] py-[0.35rem] text-[0.8rem] text-[var(--ledger-muted)] shadow-none transition-all hover:border-[var(--ledger-accent)] hover:text-[var(--ledger-ink)]"
+            >
+              + 플레이 추가
+            </button>
+          )}
+          <AdminLoginButton />
         </div>
-      )}
+      </div>
 
       {calError && (
         <div className="ledger-paper-panel mb-[1rem] rounded-[0.65rem] border border-[rgba(160,50,50,0.24)] bg-[rgba(180,60,60,0.06)] px-[1rem] py-[0.7rem] afterroll-meta text-[0.82rem] text-[rgba(150,45,45,0.9)]">
-          캘린더 정보를 불러오지 못했습니다: {calError}
+          캘린더 정보를 불러오지 못했습니다. {calError}
         </div>
       )}
 
@@ -535,7 +534,7 @@ export default function PlaysSection() {
           <div className="ledger-paper-panel overflow-x-auto rounded-[0.8rem]">
             <table className="w-full min-w-[40rem] border-collapse">
               <thead>
-                <tr className="border-b border-[rgba(87,67,48,0.12)]">
+                <tr className="border-b border-[rgba(200,121,147,0.18)]">
                   <th className={TH}>
                     <ColHeader col="startYear" label="시작" openColumn={openColumn} isActive={isFilterActive('startYear')} onOpen={openFilter} />
                   </th>
@@ -546,7 +545,7 @@ export default function PlaysSection() {
                     <ColHeader col="rule" label="룰" openColumn={openColumn} isActive={isFilterActive('rule')} onOpen={openFilter} />
                   </th>
                   <th className={`${TH} w-full`}>
-                    <ColHeader col="title" label="시나리오 이름" openColumn={openColumn} isActive={isFilterActive('title')} onOpen={openFilter} />
+                    <ColHeader col="title" label="제목" openColumn={openColumn} isActive={isFilterActive('title')} onOpen={openFilter} />
                   </th>
                   <th className={TH}>
                     <ColHeader col="playerCount" label="인원" openColumn={openColumn} isActive={isFilterActive('playerCount')} onOpen={openFilter} />
@@ -583,15 +582,15 @@ export default function PlaysSection() {
                       <Fragment key={entry.id}>
                         <tr
                           onClick={() => canExpand && toggleExpand(entry.id)}
-                          className={`transition-colors ${i > 0 ? 'border-t border-[rgba(87,67,48,0.07)]' : ''} ${
+                          className={`transition-colors ${i > 0 ? 'border-t border-[rgba(200,121,147,0.12)]' : ''} ${
                             canExpand
-                              ? 'cursor-pointer hover:bg-[rgba(127,79,42,0.05)]'
-                              : 'hover:bg-[rgba(127,79,42,0.02)]'
-                          } ${isExpanded ? 'bg-[rgba(127,79,42,0.04)]' : ''}`}
+                              ? 'cursor-pointer hover:bg-[rgba(232,169,186,0.14)]'
+                              : 'hover:bg-[rgba(232,169,186,0.08)]'
+                          } ${isExpanded ? 'bg-[rgba(232,169,186,0.12)]' : ''}`}
                         >
                           <td className={TD}>{formatStart(dates)}</td>
                           <td className={TD}>{formatEnd(entry, dates)}</td>
-                          <td className={TD}>{entry.rule || '—'}</td>
+                          <td className={TD}>{entry.rule || '-'}</td>
                           <td className={`${TD} afterroll-title text-[var(--ledger-ink)] whitespace-normal`}>
                             <span className="flex items-center gap-[0.35rem]">
                               {entry.title}
@@ -601,12 +600,12 @@ export default function PlaysSection() {
                                     isExpanded ? 'rotate-180' : ''
                                   }`}
                                 >
-                                  ▾
+                                  v
                                 </span>
                               )}
                             </span>
                           </td>
-                          <td className={TD}>{entry.playerCount ? `${entry.playerCount}` : '—'}</td>
+                          <td className={TD}>{entry.playerCount ? `${entry.playerCount}` : '-'}</td>
                           <td className={TD}>{entry.type}</td>
                           <td className={TD}>
                             <span className={`rounded-full border px-[0.45rem] py-[0.1rem] text-[0.67rem] ${STATUS_STYLE[entry.status]}`}>
@@ -634,7 +633,7 @@ export default function PlaysSection() {
                                 <span className="flex items-center gap-[0.3rem]">
                                   <button
                                     onClick={() => openEdit(entry)}
-                                    className="afterroll-meta rounded border border-transparent px-[0.4rem] py-[0.18rem] text-[0.7rem] text-[var(--ledger-muted)] transition-all hover:border-[rgba(87,67,48,0.2)] hover:text-[var(--ledger-ink)]"
+                                    className="afterroll-meta rounded border border-transparent px-[0.4rem] py-[0.18rem] text-[0.7rem] text-[var(--ledger-muted)] transition-all hover:border-[rgba(200,121,147,0.24)] hover:text-[var(--ledger-ink)]"
                                   >
                                     편집
                                   </button>
@@ -654,7 +653,7 @@ export default function PlaysSection() {
                           {isExpanded && canExpand && (
                             <tr
                               key={`${entry.id}-p`}
-                              className="border-t border-[rgba(87,67,48,0.07)] bg-[rgba(127,79,42,0.03)]"
+                              className="border-t border-[rgba(200,121,147,0.12)] bg-[rgba(232,169,186,0.1)]"
                             >
                               <td colSpan={colCount(isAdmin)} className="px-[0.75rem] py-0">
                                 <motion.div
@@ -677,12 +676,12 @@ export default function PlaysSection() {
                                           {sessions.map((session) => (
                                             <div
                                               key={session.id}
-                                              className="afterroll-meta rounded-[0.45rem] border border-[rgba(87,67,48,0.12)] bg-[rgba(255,253,245,0.45)] px-[0.55rem] py-[0.38rem] text-[0.72rem] text-[var(--ledger-muted)]"
+                                              className="afterroll-meta rounded-[0.45rem] border border-[rgba(200,121,147,0.18)] bg-[rgba(255,248,250,0.72)] px-[0.55rem] py-[0.38rem] text-[0.72rem] text-[var(--ledger-muted)]"
                                             >
                                               <span className="text-[var(--ledger-ink)]">{formatDate(session.date)}</span>
-                                              <span className="mx-[0.35rem] text-[rgba(87,67,48,0.35)]">·</span>
+                                              <span className="mx-[0.35rem] text-[rgba(128,96,107,0.4)]">/</span>
                                               <span>{formatSessionTime(session)}</span>
-                                              <span className="mx-[0.35rem] text-[rgba(87,67,48,0.35)]">·</span>
+                                              <span className="mx-[0.35rem] text-[rgba(128,96,107,0.4)]">/</span>
                                               <span>{formatDuration(session.durationMinutes)}</span>
                                             </div>
                                           ))}
@@ -697,7 +696,7 @@ export default function PlaysSection() {
                                         {entry.participants.map((p) => (
                                           <span
                                             key={p}
-                                            className="afterroll-meta rounded-full border border-[rgba(87,67,48,0.15)] bg-[rgba(87,67,48,0.06)] px-[0.5rem] py-[0.1rem] text-[0.72rem] text-[var(--ledger-soft)]"
+                                            className="afterroll-meta rounded-full border border-[rgba(200,121,147,0.2)] bg-[rgba(232,169,186,0.12)] px-[0.5rem] py-[0.1rem] text-[0.72rem] text-[var(--ledger-soft)]"
                                           >
                                             {p}
                                           </span>

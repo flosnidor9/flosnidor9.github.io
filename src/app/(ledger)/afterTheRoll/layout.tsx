@@ -1,13 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import LedgerGNB from '@/components/layout/LedgerGNB';
+import AfterTheRollShell from '@/components/afterroll/AfterTheRollShell';
 
 export default function AfterTheRollLayout({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <LedgerGNB />
-      {children}
-    </>
-  );
+  return <AfterTheRollShell>{children}</AfterTheRollShell>;
 }

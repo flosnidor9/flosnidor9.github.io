@@ -67,25 +67,28 @@ export default async function TrpgReadPage({ params }: Props) {
   const shouldUseEncryptedReader = post.encrypted && process.env.NODE_ENV !== 'development';
 
   return (
-    <main className="afterroll-read-shell afterroll-desk min-h-screen px-[1rem] pb-[4rem] pt-[4.7rem] text-[var(--ledger-ink)] md:px-[2rem] md:pt-[5.1rem]">
-      <article className="afterroll-read-paper ledger-paper-sheet paper-lined paper-holes-left mx-auto max-w-[72rem] overflow-hidden rounded-[0.8rem]">
-        <div className="afterroll-read-header border-b border-[rgba(87,67,48,0.12)] px-[1.2rem] py-[1.1rem] md:px-[1.5rem]">
+    <main className="afterroll-read-shell afterroll-desk min-h-screen px-[1rem] pb-[4rem] pt-[5rem] text-[var(--ledger-ink)] md:px-[2rem] md:pt-[5.4rem]">
+      <article className="afterroll-read-paper ledger-paper-sheet mx-auto max-w-[72rem] overflow-hidden rounded-[0.45rem]">
+        <div className="afterroll-read-header border-b border-[var(--atr-line)] px-[1.2rem] py-[1.1rem] md:px-[1.5rem]">
           <Link
             href="/afterTheRoll"
-            className="ledger-note-card ledger-dashed afterroll-note mb-[1rem] inline-flex items-center gap-[0.4rem] rounded-[0.5rem] px-[0.9rem] py-[0.5rem] text-[1rem] text-[var(--ledger-muted)] transition-transform hover:-translate-y-[0.03rem]"
+            className="ledger-note-card afterroll-note mb-[1rem] inline-flex items-center gap-[0.4rem] rounded-[0.25rem] px-[0.8rem] py-[0.45rem] text-[0.78rem] uppercase text-[var(--ledger-muted)] transition-colors hover:text-[var(--atr-accent)]"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="15 18 9 12 15 6" />
             </svg>
-            <span>Home</span>
+            <span>Back to Bin</span>
           </Link>
 
+          <p className="afterroll-meta mb-[0.5rem] text-[0.72rem] uppercase tracking-[0.18em] text-[var(--atr-accent)]">
+            Log File Viewer
+          </p>
           <div className="flex flex-wrap items-baseline gap-x-[0.85rem] gap-y-[0.35rem]">
-            <h1 className="afterroll-title text-[2.8rem] leading-[0.92] text-[var(--ledger-ink)] md:text-[3.8rem]">
+            <h1 className="afterroll-title text-[2.25rem] leading-[1.04] text-[var(--ledger-ink)] md:text-[3.5rem]">
               {post.title}
             </h1>
             {post.date ? (
-              <span className="afterroll-meta rounded-[0.25rem] border border-[rgba(87,67,48,0.14)] bg-[rgba(255,250,239,0.82)] px-[0.7rem] py-[0.22rem] text-[0.9rem] uppercase tracking-[0.09em] text-[var(--ledger-soft)]">
+              <span className="afterroll-meta rounded-[0.2rem] border border-[var(--atr-line)] bg-[rgba(88, 125, 163,0.06)] px-[0.7rem] py-[0.22rem] text-[0.78rem] uppercase tracking-[0.09em] text-[var(--ledger-soft)]">
                 {post.date}
               </span>
             ) : null}
@@ -104,7 +107,7 @@ export default async function TrpgReadPage({ params }: Props) {
             {post.tags.map((tag) => (
               <span
                 key={tag}
-                className="afterroll-meta rounded-[0.45rem] border border-[rgba(87,67,48,0.12)] bg-[rgba(255,250,239,0.85)] px-[0.76rem] py-[0.26rem] text-[0.96rem] text-[var(--ledger-muted)]"
+                className="afterroll-meta rounded-[0.2rem] border border-[var(--atr-line)] bg-[rgba(88, 125, 163,0.055)] px-[0.7rem] py-[0.24rem] text-[0.78rem] text-[var(--ledger-muted)]"
               >
                 {tag}
               </span>

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import DOMPurify from 'dompurify';
 import Image from 'next/image';
@@ -471,8 +471,8 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
         onSelect={(value) => moveToPage(value)}
       />
 
-      <div className="ledger-paper-sheet paper-memo mt-[0.65rem] flex items-center justify-between gap-[1rem] rounded-[0.55rem] px-[0.9rem] py-[0.8rem] text-[0.8rem] text-[var(--ledger-muted)]">
-        <p className="afterroll-meta relative z-[1] text-[0.84rem] uppercase tracking-[0.12em]">{visibleEntries.length} entries</p>
+      <div className="ledger-paper-sheet mt-[0.65rem] flex items-center justify-between gap-[1rem] rounded-[0.35rem] px-[0.9rem] py-[0.8rem] text-[0.8rem] text-[var(--ledger-muted)]">
+        <p className="afterroll-meta relative z-[1] text-[0.84rem] uppercase tracking-[0.12em]">{visibleEntries.length} transcript lines</p>
         <label className="relative z-[1] inline-flex items-center gap-[0.5rem]">
           <input
             type="checkbox"
@@ -480,7 +480,7 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
             onChange={(event) => setShowAside(event.target.checked)}
             className="h-[0.95rem] w-[0.95rem]"
           />
-          <span className="afterroll-meta text-[0.84rem] tracking-[0.02em]">사담까지 보기</span>
+          <span className="afterroll-meta text-[0.84rem] uppercase tracking-[0.08em]">Side Channel</span>
         </label>
       </div>
 
@@ -490,14 +490,14 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
             key={entry.id}
             className={
               entry.kind === 'media'
-                ? 'ledger-paper-sheet paper-plain rounded-[0.55rem] p-[0.55rem] text-center md:p-[0.65rem]'
-                : `ledger-paper-sheet paper-memo grid grid-cols-[3.75rem_minmax(0,1fr)] gap-[0.65rem] rounded-[0.55rem] p-[0.55rem] md:grid-cols-[4.1rem_minmax(0,1fr)] md:p-[0.65rem] ${
+                ? 'ledger-paper-sheet rounded-[0.35rem] p-[0.55rem] text-center md:p-[0.65rem]'
+                : `ledger-paper-sheet grid grid-cols-[3.75rem_minmax(0,1fr)] gap-[0.65rem] rounded-[0.35rem] p-[0.55rem] md:grid-cols-[4.1rem_minmax(0,1fr)] md:p-[0.65rem] ${
                     entry.isAside ? 'opacity-75' : ''
                   }`
             }
           >
             {entry.kind === 'media' ? (
-              <div className="ledger-typed-box paper-plain relative z-[1] rounded-[0.45rem] px-[0.55rem] py-[0.55rem] md:px-[0.7rem] md:py-[0.7rem]">
+              <div className="ledger-typed-box relative z-[1] rounded-[0.3rem] px-[0.55rem] py-[0.55rem] md:px-[0.7rem] md:py-[0.7rem]">
                 <div
                   className="trpg-media-bubble overflow-hidden rounded-[0.45rem] bg-[#fbf7ef]"
                   dangerouslySetInnerHTML={{ __html: entry.contentHtml }}
@@ -532,16 +532,16 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
                      <div className="mb-[0.34rem]" />
                    )}
                   <div
-                    className={`ledger-typed-box paper-plain afterroll-body min-w-0 overflow-x-auto overflow-y-hidden rounded-[0.45rem] px-[0.7rem] py-[0.62rem] text-[0.92rem] leading-[1.72] md:px-[0.85rem] md:py-[0.72rem] ${
+                    className={`ledger-typed-box afterroll-body min-w-0 overflow-x-auto overflow-y-hidden rounded-[0.3rem] px-[0.7rem] py-[0.62rem] text-[0.92rem] leading-[1.72] md:px-[0.85rem] md:py-[0.72rem] ${
                       entry.isWhisper
-                        ? 'trpg-entry-whisper border border-[rgba(116,145,104,0.24)] text-black/72'
+                        ? 'trpg-entry-whisper border border-[rgba(137,120,158,0.24)] text-black/72'
                         : entry.isAside
                           ? 'trpg-entry-aside text-black/44'
                           : 'trpg-entry-general text-black/78'
                     }`}
                   >
                     {entry.isWhisper ? (
-                      <p className="afterroll-meta mb-[0.34rem] text-[0.68rem] uppercase tracking-[0.14em] text-[rgba(82,112,71,0.76)]">
+                      <p className="afterroll-meta mb-[0.34rem] text-[0.68rem] uppercase tracking-[0.14em] text-[rgba(116,103,140,0.76)]">
                         Whisper
                       </p>
                     ) : null}
@@ -612,7 +612,7 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
           aspect-ratio: 1 / 1;
           overflow: hidden;
           border-radius: 0.16rem;
-          background: #fbf7ef;
+          background: rgba(251, 252, 253, 0.9);
         }
 
         .trpg-log-reader .trpg-portrait-frame img {
@@ -624,17 +624,18 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
         }
 
         .trpg-log-reader .trpg-entry-general {
-          background: linear-gradient(180deg, rgba(255, 255, 255, 0.985), rgba(245, 243, 239, 0.98)) !important;
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 250, 0.98)) !important;
+          border-color: rgba(192, 202, 212, 0.9) !important;
         }
 
         .trpg-log-reader .trpg-entry-aside {
-          background: linear-gradient(180deg, rgba(253, 251, 247, 0.96), rgba(244, 241, 235, 0.94)) !important;
-          border-color: rgba(94, 70, 45, 0.07) !important;
+          background: linear-gradient(180deg, rgba(239, 243, 247, 0.96), rgba(229, 235, 241, 0.96)) !important;
+          border-color: rgba(192, 202, 212, 0.72) !important;
         }
 
         .trpg-log-reader .trpg-entry-whisper {
-          background: linear-gradient(180deg, rgba(231, 243, 230, 0.98), rgba(217, 234, 214, 0.96)) !important;
-          border-color: rgba(116, 145, 104, 0.28) !important;
+          background: linear-gradient(180deg, rgba(245, 240, 249, 0.98), rgba(235, 228, 242, 0.98)) !important;
+          border-color: rgba(139, 120, 165, 0.34) !important;
         }
 
         .trpg-log-reader .sheet-rolltemplate-ninpo,
@@ -738,7 +739,7 @@ function PageNav({ pageIndex, pageCount, onPrev, onNext, onFirst, onLast, onSele
   const pages = Array.from({ length: end - adjustedStart }, (_, index) => adjustedStart + index);
 
   return (
-    <div className="ledger-paper-sheet paper-grid mt-[0.35rem] flex flex-wrap items-center justify-center gap-[0.35rem] rounded-[0.55rem] px-[0.9rem] py-[0.75rem] text-[0.84rem] text-[var(--ledger-muted)]">
+    <div className="ledger-paper-sheet mt-[0.35rem] flex flex-wrap items-center justify-center gap-[0.35rem] rounded-[0.35rem] px-[0.9rem] py-[0.75rem] text-[0.84rem] text-[var(--ledger-muted)]">
       <div className="relative z-[1] flex items-center gap-[0.35rem]">
         <button
           type="button"
@@ -747,7 +748,7 @@ function PageNav({ pageIndex, pageCount, onPrev, onNext, onFirst, onLast, onSele
           aria-label="First page"
           className="ledger-index-tab afterroll-meta rounded-[0.15rem] px-[0.7rem] py-[0.35rem] text-[0.82rem] uppercase tracking-[0.08em] transition-colors hover:bg-[rgba(236,220,194,0.96)] disabled:cursor-not-allowed disabled:opacity-35"
         >
-          {'<<'}
+          IN
         </button>
         <button
           type="button"
@@ -756,7 +757,7 @@ function PageNav({ pageIndex, pageCount, onPrev, onNext, onFirst, onLast, onSele
           aria-label="Previous page"
           className="ledger-index-tab afterroll-meta rounded-[0.15rem] px-[0.7rem] py-[0.35rem] text-[0.82rem] uppercase tracking-[0.08em] transition-colors hover:bg-[rgba(236,220,194,0.96)] disabled:cursor-not-allowed disabled:opacity-35"
         >
-          {'<'}
+          PREV
         </button>
       </div>
 
@@ -772,7 +773,7 @@ function PageNav({ pageIndex, pageCount, onPrev, onNext, onFirst, onLast, onSele
                 active ? 'ledger-index-tab-active' : 'ledger-index-tab hover:bg-[rgba(236,220,194,0.96)]'
               }`}
             >
-              {value + 1}
+              {String(value + 1).padStart(2, '0')}
             </button>
           );
         })}
@@ -786,7 +787,7 @@ function PageNav({ pageIndex, pageCount, onPrev, onNext, onFirst, onLast, onSele
           aria-label="Next page"
           className="ledger-index-tab afterroll-meta rounded-[0.15rem] px-[0.7rem] py-[0.35rem] text-[0.82rem] uppercase tracking-[0.08em] transition-colors hover:bg-[rgba(236,220,194,0.96)] disabled:cursor-not-allowed disabled:opacity-35"
         >
-          {'>'}
+          NEXT
         </button>
         <button
           type="button"
@@ -795,7 +796,7 @@ function PageNav({ pageIndex, pageCount, onPrev, onNext, onFirst, onLast, onSele
           aria-label="Last page"
           className="ledger-index-tab afterroll-meta rounded-[0.15rem] px-[0.7rem] py-[0.35rem] text-[0.82rem] uppercase tracking-[0.08em] transition-colors hover:bg-[rgba(236,220,194,0.96)] disabled:cursor-not-allowed disabled:opacity-35"
         >
-          {'>>'}
+          OUT
         </button>
       </div>
     </div>

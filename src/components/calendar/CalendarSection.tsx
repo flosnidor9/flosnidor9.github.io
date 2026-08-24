@@ -41,10 +41,24 @@ const GRAPH_GAP_REM = 0.18;
 const HOUR_REM = 3.8;
 
 const PALETTE = [
-  '#d04545', '#d07820', '#b8a010', '#58a028',
-  '#18a080', '#1878d0', '#5840c8', '#a030a8',
-  '#c83070', '#806840', '#208888', '#e05010',
+  '#c85f7f',
+  '#d8785f',
+  '#c99648',
+  '#a6a653',
+  '#7fa66e',
+  '#55a37f',
+  '#4b9c98',
+  '#4f92b1',
+  '#5c82c1',
+  '#756fc0',
+  '#8f66b4',
+  '#aa5a9a',
+  '#bf5e74',
+  '#9b7a58',
+  '#6d8f73',
+  '#7f7f9e',
 ] as const;
+type EventColorMap = Map<string, string>;
 
 function getStartDate(event: GoogleCalendarEvent) {
   return (event.start.date ?? event.start.dateTime ?? '').slice(0, 10);
@@ -75,17 +89,22 @@ function autoColor(name: string): string {
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0x7fffffff;
   return PALETTE[h % PALETTE.length];
 }
-function resolveColor(name: string) {
-  const base = autoColor(name);
-  return { base, bg: hexToRgba(base, 0.14) };
+function buildEventColorMap(events: GoogleCalendarEvent[]): EventColorMap {
+  const names = [...new Set(events.map(event => event.summary.trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'ko'));
+  return new Map(names.map((name, index) => [name, PALETTE[index % PALETTE.length]]));
+}
+function resolveColor(name: string, colorMap?: EventColorMap) {
+  const base = colorMap?.get(name.trim()) ?? autoColor(name);
+  return { base, bg: hexToRgba(base, 0.24) };
 }
 
 function getContributionColor(count: number): string {
-  if (count >= 4) return 'rgba(88, 97, 56, 0.86)';
-  if (count === 3) return 'rgba(122, 139, 97, 0.68)';
-  if (count === 2) return 'rgba(127, 79, 42, 0.42)';
-  if (count === 1) return 'rgba(193, 142, 88, 0.34)';
-  return 'rgba(87, 67, 48, 0.055)';
+  if (count >= 4) return 'rgba(125, 79, 157, 0.9)';
+  if (count === 3) return 'rgba(157, 108, 171, 0.76)';
+  if (count === 2) return 'rgba(201, 95, 130, 0.62)';
+  if (count === 1) return 'rgba(224, 130, 158, 0.46)';
+  return 'rgba(107, 74, 86, 0.06)';
 }
 
 function buildYearWeeks(year: number): Date[][] {
@@ -242,13 +261,13 @@ function AnnualPlayGraph({
           onClick={onPrevYear}
           whileTap={{ scale: 0.9 }}
           aria-label="이전 연도"
-          className="ledger-paper-panel ledger-dashed afterroll-note rounded-[0.5rem] px-[0.7rem] py-[0.42rem] text-[1rem] text-[var(--ledger-muted)] transition-transform hover:-translate-y-[0.03rem]"
+          className="afterroll-note rounded-[0.5rem] border border-[var(--atr-line)] bg-transparent px-[0.7rem] py-[0.42rem] text-[1rem] text-[var(--ledger-muted)] transition-colors hover:text-[var(--ledger-ink)]"
         >
           ←
         </motion.button>
 
         <div className="min-w-0 text-center">
-          <p className="afterroll-meta text-[0.78rem] uppercase tracking-[0.14em] text-[var(--ledger-soft)]">Yearly Play Map</p>
+          <p className="afterroll-meta text-[0.78rem] uppercase tracking-[0.14em] text-[var(--ledger-soft)]">연간 플레이 지도</p>
           <h1 className="afterroll-title mt-[0.15rem] text-[2.1rem] leading-none text-[var(--ledger-ink)] md:text-[2.7rem]">
             {year} 플레이 기록
           </h1>
@@ -262,7 +281,7 @@ function AnnualPlayGraph({
           onClick={onNextYear}
           whileTap={{ scale: 0.9 }}
           aria-label="다음 연도"
-          className="ledger-paper-panel ledger-dashed afterroll-note rounded-[0.5rem] px-[0.7rem] py-[0.42rem] text-[1rem] text-[var(--ledger-muted)] transition-transform hover:-translate-y-[0.03rem]"
+          className="afterroll-note rounded-[0.5rem] border border-[var(--atr-line)] bg-transparent px-[0.7rem] py-[0.42rem] text-[1rem] text-[var(--ledger-muted)] transition-colors hover:text-[var(--ledger-ink)]"
         >
           →
         </motion.button>
@@ -349,12 +368,13 @@ function AnnualPlayGraph({
 
 // ── 일별 타임라인 ──────────────────────────────────────────────
 function DailyTimeline({
-  events, day, month, year, onOpenDetail, externalSlots,
+  events, day, month, year, onOpenDetail, externalSlots, eventColorMap,
 }: {
   events: GoogleCalendarEvent[];
   day: number; month: number; year: number;
   onOpenDetail: (event: GoogleCalendarEvent, x: number, y: number) => void;
   externalSlots: ExternalEventSlot[];
+  eventColorMap: EventColorMap;
 }) {
   const allDay = events.filter(isAllDay);
   const timed = events.filter(e => !isAllDay(e));
@@ -398,7 +418,7 @@ function DailyTimeline({
               <p className="afterroll-meta mb-[0.4rem] text-[0.72rem] uppercase tracking-[0.14em] text-[var(--ledger-soft)]">종일</p>
               <div className="flex flex-col gap-[0.3rem]">
                 {allDay.map(event => {
-                  const color = resolveColor(event.summary);
+                  const color = resolveColor(event.summary, eventColorMap);
                   return (
                     <button
                       key={event.id}
@@ -452,7 +472,7 @@ function DailyTimeline({
                 ))}
 
                 {timed.map(event => {
-                  const color = resolveColor(event.summary);
+                  const color = resolveColor(event.summary, eventColorMap);
                   const startMin = toMinutes(event.start.dateTime!);
                   const rawEnd = event.end.dateTime ? toMinutes(event.end.dateTime) : startMin + 60;
                   const endMin = rawEnd <= startMin ? 24 * 60 : rawEnd;
@@ -686,6 +706,10 @@ export default function CalendarSection() {
     }
     return counts;
   }, [annualEvents]);
+  const eventColorMap = useMemo(
+    () => buildEventColorMap([...annualEvents, ...events]),
+    [annualEvents, events],
+  );
 
   const today = new Date();
   const isThisMonth = today.getFullYear() === year && today.getMonth() === month;
@@ -723,7 +747,7 @@ export default function CalendarSection() {
           {/* 월 네비게이션 */}
           <div className="relative z-[1] flex items-center justify-between px-[1.2rem] py-[1rem] md:px-[1.8rem] md:py-[1.3rem]">
             <motion.button type="button" onClick={prevMonth} whileTap={{ scale: 0.9 }}
-              className="ledger-paper-panel ledger-dashed afterroll-note rounded-[0.5rem] px-[0.9rem] py-[0.42rem] text-[1rem] text-[var(--ledger-muted)] transition-transform hover:-translate-y-[0.03rem]">
+              className="afterroll-note rounded-[0.5rem] border border-[var(--atr-line)] bg-transparent px-[0.9rem] py-[0.42rem] text-[1rem] text-[var(--ledger-muted)] transition-colors hover:text-[var(--ledger-ink)]">
               ←
             </motion.button>
             <div className="text-center">
@@ -731,7 +755,7 @@ export default function CalendarSection() {
               <p className="afterroll-meta mt-[0.15rem] text-[0.78rem] uppercase tracking-[0.16em] text-[var(--ledger-soft)]">{year}</p>
             </div>
             <motion.button type="button" onClick={nextMonth} whileTap={{ scale: 0.9 }}
-              className="ledger-paper-panel ledger-dashed afterroll-note rounded-[0.5rem] px-[0.9rem] py-[0.42rem] text-[1rem] text-[var(--ledger-muted)] transition-transform hover:-translate-y-[0.03rem]">
+              className="afterroll-note rounded-[0.5rem] border border-[var(--atr-line)] bg-transparent px-[0.9rem] py-[0.42rem] text-[1rem] text-[var(--ledger-muted)] transition-colors hover:text-[var(--ledger-ink)]">
               →
             </motion.button>
           </div>
@@ -792,7 +816,7 @@ export default function CalendarSection() {
                       <div className="mt-[0.25rem] hidden flex-col gap-[0.18rem] opacity-40 md:flex">
                         {ovfItems.slice(0, 3).map((item, i) => {
                           if (item.kind === 'mine') {
-                            const color = resolveColor(item.event.summary);
+                            const color = resolveColor(item.event.summary, eventColorMap);
                             const timeStr = !isAllDay(item.event) && item.event.start.dateTime ? fmt(item.event.start.dateTime) : '';
                             return (
                               <div key={item.event.id} className="flex min-w-0 items-center gap-[0.22rem] overflow-hidden rounded-[0.25rem] px-[0.3rem] py-[0.1rem]"
@@ -821,7 +845,7 @@ export default function CalendarSection() {
                         <div className="mt-[0.2rem] flex gap-[0.18rem] opacity-40 md:hidden">
                           {ovfItems.slice(0, 5).map((item, i) => {
                             if (item.kind === 'mine') {
-                              const color = resolveColor(item.event.summary);
+                              const color = resolveColor(item.event.summary, eventColorMap);
                               return <span key={item.event.id} className="h-[0.32rem] w-[0.32rem] rounded-full" style={{ background: color.base }} />;
                             }
                             return <span key={`ext-${i}`} className="h-[0.32rem] w-[0.32rem] rounded-full bg-[rgba(87,67,48,0.35)]" />;
@@ -863,7 +887,7 @@ export default function CalendarSection() {
                     <div className="mt-[0.25rem] hidden flex-col gap-[0.18rem] md:flex">
                       {dayItems.slice(0, 3).map((item, i) => {
                         if (item.kind === 'mine') {
-                          const color = resolveColor(item.event.summary);
+                          const color = resolveColor(item.event.summary, eventColorMap);
                           const timeStr = !isAllDay(item.event) && item.event.start.dateTime ? fmt(item.event.start.dateTime) : '';
                           return (
                             <button key={item.event.id} type="button"
@@ -894,7 +918,7 @@ export default function CalendarSection() {
                       <div className="mt-[0.2rem] flex gap-[0.18rem] md:hidden">
                         {dayItems.slice(0, 5).map((item, i) => {
                           if (item.kind === 'mine') {
-                            const color = resolveColor(item.event.summary);
+                            const color = resolveColor(item.event.summary, eventColorMap);
                             return <span key={item.event.id} className="h-[0.32rem] w-[0.32rem] rounded-full" style={{ background: color.base }} />;
                           }
                           return <span key={`ext-${i}`} className="h-[0.32rem] w-[0.32rem] rounded-full bg-[rgba(87,67,48,0.3)]" />;
@@ -918,6 +942,7 @@ export default function CalendarSection() {
               year={year}
               onOpenDetail={openDetail}
               externalSlots={externalDates.get(toDateKey(year, month, selectedDay)) ?? []}
+              eventColorMap={eventColorMap}
             />
           )}
         </AnimatePresence>

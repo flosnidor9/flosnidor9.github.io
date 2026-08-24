@@ -97,9 +97,9 @@ export default function TrpgCastPanel({ gmName, gmIconSrc, cast }: Props) {
 
   return (
     <>
-      <div className="ledger-paper-sheet paper-grid relative mt-[1rem] rounded-[0.55rem] px-[0.9rem] py-[0.85rem]">
+      <div className="ledger-paper-sheet relative mt-[1rem] rounded-[0.35rem] px-[0.9rem] py-[0.85rem]">
         <p className="afterroll-meta relative z-[1] text-[0.86rem] uppercase tracking-[0.16em] text-[var(--ledger-soft)]">
-          Cast
+          Cast Channel
         </p>
 
         <div className="relative z-[1] mt-[0.75rem] grid grid-cols-[repeat(auto-fit,minmax(7.4rem,1fr))] gap-[0.5rem] md:grid-cols-[repeat(auto-fit,minmax(8.2rem,1fr))]">
@@ -109,7 +109,7 @@ export default function TrpgCastPanel({ gmName, gmIconSrc, cast }: Props) {
               type="button"
               onPointerUp={handlePointerOpen(card)}
               onClick={handleKeyboardOpen(card)}
-              className="ledger-typed-box paper-plain flex min-h-[10rem] flex-col items-center rounded-[0.45rem] px-[0.55rem] py-[0.55rem] text-center transition-transform duration-200 hover:-translate-y-[0.04rem]"
+              className="ledger-typed-box flex min-h-[10rem] flex-col items-center rounded-[0.3rem] px-[0.55rem] py-[0.55rem] text-center transition duration-200 hover:border-[var(--atr-line-strong)] hover:shadow-[0_0_1.2rem_rgba(88, 125, 163,0.12)]"
               aria-label={`${card.primaryLabel} icon preview open`}
             >
               <div className="flex flex-1 flex-col items-center justify-center gap-[0.45rem]">
@@ -119,14 +119,14 @@ export default function TrpgCastPanel({ gmName, gmIconSrc, cast }: Props) {
                     alt={card.primaryLabel}
                     width={96}
                     height={96}
-                    className="h-[6rem] w-[6rem] rounded-[0.4rem] border border-[rgba(87,67,48,0.18)] object-cover object-top p-[0.14rem] shadow-[0_0.2rem_0.7rem_rgba(87,67,48,0.08)]"
+                    className="h-[6rem] w-[6rem] rounded-[0.2rem] border border-[var(--atr-line)] object-cover object-top p-[0.12rem] shadow-[0_0_1rem_rgba(88, 125, 163,0.12)]"
                   />
                 ) : (
                   <div
-                    className={`flex h-[6rem] w-[6rem] items-center justify-center rounded-[0.4rem] border border-[rgba(87,67,48,0.18)] shadow-[0_0.2rem_0.7rem_rgba(87,67,48,0.08)] ${
+                    className={`flex h-[6rem] w-[6rem] items-center justify-center rounded-[0.2rem] border border-[var(--atr-line)] shadow-[0_0_1rem_rgba(88, 125, 163,0.12)] ${
                       card.tone === 'gm'
                         ? 'bg-[rgba(127,79,42,0.08)] text-[var(--ledger-accent)]'
-                        : 'bg-[rgba(122,139,97,0.08)] text-[var(--ledger-green)]'
+                        : 'bg-[rgba(141,151,161,0.1)] text-[var(--atr-accent)]'
                     }`}
                   >
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -156,14 +156,14 @@ export default function TrpgCastPanel({ gmName, gmIconSrc, cast }: Props) {
       <AnimatePresence>
         {activePreview ? (
           <motion.div
-            className="fixed inset-0 z-[70] bg-[rgba(32,24,18,0.26)] backdrop-blur-[0.3rem]"
+            className="fixed inset-0 z-[70] bg-[rgba(0,0,0,0.64)] backdrop-blur-[0.3rem]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setActivePreview(null)}
           >
             <motion.div
-              className="absolute w-[min(20rem,calc(100vw-2rem))] rounded-[0.9rem] border border-[rgba(87,67,48,0.14)] bg-[rgba(255,251,244,0.96)] p-[0.8rem] shadow-[0_1.2rem_3rem_rgba(36,26,18,0.24)]"
+              className="absolute w-[min(20rem,calc(100vw-2rem))] rounded-[0.45rem] border border-[var(--atr-line)] bg-[rgba(251,252,253,0.98)] p-[0.8rem] shadow-[0_1rem_2.4rem_rgba(38,50,60,0.16)]"
               style={{
                 left: activePreview.x,
                 top: activePreview.y,
@@ -176,22 +176,22 @@ export default function TrpgCastPanel({ gmName, gmIconSrc, cast }: Props) {
               transition={{ duration: 0.18, ease: 'easeOut' }}
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="ledger-paper-sheet paper-plain flex flex-col items-center rounded-[0.7rem] px-[0.8rem] py-[0.9rem] text-center">
+              <div className="ledger-paper-sheet flex flex-col items-center rounded-[0.35rem] px-[0.8rem] py-[0.9rem] text-center">
                 {activePreview.card.iconSrc ? (
                   <Image
                     src={activePreview.card.iconSrc}
                     alt={activePreview.card.primaryLabel}
                     width={240}
                     height={240}
-                    className="h-[min(15rem,58vw)] w-[min(15rem,58vw)] rounded-[0.75rem] border border-[rgba(87,67,48,0.18)] object-cover object-top p-[0.16rem] shadow-[0_0.4rem_1.4rem_rgba(87,67,48,0.12)]"
+                    className="h-[min(15rem,58vw)] w-[min(15rem,58vw)] rounded-[0.3rem] border border-[var(--atr-line)] object-cover object-top p-[0.12rem] shadow-[0_0_1.5rem_rgba(88, 125, 163,0.16)]"
                     priority
                   />
                 ) : (
                   <div
-                    className={`flex h-[min(15rem,58vw)] w-[min(15rem,58vw)] items-center justify-center rounded-[0.75rem] border border-[rgba(87,67,48,0.18)] shadow-[0_0.4rem_1.4rem_rgba(87,67,48,0.12)] ${
+                    className={`flex h-[min(15rem,58vw)] w-[min(15rem,58vw)] items-center justify-center rounded-[0.3rem] border border-[var(--atr-line)] shadow-[0_0_1.5rem_rgba(88, 125, 163,0.16)] ${
                       activePreview.card.tone === 'gm'
                         ? 'bg-[rgba(127,79,42,0.08)] text-[var(--ledger-accent)]'
-                        : 'bg-[rgba(122,139,97,0.08)] text-[var(--ledger-green)]'
+                        : 'bg-[rgba(141,151,161,0.1)] text-[var(--atr-accent)]'
                     }`}
                   >
                     <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">

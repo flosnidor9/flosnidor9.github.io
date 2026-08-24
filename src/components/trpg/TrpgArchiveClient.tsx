@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
@@ -13,20 +13,6 @@ type Props = {
   backHref?: string;
   backLabel?: string;
 };
-
-const TAPE_CLASSES = [
-  'afterroll-tape-blue left-[3.2rem] -rotate-[0.5deg]',
-  'afterroll-tape-yellow right-[3.4rem] rotate-[8deg]',
-  'afterroll-tape-lime left-[4.2rem] rotate-[-12deg]',
-  'afterroll-tape-pink right-[2.8rem] -rotate-[3deg]',
-] as const;
-
-const CARD_CLASSES = [
-  'paper-lined paper-holes-left afterroll-shadow-soft',
-  'paper-grid paper-torn-bottom afterroll-shadow-soft',
-  'paper-memo afterroll-shadow-soft',
-  'paper-margin-red paper-holes-left afterroll-shadow-soft',
-] as const;
 
 export default function TrpgArchiveClient({ posts, title, description, backHref, backLabel }: Props) {
   const [activeTags, setActiveTags] = useState<string[]>([]);
@@ -47,7 +33,7 @@ export default function TrpgArchiveClient({ posts, title, description, backHref,
     const groups = new Map<string, TrpgArchivePostMeta[]>();
 
     for (const post of filteredPosts) {
-      const key = post.year || 'Unsorted';
+      const key = post.year || '미분류';
       const bucket = groups.get(key);
       if (bucket) {
         bucket.push(post);
@@ -66,7 +52,7 @@ export default function TrpgArchiveClient({ posts, title, description, backHref,
   }
 
   return (
-    <main className="afterroll-desk min-h-screen px-[1.1rem] pb-[4rem] pt-[5.2rem] text-[var(--ledger-ink)] md:px-[2rem]">
+    <main className="afterroll-desk min-h-screen px-[1.1rem] pb-[4rem] pt-[5.4rem] text-[var(--ledger-ink)] md:px-[2rem]">
       <div className="mx-auto max-w-[72rem]">
         {backHref && backLabel ? (
           <Link
@@ -80,52 +66,56 @@ export default function TrpgArchiveClient({ posts, title, description, backHref,
           </Link>
         ) : null}
 
-        <header className="ledger-paper-sheet paper-lined paper-holes-left paper-torn-top relative mb-[2rem] overflow-hidden rounded-[1.5rem] px-[1.4rem] py-[1.5rem] md:mb-[2.5rem] md:px-[2rem] md:py-[1.9rem]">
-          <span className={`afterroll-tape ${TAPE_CLASSES[0]}`} />
-          <p className="afterroll-meta relative z-[1] text-[1.02rem] uppercase tracking-[0.18em] text-[var(--ledger-soft)]">Archive Record</p>
-          <h1 className="afterroll-title mt-[0.6rem] text-[3.1rem] leading-[0.92] text-[var(--ledger-ink)] md:text-[5.2rem]">{title}</h1>
+        <header className="relative mb-[1.2rem] border-y border-[var(--atr-line)] px-[0.2rem] py-[0.9rem]">
+          <p className="afterroll-meta relative z-[1] text-[0.74rem] uppercase tracking-[0.18em] text-[var(--atr-accent)]">폴더 내용</p>
+          <h1 className="afterroll-title mt-[0.35rem] text-[2.1rem] leading-none text-[var(--ledger-ink)] md:text-[3.8rem]">{title}</h1>
           <div className="ledger-paper-rule relative z-[1] mt-[0.8rem] w-full max-w-[10rem]" />
           <p className="afterroll-body mt-[0.85rem] max-w-[38rem] text-[1.06rem] leading-[1.75] text-[var(--ledger-muted)] md:text-[1.12rem]">
             {description}
           </p>
         </header>
 
-        <section className="ledger-paper-sheet paper-grid relative rounded-[1rem] p-[1rem] md:p-[1.25rem]">
-          <span className={`afterroll-tape ${TAPE_CLASSES[1]}`} />
-          <div className="mb-[1.25rem] flex flex-wrap gap-[0.55rem]">
-            <motion.button
-              type="button"
-              onClick={() => setActiveTags([])}
-              whileTap={{ scale: 0.98 }}
-              className={`afterroll-meta rounded-[0.2rem] px-[0.9rem] py-[0.48rem] text-[0.95rem] transition-colors ${
-                activeTags.length === 0 ? 'ledger-index-tab-active' : 'ledger-index-tab hover:bg-[rgba(236,220,194,0.96)]'
-              }`}
-            >
-              All
-            </motion.button>
-            {tags.map((tag) => {
-              const isActive = activeTags.includes(tag);
+        <section className="relative grid gap-[1rem] md:grid-cols-[13rem_minmax(0,1fr)]">
+          <aside className="ledger-paper-sheet p-[0.8rem]">
+            <p className="afterroll-meta mb-[0.65rem] text-[0.72rem] uppercase tracking-[0.14em] text-[var(--atr-accent)]">
+              채널 필터
+            </p>
+            <div className="flex flex-wrap gap-[0.45rem] md:flex-col">
+              <motion.button
+                type="button"
+                onClick={() => setActiveTags([])}
+                whileTap={{ scale: 0.98 }}
+                className={`afterroll-meta rounded-[0.08rem] px-[0.65rem] py-[0.42rem] text-left text-[0.78rem] transition-colors ${
+                  activeTags.length === 0 ? 'ledger-index-tab-active' : 'ledger-index-tab'
+                }`}
+              >
+                전체
+              </motion.button>
+              {tags.map((tag) => {
+                const isActive = activeTags.includes(tag);
 
-              return (
-                <motion.button
-                  key={tag}
-                  type="button"
-                  onClick={() => toggleTag(tag)}
-                  whileTap={{ scale: 0.98 }}
-                  className={`afterroll-meta rounded-[0.2rem] px-[0.9rem] py-[0.48rem] text-[0.95rem] transition-colors ${
-                    isActive ? 'ledger-index-tab-active' : 'ledger-index-tab hover:bg-[rgba(236,220,194,0.96)]'
-                  }`}
-                >
-                  {tag}
-                </motion.button>
-              );
-            })}
-          </div>
+                return (
+                  <motion.button
+                    key={tag}
+                    type="button"
+                    onClick={() => toggleTag(tag)}
+                    whileTap={{ scale: 0.98 }}
+                    className={`afterroll-meta rounded-[0.08rem] px-[0.65rem] py-[0.42rem] text-left text-[0.78rem] transition-colors ${
+                      isActive ? 'ledger-index-tab-active' : 'ledger-index-tab'
+                    }`}
+                  >
+                    {tag}
+                  </motion.button>
+                );
+              })}
+            </div>
+          </aside>
 
-          <div className="afterroll-meta mb-[1rem] text-[0.88rem] uppercase tracking-[0.12em] text-[var(--ledger-soft)]">
+          <div className="ledger-paper-sheet p-[0.8rem]">
+          <div className="afterroll-meta mb-[1rem] text-[0.78rem] uppercase tracking-[0.12em] text-[var(--ledger-soft)]">
             {activeTags.length === 0
-              ? `All ${filteredPosts.length}`
-              : `${activeTags.join(' + ')} ${filteredPosts.length}`}
+              ? `${filteredPosts.length}개`
+              : `${activeTags.join(' + ')} // ${filteredPosts.length}`}
           </div>
 
           <div className="space-y-[1rem]">
@@ -133,26 +123,23 @@ export default function TrpgArchiveClient({ posts, title, description, backHref,
               <section key={year} className="space-y-[0.75rem]">
                 <div className="flex items-end justify-between gap-[1rem] border-b border-[rgba(87,67,48,0.12)] pb-[0.35rem]">
                   <p className="afterroll-title text-[2rem] leading-none text-[var(--ledger-ink)]">{year}</p>
-                  <p className="afterroll-meta text-[0.78rem] uppercase tracking-[0.12em] text-[var(--ledger-soft)]">{yearPosts.length} records</p>
+                  <p className="afterroll-meta text-[0.78rem] uppercase tracking-[0.12em] text-[var(--ledger-soft)]">{yearPosts.length}개 기록</p>
                 </div>
 
                 <ul className="space-y-[0.75rem]">
-                  {yearPosts.map((post, index) => (
+                  {yearPosts.map((post) => (
                     <li key={post.fullSlug}>
                       <Link
                         href={`/afterTheRoll/archive/read/${toGalleryPath(post.fullSlug)}`}
-                        className={`ledger-paper-sheet relative block px-[1rem] py-[1rem] transition-transform duration-200 hover:-translate-y-[0.03rem] ${CARD_CLASSES[index % CARD_CLASSES.length]} ${
-                          index % 2 === 0 ? 'rotate-[-0.35deg]' : 'rotate-[0.28deg]'
-                        } ${index % 3 === 0 ? 'rounded-[1.45rem]' : 'rounded-[0.6rem]'}`}
+                        className="group relative grid gap-[0.65rem] border-l border-[var(--atr-line)] bg-[rgba(0,0,0,0.26)] px-[0.85rem] py-[0.75rem] transition duration-200 hover:border-[var(--atr-line-strong)] hover:bg-[rgba(88, 125, 163,0.07)] md:grid-cols-[minmax(0,1fr)_auto]"
                       >
-                        <span className={`afterroll-tape ${TAPE_CLASSES[(index + 2) % TAPE_CLASSES.length]}`} />
                         <div className="relative z-[1] flex flex-col gap-[0.8rem] md:flex-row md:items-start md:justify-between md:gap-[1rem]">
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-baseline gap-x-[0.65rem] gap-y-[0.25rem]">
                               <p className="afterroll-title text-[1.34rem] leading-[1.1] text-[var(--ledger-ink)] md:text-[1.55rem]">
                                 {post.title}
                                 {post.encrypted && (
-                                  <span className="ml-[0.4rem] align-middle text-[0.9rem] opacity-40" aria-label="비밀글">🔒</span>
+                                  <span className="ml-[0.4rem] align-middle text-[0.72rem] opacity-50" aria-label="비공개">비공개</span>
                                 )}
                               </p>
                               {post.date ? (
@@ -167,7 +154,7 @@ export default function TrpgArchiveClient({ posts, title, description, backHref,
                             ) : null}
                           </div>
 
-                          <span className="ledger-stamp afterroll-meta shrink-0 self-start rounded-[0.2rem] px-[0.78rem] py-[0.34rem] text-[0.88rem] uppercase tracking-[0.08em]">
+                          <span className="ledger-stamp afterroll-meta shrink-0 self-start rounded-[0.12rem] px-[0.78rem] py-[0.34rem] text-[0.78rem] uppercase tracking-[0.08em]">
                             {post.scenarioTitle}
                           </span>
                         </div>
@@ -190,6 +177,7 @@ export default function TrpgArchiveClient({ posts, title, description, backHref,
                 </ul>
               </section>
             ))}
+          </div>
           </div>
         </section>
       </div>
