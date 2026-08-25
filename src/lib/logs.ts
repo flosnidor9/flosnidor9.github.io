@@ -57,7 +57,7 @@ export function getLogPostBySlug(slug: string): LogPost | null {
       tags: data.tags || [],
       content,
     };
-  } catch (error) {
+  } catch {
     return null;
   }
 }

@@ -14,7 +14,7 @@ export default function Clock() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    queueMicrotask(() => setMounted(true));
 
     const updateTime = () => {
       const now = new Date();

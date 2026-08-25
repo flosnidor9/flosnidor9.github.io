@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 
 interface Particle {
@@ -14,34 +13,25 @@ interface Particle {
   yOffset: number;
 }
 
-/**
- * 먼지처럼 떠다니는 파티클 효과
- * 배경에 작은 점들이 일렁이며 떠다님
- */
+const PARTICLE_COUNT = 80;
+
+function seededValue(seed: number): number {
+  const value = Math.sin(seed * 12.9898) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+const particles: Particle[] = Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
+  id: i,
+  x: seededValue(i + 1) * 100,
+  y: seededValue(i + 101) * 100,
+  size: 1.5 + seededValue(i + 201) * 2.5,
+  duration: 6 + seededValue(i + 301) * 8,
+  delay: seededValue(i + 401) * 5,
+  xOffset: (seededValue(i + 501) - 0.5) * 300,
+  yOffset: (seededValue(i + 601) - 0.5) * 300,
+}));
+
 export default function FloatingParticles() {
-  const [particles, setParticles] = useState<Particle[]>([]);
-
-  useEffect(() => {
-    // 파티클 생성
-    const newParticles: Particle[] = [];
-    const particleCount = 80; // 파티클 개수 증가
-
-    for (let i = 0; i < particleCount; i++) {
-      newParticles.push({
-        id: i,
-        x: Math.random() * 100, // 0 ~ 100% (vw)
-        y: Math.random() * 100, // 0 ~ 100% (vh)
-        size: 1.5 + Math.random() * 2.5, // 1.5 ~ 4px (작게)
-        duration: 6 + Math.random() * 8, // 6 ~ 14초 (더 빠르게)
-        delay: Math.random() * 5, // 0 ~ 5초
-        xOffset: (Math.random() - 0.5) * 300, // -150 ~ 150px (3배 더 많이)
-        yOffset: (Math.random() - 0.5) * 300, // -150 ~ 150px (3배 더 많이)
-      });
-    }
-
-    setParticles(newParticles);
-  }, []);
-
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-[5]">
       {particles.map((particle) => (

@@ -7,6 +7,7 @@ import {
   serverTimestamp,
   Timestamp,
   Unsubscribe,
+  type FieldValue,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -50,7 +51,7 @@ export async function addLog(entry: LogEntryInput): Promise<string> {
   const now = new Date();
   const year = now.getFullYear();
 
-  const data: any = {
+  const data: LogEntryInput & { timestamp: FieldValue; year: number } = {
     content: entry.content,
     tags: entry.tags,
     images: entry.images,

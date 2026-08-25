@@ -53,10 +53,10 @@ export function MusicPlayerProvider({ children, track }: MusicPlayerProviderProp
     if (savedVolume) {
       const volumeValue = parseInt(savedVolume, 10);
       if (!isNaN(volumeValue) && volumeValue >= 0 && volumeValue <= 100) {
-        setVolume(volumeValue);
+        queueMicrotask(() => setVolume(volumeValue));
       }
     }
-    setIsVolumeReady(true);
+    queueMicrotask(() => setIsVolumeReady(true));
   }, []);
 
   // 볼륨 변경 시 localStorage 저장

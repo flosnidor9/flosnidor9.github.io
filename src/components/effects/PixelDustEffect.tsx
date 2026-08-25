@@ -12,6 +12,7 @@ type Particle = {
   size: number;
   color: string;
   delay: number;
+  duration: number;
 };
 
 type Props = {
@@ -59,14 +60,19 @@ export default function PixelDustEffect({ isActive, originRef, targetRef, onComp
           size: 3 + Math.random() * 5,
           color: COLORS[Math.floor(Math.random() * COLORS.length)],
           delay: Math.random() * 0.2,
+          duration: 0.8 + Math.random() * 0.4,
         });
       }
 
-      setParticles(newParticles);
-      setCompletedCount(0);
+      queueMicrotask(() => {
+        setParticles(newParticles);
+        setCompletedCount(0);
+      });
     } else if (!isActive) {
-      setParticles([]);
-      setCompletedCount(0);
+      queueMicrotask(() => {
+        setParticles([]);
+        setCompletedCount(0);
+      });
     }
   }, [isActive, originRef, targetRef]);
 
@@ -100,7 +106,7 @@ export default function PixelDustEffect({ isActive, originRef, targetRef, onComp
           }}
           exit={{ opacity: 0, scale: 0 }}
           transition={{
-            duration: 0.8 + Math.random() * 0.4,
+            duration: particle.duration,
             delay: particle.delay,
             ease: [0.22, 1, 0.36, 1],
           }}

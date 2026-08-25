@@ -34,6 +34,7 @@ type PlaySession = {
   startTime: string | null;
   endTime: string | null;
   durationMinutes: number | null;
+  isUpcoming: boolean;
 };
 
 function getEventDate(e: CalendarEvent): string {
@@ -83,6 +84,21 @@ function getDurationMinutes(e: CalendarEvent): number | null {
   return Math.round(diff / 60000);
 }
 
+function getEventStartTime(e: CalendarEvent): number | null {
+  if (e.start.dateTime) {
+    const time = new Date(e.start.dateTime).getTime();
+    return Number.isFinite(time) ? time : null;
+  }
+  if (!e.start.date) return null;
+  const time = new Date(`${e.start.date}T00:00:00+09:00`).getTime();
+  return Number.isFinite(time) ? time : null;
+}
+
+function isUpcomingEvent(e: CalendarEvent): boolean {
+  const startTime = getEventStartTime(e);
+  return startTime !== null && startTime > Date.now();
+}
+
 function buildTitleSessionsMap(events: CalendarEvent[]): Map<string, PlaySession[]> {
   const result = new Map<string, PlaySession[]>();
   for (const e of events) {
@@ -97,6 +113,7 @@ function buildTitleSessionsMap(events: CalendarEvent[]): Map<string, PlaySession
       startTime: e.start.dateTime ? formatClock(e.start.dateTime) : null,
       endTime: e.end?.dateTime ? formatClock(e.end.dateTime) : null,
       durationMinutes: getDurationMinutes(e),
+      isUpcoming: isUpcomingEvent(e),
     });
     result.set(title, sessions);
   }
@@ -113,8 +130,11 @@ function buildTitleSessionsMap(events: CalendarEvent[]): Map<string, PlaySession
 }
 
 function getTotalDurationMinutes(sessions: PlaySession[]): number | null {
-  const total = sessions.reduce((sum, session) => sum + (session.durationMinutes ?? 0), 0);
-  return total > 0 ? total : null;
+  const elapsedSessions = sessions.filter((session) => !session.isUpcoming);
+  if (elapsedSessions.length === 0) return sessions.length > 0 ? 0 : null;
+  const hasDuration = elapsedSessions.some((session) => session.durationMinutes !== null);
+  if (!hasDuration) return null;
+  return elapsedSessions.reduce((sum, session) => sum + (session.durationMinutes ?? 0), 0);
 }
 
 function formatDate(d: string): string {
@@ -676,9 +696,13 @@ export default function PlaysSection() {
                                           {sessions.map((session) => (
                                             <div
                                               key={session.id}
-                                              className="afterroll-meta rounded-[0.45rem] border border-[rgba(200,121,147,0.18)] bg-[rgba(255,248,250,0.72)] px-[0.55rem] py-[0.38rem] text-[0.72rem] text-[var(--ledger-muted)]"
+                                              className={`afterroll-meta rounded-[0.45rem] border px-[0.55rem] py-[0.38rem] text-[0.72rem] transition-colors ${
+                                                session.isUpcoming
+                                                  ? 'border-[rgba(200,121,147,0.08)] bg-[rgba(255,248,250,0.34)] text-[rgba(128,96,107,0.42)]'
+                                                  : 'border-[rgba(200,121,147,0.18)] bg-[rgba(255,248,250,0.72)] text-[var(--ledger-muted)]'
+                                              }`}
                                             >
-                                              <span className="text-[var(--ledger-ink)]">{formatDate(session.date)}</span>
+                                              <span className={session.isUpcoming ? 'text-[rgba(128,96,107,0.48)]' : 'text-[var(--ledger-ink)]'}>{formatDate(session.date)}</span>
                                               <span className="mx-[0.35rem] text-[rgba(128,96,107,0.4)]">/</span>
                                               <span>{formatSessionTime(session)}</span>
                                               <span className="mx-[0.35rem] text-[rgba(128,96,107,0.4)]">/</span>

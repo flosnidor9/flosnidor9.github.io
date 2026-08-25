@@ -13,7 +13,6 @@ interface FilmHomeClientProps {
 export default function FilmHomeClient({ imagePaths }: FilmHomeClientProps) {
   const [mounted, setMounted] = useState(false);
   const [randomImage, setRandomImage] = useState<string | null>(null);
-  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [time, setTime] = useState<string>('');
   const [verticalTearLinePos, setVerticalTearLinePos] = useState(36.5);
   const [horizontalTearLinePos, setHorizontalTearLinePos] = useState(17);
@@ -74,12 +73,12 @@ export default function FilmHomeClient({ imagePaths }: FilmHomeClientProps) {
   }, [mounted]);
 
   useEffect(() => {
-    setMounted(true);
+    queueMicrotask(() => setMounted(true));
 
     // 랜덤 이미지 선택
     if (imagePaths.length > 0) {
       const randomIndex = Math.floor(Math.random() * imagePaths.length);
-      setRandomImage(imagePaths[randomIndex]);
+      queueMicrotask(() => setRandomImage(imagePaths[randomIndex]));
     }
 
     // 시계 업데이트

@@ -29,14 +29,14 @@ export default function MusicPlayerSection({ scrollY, normX, normY }: Props) {
   // 플레이어가 보이지 않을 때는 포인터 이벤트 비활성화
   const playerPointerEvents = useTransform(scrollY, (v) => v > 250 && v < 650 ? 'auto' : 'none');
 
-  const track = musicTracks[0];
-  if (!track) return null;
-
   // 두 개의 Y 변환을 합침
   const combinedY = useTransform(
     [playerEnterY, playerExitY],
     ([enter, exit]: number[]) => enter + exit
   );
+
+  const track = musicTracks[0];
+  if (!track) return null;
 
   return (
     <motion.div

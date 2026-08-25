@@ -102,7 +102,7 @@ export function useGyroscope(): UseGyroscopeResult {
       }
     } else {
       // Android / 구형 iOS — 별도 권한 불필요
-      startListening();
+      queueMicrotask(startListening);
     }
   }, [startListening]);
 
@@ -112,7 +112,7 @@ export function useGyroscope(): UseGyroscopeResult {
     // DeviceMotionEvent는 권한 요청 API가 별도로 없음
     const isMobile = 'ontouchstart' in window && typeof DeviceOrientationEvent !== 'undefined';
     if (!isMobile) {
-      setPermissionState('unavailable');
+      queueMicrotask(() => setPermissionState('unavailable'));
       return;
     }
 
@@ -120,7 +120,7 @@ export function useGyroscope(): UseGyroscopeResult {
     const needsPermission = typeof (DeviceOrientationEvent as any).requestPermission === 'function';
     if (!needsPermission) {
       // Android — 권한 요청 없이 바로 수신 시작
-      startListening();
+      queueMicrotask(startListening);
     }
     // iOS는 'unknown' 상태로 유지 → 사용자 탭 후 requestPermission 호출
 

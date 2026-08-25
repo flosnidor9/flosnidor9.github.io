@@ -183,6 +183,7 @@ export default function FirebaseLogSection() {
   const years = Object.keys(groupedByYear)
     .map(Number)
     .sort((a, b) => b - a);
+  void years;
 
   // 표시할 항목
   const displayedEntries = filteredEntries.slice(0, displayCount);
@@ -212,20 +213,21 @@ export default function FirebaseLogSection() {
       { threshold: 0.1 }
     );
 
-    if (observerRef.current) {
-      observer.observe(observerRef.current);
+    const observerNode = observerRef.current;
+    if (observerNode) {
+      observer.observe(observerNode);
     }
 
     return () => {
-      if (observerRef.current) {
-        observer.unobserve(observerRef.current);
+      if (observerNode) {
+        observer.unobserve(observerNode);
       }
     };
   }, [hasMore]);
 
   // 필터 변경 시 displayCount 초기화
   useEffect(() => {
-    setDisplayCount(10);
+    queueMicrotask(() => setDisplayCount(10));
   }, [selectedFilter]);
 
   if (loading || authLoading) {

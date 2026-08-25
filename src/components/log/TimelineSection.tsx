@@ -151,7 +151,7 @@ export default function TimelineSection({ grouped }: Props) {
         Object.entries(grouped).map(([year, entries]) => [
           year,
           entries.filter(entry => entry.tags.includes(selectedFilter))
-        ]).filter(([_, entries]) => entries.length > 0)
+        ]).filter(([, entries]) => entries.length > 0)
       );
 
   // 모든 항목을 평탄화 (flatten)하여 날짜순으로 정렬
@@ -186,20 +186,21 @@ export default function TimelineSection({ grouped }: Props) {
       { threshold: 0.1 }
     );
 
-    if (observerRef.current) {
-      observer.observe(observerRef.current);
+    const observerNode = observerRef.current;
+    if (observerNode) {
+      observer.observe(observerNode);
     }
 
     return () => {
-      if (observerRef.current) {
-        observer.unobserve(observerRef.current);
+      if (observerNode) {
+        observer.unobserve(observerNode);
       }
     };
   }, [hasMore]);
 
   // 필터 변경 시 displayCount 초기화
   useEffect(() => {
-    setDisplayCount(10);
+    queueMicrotask(() => setDisplayCount(10));
   }, [selectedFilter]);
 
   if (years.length === 0) {

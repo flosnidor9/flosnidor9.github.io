@@ -28,7 +28,9 @@ export default function HeroSection({ imagePaths }: Props) {
 
   useEffect(() => {
     if (!imagePaths.length) return;
-    setImageSrc(imagePaths[Math.floor(Math.random() * imagePaths.length)]);
+    queueMicrotask(() => {
+      setImageSrc(imagePaths[Math.floor(Math.random() * imagePaths.length)]);
+    });
   }, [imagePaths]);
 
   // ── 스크롤 트랜지션 ───────────────────────────────────────

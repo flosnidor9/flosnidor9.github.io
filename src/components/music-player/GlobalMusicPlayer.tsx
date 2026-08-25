@@ -16,7 +16,7 @@ export default function GlobalMusicPlayer() {
 
   useEffect(() => {
     // volume이 Context에서 로드되면 준비 완료
-    setIsVolumeReady(true);
+    queueMicrotask(() => setIsVolumeReady(true));
   }, []);
 
   if (!currentTrack || !isVolumeReady) return null;

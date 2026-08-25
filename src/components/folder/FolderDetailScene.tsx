@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import type { FolderData, PostData } from '@/lib/data/folders';
 
 type Props = {
@@ -94,20 +94,22 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
     .join('/');
   const orderJsonUrl = `/images/${encodedSlug}/order.json`;
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    queueMicrotask(() => setMounted(true));
+  }, []);
 
   useEffect(() => {
     const stored = localStorage.getItem(storageKey);
     if (!stored) {
-      setStoredOrder(null);
+      queueMicrotask(() => setStoredOrder(null));
       return;
     }
 
     try {
       const parsed = JSON.parse(stored) as string[];
-      setStoredOrder(parsed);
+      queueMicrotask(() => setStoredOrder(parsed));
     } catch {
-      setStoredOrder(null);
+      queueMicrotask(() => setStoredOrder(null));
     }
   }, [storageKey]);
 
@@ -140,9 +142,9 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
     }
 
     if (orderToApply && orderToApply.length > 0) {
-      setOrderedPosts(resolveOrderedPosts(posts, orderToApply));
+      queueMicrotask(() => setOrderedPosts(resolveOrderedPosts(posts, orderToApply)));
     } else {
-      setOrderedPosts(posts);
+      queueMicrotask(() => setOrderedPosts(posts));
     }
   }, [fileOrder, isManualOrder, posts, storedOrder]);
 
@@ -167,7 +169,7 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
 
     const currentThumbnailPost = posts.find((post) => post.image === folder.thumbnail);
     if (currentThumbnailPost) {
-      setThumbnailSlug(currentThumbnailPost.slug);
+      queueMicrotask(() => setThumbnailSlug(currentThumbnailPost.slug));
     }
   }, [folder.thumbnail, posts, thumbnailSlug]);
 
@@ -175,7 +177,7 @@ export default function FolderDetailScene({ folder, posts, content, backHref = '
     if (!isManualOrder) return;
     const slugs = orderedPosts.map((post) => post.slug);
     localStorage.setItem(storageKey, JSON.stringify(slugs));
-    setStoredOrder(slugs);
+    queueMicrotask(() => setStoredOrder(slugs));
   }, [isManualOrder, orderedPosts, storageKey]);
 
   useEffect(() => {
@@ -388,7 +390,7 @@ type GalleryMasonryCardProps = {
   isSelectedThumbnail: boolean;
   onSelectThumbnail: () => void;
   theme?: 'bubble' | 'film';
-  memoComponents: any;
+  memoComponents: Components;
 };
 
 function GalleryMasonryCard({

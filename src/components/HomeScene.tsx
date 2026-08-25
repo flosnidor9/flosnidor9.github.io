@@ -38,7 +38,6 @@ type StickerItemProps = {
   sticker: StickerPosition;
   index: number;
   editMode: boolean;
-  sectionRef: React.RefObject<HTMLElement | null>;
   windowRect: DOMRect | null;
   onUpdate: (props: Partial<StickerPosition>) => void;
   resizingIndex: number | null;
@@ -63,12 +62,14 @@ export default function HomeScene({ imagePaths, stickerPaths = [] }: Props) {
   const macGlassRef = useRef<MacGlassWindowHandle>(null);
   const [windowRect, setWindowRect] = useState<DOMRect | null>(null);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    queueMicrotask(() => setMounted(true));
+  }, []);
 
   // 미디어 쿼리 감지 (md 이상 = 데스크톱)
   useEffect(() => {
     const mediaQuery = window.matchMedia('(min-width: 768px)');
-    setIsDesktop(mediaQuery.matches);
+    queueMicrotask(() => setIsDesktop(mediaQuery.matches));
 
     const handleChange = (e: MediaQueryListEvent) => {
       setIsDesktop(e.matches);
@@ -82,7 +83,7 @@ export default function HomeScene({ imagePaths, stickerPaths = [] }: Props) {
     const src = pickHeroImage(imagePaths);
     if (!src) return;
 
-    setImageSrc(src);
+    queueMicrotask(() => setImageSrc(src));
 
     const img = new window.Image();
     img.onload = () => {
@@ -178,7 +179,7 @@ export default function HomeScene({ imagePaths, stickerPaths = [] }: Props) {
 
     // 파일이 있으면 파일 사용
     if (fileOrder && fileOrder.length > 0) {
-      setStickers(fileOrder);
+      queueMicrotask(() => setStickers(fileOrder));
       return;
     }
 
@@ -218,7 +219,7 @@ export default function HomeScene({ imagePaths, stickerPaths = [] }: Props) {
       };
     });
 
-    setStickers(positions);
+    queueMicrotask(() => setStickers(positions));
   }, [stickerPaths, fileOrder, isManualOrder]);
 
   // ── 자이로센서 훅 ─────────────────────────────────────────
@@ -320,7 +321,6 @@ export default function HomeScene({ imagePaths, stickerPaths = [] }: Props) {
             sticker={sticker}
             index={index}
             editMode={editMode}
-            sectionRef={sectionRef}
             windowRect={windowRect}
             onUpdate={(newProps) => {
               setIsManualOrder(true);
@@ -433,7 +433,6 @@ function StickerItem({
   sticker,
   index,
   editMode,
-  sectionRef,
   windowRect,
   onUpdate,
   resizingIndex,
@@ -475,7 +474,7 @@ function StickerItem({
       drag={editMode}
       dragMomentum={false}
       dragElastic={0}
-      onDragEnd={(event, info) => {
+      onDragEnd={() => {
         if (!editMode || !windowRect) return;
 
         // 드래그 후 절대 위치

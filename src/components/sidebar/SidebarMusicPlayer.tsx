@@ -28,12 +28,12 @@ export default function SidebarMusicPlayer({ normX, normY, variant = 'sidebar' }
     setShowVolumeSlider,
   } = useMusicPlayer();
 
-  if (!currentTrack) return null;
-
   // 반사 하이라이트
   const reflectX = useTransform(normX, [-0.5, 0.5], [72, 28]);
   const reflectY = useTransform(normY, [-0.5, 0.5], [28, 72]);
   const reflectGradient = useMotionTemplate`radial-gradient(ellipse at ${reflectX}% ${reflectY}%, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.03) 35%, transparent 62%)`;
+
+  if (!currentTrack) return null;
 
   const albumArt = getYouTubeThumbnail(currentTrack.id);
   const isBar = variant === 'bar';
