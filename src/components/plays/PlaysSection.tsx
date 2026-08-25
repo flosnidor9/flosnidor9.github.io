@@ -362,6 +362,16 @@ export default function PlaysSection() {
     return [...years].sort().reverse();
   }, [plays, titleDatesMap]);
 
+  const participantPlayCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    plays.forEach((play) => {
+      play.participants.forEach((participant) => {
+        counts.set(participant, (counts.get(participant) ?? 0) + 1);
+      });
+    });
+    return counts;
+  }, [plays]);
+
   const filteredPlays = useMemo(() => {
     return plays
       .filter((p) => {
@@ -775,6 +785,7 @@ export default function PlaysSection() {
             options={options}
             calendarTitles={calendarTitles}
             titleDatesMap={titleDatesMap}
+            participantPlayCounts={participantPlayCounts}
             onClose={closeComposer}
           />
         )}

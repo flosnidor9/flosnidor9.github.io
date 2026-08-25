@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   addPlay,
@@ -19,6 +19,7 @@ interface Props {
   options: PlaysOptions;
   calendarTitles: string[];
   titleDatesMap: Map<string, TitleDates>;
+  participantPlayCounts: Map<string, number>;
   onClose: () => void;
 }
 
@@ -192,84 +193,160 @@ function SelectWithAdd({
   );
 }
 
-function ParticipantsField({
+function ParticipantsSearchField({
   selected,
   options,
+  playCounts,
   onToggle,
   onAddOption,
 }: {
   selected: string[];
   options: string[];
+  playCounts: Map<string, number>;
   onToggle: (p: string) => void;
   onAddOption: (p: string) => void;
 }) {
-  const [adding, setAdding] = useState(false);
-  const [newVal, setNewVal] = useState('');
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
-  function commitNew() {
-    const v = newVal.trim();
+  const normalizedQuery = query.trim().toLowerCase();
+  const optionLookup = useMemo(
+    () => new Map(options.map((p) => [p.toLowerCase(), p])),
+    [options],
+  );
+  const exactOption = normalizedQuery ? optionLookup.get(normalizedQuery) : undefined;
+  const canAdd = query.trim().length > 0 && !exactOption;
+  const filtered = useMemo(() => {
+    if (!normalizedQuery) return [];
+    return options
+      .filter((p) => p.toLowerCase().includes(normalizedQuery))
+      .sort((a, b) => {
+        const countDiff = (playCounts.get(b) ?? 0) - (playCounts.get(a) ?? 0);
+        if (countDiff !== 0) return countDiff;
+        return a.localeCompare(b, 'ko');
+      })
+      .slice(0, 8);
+  }, [normalizedQuery, options, playCounts]);
+
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, []);
+
+  function selectParticipant(p: string) {
+    onToggle(p);
+    setQuery('');
+    setOpen(false);
+  }
+
+  function addParticipantFromQuery() {
+    const v = query.trim();
     if (v) {
       onAddOption(v);
       onToggle(v);
     }
-    setNewVal('');
-    setAdding(false);
+    setQuery('');
+    setOpen(false);
+  }
+
+  function commitQuery() {
+    if (exactOption) {
+      selectParticipant(exactOption);
+      return;
+    }
+    addParticipantFromQuery();
   }
 
   return (
-    <div>
+    <div ref={ref}>
       <label className="afterroll-meta mb-[0.4rem] block text-[0.72rem] uppercase tracking-[0.08em] text-[var(--ledger-soft)]">
         참여자
       </label>
-      <div className="flex flex-wrap gap-[0.35rem]">
-        {options.map((p) => (
-          <button
-            key={p}
-            type="button"
-            onClick={() => onToggle(p)}
-            className={`rounded-full border px-[0.7rem] py-[0.28rem] text-[0.8rem] transition-all ${
-              selected.includes(p)
-                ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.22)] text-[var(--ledger-accent)]'
-                : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)] hover:border-[rgba(200,121,147,0.42)] hover:text-[var(--ledger-ink)]'
-            }`}
-          >
-            {p}
-          </button>
-        ))}
-        {adding ? (
-          <div className="flex items-center gap-[0.3rem]">
-            <input
-              autoFocus
-              value={newVal}
-              onChange={(e) => setNewVal(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  commitNew();
-                }
-                if (e.key === 'Escape') {
-                  setNewVal('');
-                  setAdding(false);
-                }
-              }}
-              className="w-[5.5rem] rounded-full border border-[var(--ledger-accent)] bg-transparent px-[0.6rem] py-[0.26rem] text-[0.8rem] text-[var(--ledger-ink)] outline-none"
-            />
-            <button type="button" onClick={commitNew} className="text-[0.75rem] text-[var(--ledger-accent)] hover:opacity-70">
-              추가
+      {selected.length > 0 && (
+        <div className="mb-[0.45rem] flex flex-wrap gap-[0.35rem]">
+          {selected.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onToggle(p)}
+              className="rounded-full border border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.22)] px-[0.65rem] py-[0.25rem] text-[0.78rem] text-[var(--ledger-accent)] transition-all hover:bg-[rgba(232,169,186,0.3)]"
+            >
+              {p}
+              <span className="ml-[0.35rem] text-[0.68rem] opacity-70">
+                {playCounts.get(p) ?? 0}회
+              </span>
             </button>
-            <button type="button" onClick={() => { setNewVal(''); setAdding(false); }} className="text-[0.75rem] text-[var(--ledger-muted)]">
-              취소
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className="rounded-full border border-dashed border-[rgba(200,121,147,0.26)] px-[0.7rem] py-[0.28rem] text-[0.8rem] text-[var(--ledger-muted)] transition-all hover:border-[rgba(200,121,147,0.45)] hover:text-[var(--ledger-ink)]"
-          >
-            +
-          </button>
-        )}
+          ))}
+        </div>
+      )}
+      <div className="relative">
+        <input
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              commitQuery();
+            }
+            if (e.key === 'Escape') {
+              setQuery('');
+              setOpen(false);
+            }
+          }}
+          placeholder="참여자 검색 또는 추가..."
+          className="w-full afterroll-meta rounded-[0.5rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] px-[0.8rem] py-[0.5rem] text-[0.9rem] text-[var(--ledger-ink)] outline-none transition-colors placeholder:text-[var(--ledger-muted)] focus:border-[var(--ledger-accent)]"
+        />
+        <AnimatePresence>
+          {open && normalizedQuery && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.12 }}
+              className="absolute left-0 right-0 top-full z-50 mt-[0.2rem] max-h-[13rem] overflow-y-auto rounded-[0.6rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] shadow-none"
+            >
+              {filtered.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => selectParticipant(p)}
+                  className={`flex w-full items-center justify-between border-b border-[rgba(200,121,147,0.12)] px-[0.9rem] py-[0.5rem] text-left transition-colors last:border-0 hover:bg-[rgba(232,169,186,0.18)] ${
+                    selected.includes(p) ? 'text-[var(--ledger-accent)]' : 'text-[var(--ledger-ink)]'
+                  }`}
+                >
+                  <span className="afterroll-meta text-[0.85rem]">{p}</span>
+                  <span className="afterroll-meta ml-[0.5rem] shrink-0 text-[0.7rem] text-[var(--ledger-muted)]">
+                    같이 {playCounts.get(p) ?? 0}회
+                  </span>
+                </button>
+              ))}
+              {canAdd && (
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={addParticipantFromQuery}
+                  className="flex w-full items-center justify-between px-[0.9rem] py-[0.5rem] text-left transition-colors hover:bg-[rgba(232,169,186,0.18)]"
+                >
+                  <span className="afterroll-meta text-[0.85rem] text-[var(--ledger-ink)]">
+                    {query.trim()}
+                  </span>
+                  <span className="afterroll-meta ml-[0.5rem] shrink-0 text-[0.7rem] text-[var(--ledger-accent)]">
+                    새로 추가
+                  </span>
+                </button>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -281,7 +358,14 @@ const STATUS_OPTIONS: { value: PlayStatus; label: string }[] = [
   { value: 'dropped', label: '하차' },
 ];
 
-export default function PlaysComposer({ editTarget, options, calendarTitles, titleDatesMap, onClose }: Props) {
+export default function PlaysComposer({
+  editTarget,
+  options,
+  calendarTitles,
+  titleDatesMap,
+  participantPlayCounts,
+  onClose,
+}: Props) {
   const [title, setTitle] = useState(editTarget?.title ?? '');
   const [rule, setRule] = useState(editTarget?.rule ?? '');
   const [playerCount, setPlayerCount] = useState(editTarget?.playerCount ?? '');
@@ -448,9 +532,10 @@ export default function PlaysComposer({ editTarget, options, calendarTitles, tit
             onAddOption={addPlayerCount}
           />
 
-          <ParticipantsField
+          <ParticipantsSearchField
             selected={participants}
             options={localOptions.participants}
+            playCounts={participantPlayCounts}
             onToggle={toggleParticipant}
             onAddOption={addParticipant}
           />
