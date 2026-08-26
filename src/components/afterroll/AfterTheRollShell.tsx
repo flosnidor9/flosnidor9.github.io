@@ -8,8 +8,9 @@ import { motion } from 'framer-motion';
 const NAV_ITEMS = [
   { label: '성향표', href: '/afterTheRoll', exact: true, icon: 'folder' },
   { label: '캘린더', href: '/afterTheRoll/calendar', exact: false, icon: 'table' },
+  { label: '플레이 목록', href: '/afterTheRoll/plays', exact: false, icon: 'table' },
+  { label: '공수표 목록', href: '/afterTheRoll/promises', exact: false, icon: 'folder' },
   { label: '로그', href: '/afterTheRoll/logs', exact: false, icon: 'folder' },
-  { label: '플레이', href: '/afterTheRoll/plays', exact: false, icon: 'table' },
 ] as const;
 
 function normalizePath(pathname: string) {
