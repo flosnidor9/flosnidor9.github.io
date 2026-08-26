@@ -173,6 +173,13 @@ const STATUS_LABEL: Record<PlayEntry['status'], string> = {
   dropped: '하차',
 };
 
+const STATUS_PRIORITY: Record<PlayEntry['status'], number> = {
+  scheduled: 0,
+  ongoing: 1,
+  completed: 2,
+  dropped: 3,
+};
+
 const STATUS_STYLE: Record<PlayEntry['status'], string> = {
   scheduled: 'bg-[rgba(172,151,110,0.12)] text-[rgba(117,96,58,0.85)] border-[rgba(172,151,110,0.28)]',
   completed: 'bg-[rgba(94,132,146,0.12)] text-[rgba(61,95,111,0.85)] border-[rgba(94,132,146,0.28)]',
@@ -386,9 +393,8 @@ export default function PlaysSection() {
         return true;
       })
       .sort((a, b) => {
-        const aOngoing = a.status === 'ongoing';
-        const bOngoing = b.status === 'ongoing';
-        if (aOngoing !== bOngoing) return aOngoing ? -1 : 1;
+        const statusDifference = STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
+        if (statusDifference !== 0) return statusDifference;
         const aDates = getEntryDates(a, titleDatesMap.get(a.title));
         const bDates = getEntryDates(b, titleDatesMap.get(b.title));
         const aEnd = aDates ? (aDates.endDate ?? aDates.startDate) : '';
