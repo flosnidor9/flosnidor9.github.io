@@ -219,16 +219,12 @@ function EventDetailPanel({
 function AnnualPlayGraph({
   year,
   countsByDate,
-  loading,
-  error,
   onSelectDate,
   onPrevYear,
   onNextYear,
 }: {
   year: number;
   countsByDate: Map<string, number>;
-  loading: boolean;
-  error: string | null;
   onSelectDate: (date: Date) => void;
   onPrevYear: () => void;
   onNextYear: () => void;
@@ -243,13 +239,6 @@ function AnnualPlayGraph({
     }
     return labels;
   }, [weeks, year]);
-
-  const totalPlays = useMemo(() => {
-    let total = 0;
-    countsByDate.forEach(count => { total += count; });
-    return total;
-  }, [countsByDate]);
-  const playedDays = countsByDate.size;
 
   return (
     <section className="ledger-paper-sheet paper-memo relative mb-[1.1rem] overflow-hidden rounded-[1.2rem] px-[1.1rem] py-[1rem] md:px-[1.6rem] md:py-[1.35rem]">
@@ -267,13 +256,9 @@ function AnnualPlayGraph({
         </motion.button>
 
         <div className="min-w-0 text-center">
-          <p className="afterroll-meta text-[0.78rem] uppercase tracking-[0.14em] text-[var(--ledger-soft)]">연간 플레이 지도</p>
-          <h1 className="afterroll-title mt-[0.15rem] text-[2.1rem] leading-none text-[var(--ledger-ink)] md:text-[2.7rem]">
+          <h2 className="afterroll-title text-[2.1rem] leading-none text-[var(--ledger-ink)] md:text-[2.7rem]">
             {year} 플레이 기록
-          </h1>
-          <p className="afterroll-meta mt-[0.35rem] text-[0.82rem] text-[var(--ledger-muted)]">
-            {loading ? '불러오는 중' : error ? '연간 기록을 불러오지 못했습니다' : `${playedDays}일 · ${totalPlays}회`}
-          </p>
+          </h2>
         </div>
 
         <motion.button
@@ -545,10 +530,10 @@ export default function CalendarSection() {
   const [events, setEvents] = useState<GoogleCalendarEvent[]>([]);
   const [annualEvents, setAnnualEvents] = useState<GoogleCalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [annualLoading, setAnnualLoading] = useState(true);
+  const [, setAnnualLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [annualError, setAnnualError] = useState<string | null>(null);
+  const [, setAnnualError] = useState<string | null>(null);
   const [externalDates, setExternalDates] = useState<Map<string, ExternalEventSlot[]>>(new Map());
   const [detail, setDetail] = useState<DetailState | null>(null);
 
@@ -730,11 +715,13 @@ export default function CalendarSection() {
   return (
     <main className="afterroll-desk min-h-screen px-[1.1rem] pb-[4rem] pt-[5rem] text-[var(--ledger-ink)] md:px-[2rem]">
       <div className="mx-auto max-w-[72rem]">
+        <header className="mb-[1.5rem] border-b border-[var(--atr-line)] pb-[0.85rem]">
+          <p className="afterroll-meta text-[0.74rem] uppercase tracking-[0.14em] text-[var(--ledger-soft)]">Play Calendar</p>
+          <h1 className="afterroll-title mt-[0.18rem] text-[2.1rem] leading-none text-[var(--ledger-ink)] md:text-[2.7rem]">캘린더</h1>
+        </header>
         <AnnualPlayGraph
           year={year}
           countsByDate={annualCountsByDate}
-          loading={annualLoading}
-          error={annualError}
           onSelectDate={selectGraphDate}
           onPrevYear={prevYear}
           onNextYear={nextYear}

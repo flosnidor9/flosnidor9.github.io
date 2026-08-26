@@ -10,7 +10,6 @@ export default function LogsPage() {
     <TrpgArchiveClient
       posts={posts}
       title="로그"
-      description="다시 읽을 수 있는 세션 로그와 보관된 테이블 기록"
     />
   );
 }

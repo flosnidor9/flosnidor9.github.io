@@ -9,12 +9,11 @@ import { toGalleryPath } from '@/lib/galleryPath';
 type Props = {
   posts: TrpgArchivePostMeta[];
   title: string;
-  description: string;
   backHref?: string;
   backLabel?: string;
 };
 
-export default function TrpgArchiveClient({ posts, title, description, backHref, backLabel }: Props) {
+export default function TrpgArchiveClient({ posts, title, backHref, backLabel }: Props) {
   const [activeTags, setActiveTags] = useState<string[]>([]);
 
   const uniqueTags = new Set<string>();
@@ -66,13 +65,9 @@ export default function TrpgArchiveClient({ posts, title, description, backHref,
           </Link>
         ) : null}
 
-        <header className="relative mb-[1.2rem] border-y border-[var(--atr-line)] px-[0.2rem] py-[0.9rem]">
-          <p className="afterroll-meta relative z-[1] text-[0.74rem] uppercase tracking-[0.18em] text-[var(--atr-accent)]">폴더 내용</p>
-          <h1 className="afterroll-title mt-[0.35rem] text-[2.1rem] leading-none text-[var(--ledger-ink)] md:text-[3.8rem]">{title}</h1>
-          <div className="ledger-paper-rule relative z-[1] mt-[0.8rem] w-full max-w-[10rem]" />
-          <p className="afterroll-body mt-[0.85rem] max-w-[38rem] text-[1.06rem] leading-[1.75] text-[var(--ledger-muted)] md:text-[1.12rem]">
-            {description}
-          </p>
+        <header className="relative mb-[1.5rem] border-b border-[var(--atr-line)] pb-[0.85rem]">
+          <p className="afterroll-meta text-[0.74rem] uppercase tracking-[0.14em] text-[var(--ledger-soft)]">Session Logs</p>
+          <h1 className="afterroll-title mt-[0.18rem] text-[2.1rem] leading-none text-[var(--ledger-ink)] md:text-[3.8rem]">{title}</h1>
         </header>
 
         <section className="relative grid gap-[1rem] md:grid-cols-[13rem_minmax(0,1fr)]">
