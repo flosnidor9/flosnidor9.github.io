@@ -33,6 +33,9 @@ const EMPTY_ACORN: AcornEntryInput = {
 const CATEGORY_LABEL: Record<AcornCategory, string> = { official: '공식', fanmade: '팬메이드' };
 const ROLE_LABEL: Record<AcornRole, string> = { GM: 'GM', PL: 'PL', BOTH: '둘 다 가능' };
 const CATEGORY_ORDER: AcornCategory[] = ['official', 'fanmade'];
+const ACORN_CARD_HOVER = { scale: 1.025, y: '-0.15rem' };
+const ACORN_CARD_HOVER_TRANSITION = { type: 'spring', stiffness: 320, damping: 24, mass: 0.45 } as const;
+const ROLE_ORDER: AcornRole[] = ['GM', 'PL', 'BOTH'];
 const PLAYER_COUNT_ORDER = {
   taiman: Number.NEGATIVE_INFINITY,
   multi: Number.POSITIVE_INFINITY,
@@ -45,6 +48,10 @@ function playerCountOrder(value: string) {
   if (normalized === '다인') return PLAYER_COUNT_ORDER.multi;
   const match = normalized.match(/^(\d+)인$/);
   return match ? Number.parseInt(match[1], 10) : PLAYER_COUNT_ORDER.unknown;
+}
+
+function roleOrder(value: AcornRole) {
+  return ROLE_ORDER.indexOf(value);
 }
 
 function toDisplaySeed(entry: SeedAcorn): DisplayAcorn {
@@ -156,9 +163,9 @@ function AcornThumbnail({ entry }: { entry: DisplayAcorn }) {
         height={288}
         sizes="(min-width: 48rem) 24rem, 100vw"
         unoptimized
-        className="h-full w-full object-cover saturate-[0.72] transition-[transform,filter] duration-500 ease-out will-change-transform group-hover:scale-[1.06] group-hover:saturate-100 group-focus-within:scale-[1.06] group-focus-within:saturate-100"
+        className="h-full w-full object-cover saturate-100 transition-[filter] duration-300 ease-out group-hover:saturate-[1.18] group-focus-within:saturate-[1.18]"
         onError={() => setHasLoadError(true)}
-      /> : <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(circle_at_72%_20%,rgba(255,255,255,0.72),transparent_27%),radial-gradient(circle_at_25%_78%,rgba(184,119,139,0.28),transparent_34%)] transition-transform duration-500 ease-out will-change-transform group-hover:scale-[1.06] group-focus-within:scale-[1.06]" />}
+      /> : <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(circle_at_72%_20%,rgba(255,255,255,0.72),transparent_27%),radial-gradient(circle_at_25%_78%,rgba(184,119,139,0.28),transparent_34%)]" />}
     </div>
   );
 }
@@ -175,6 +182,9 @@ function AcornList({ entries, isAdmin, onEdit, onDelete }: { entries: DisplayAco
           key={entry.id}
           initial={{ opacity: 0, y: '0.45rem' }}
           animate={{ opacity: 1, y: 0 }}
+          whileHover={ACORN_CARD_HOVER}
+          whileFocus={ACORN_CARD_HOVER}
+          transition={ACORN_CARD_HOVER_TRANSITION}
           onClick={() => link && window.open(link, '_blank', 'noopener,noreferrer')}
           onKeyDown={(event) => {
             if (link && (event.key === 'Enter' || event.key === ' ')) {
@@ -184,7 +194,7 @@ function AcornList({ entries, isAdmin, onEdit, onDelete }: { entries: DisplayAco
           }}
           role={link ? 'link' : undefined}
           tabIndex={link ? 0 : undefined}
-          className={`group relative overflow-hidden rounded-[0.7rem] border border-[rgba(200,121,147,0.25)] bg-[rgba(255,250,251,0.35)] shadow-[0_0.35rem_1rem_rgba(122,77,91,0.08)] transition-[transform,border-color,box-shadow] duration-300 ease-out hover:z-10 hover:-translate-y-[0.15rem] hover:border-[rgba(200,121,147,0.48)] hover:shadow-[0_0.75rem_1.5rem_rgba(122,77,91,0.16)] focus-within:z-10 focus-within:-translate-y-[0.15rem] focus-within:border-[rgba(200,121,147,0.48)] focus-within:shadow-[0_0.75rem_1.5rem_rgba(122,77,91,0.16)]${link ? ' cursor-pointer focus-visible:outline focus-visible:outline-[0.12rem] focus-visible:outline-offset-[0.16rem] focus-visible:outline-[var(--ledger-accent)]' : ''}`}
+          className={`group relative overflow-hidden rounded-[0.7rem] border border-[rgba(200,121,147,0.25)] bg-[rgba(255,250,251,0.35)] shadow-[0_0.35rem_1rem_rgba(122,77,91,0.08)] transition-[border-color,box-shadow] duration-300 ease-out hover:z-10 hover:border-[rgba(200,121,147,0.48)] hover:shadow-[0_0.75rem_1.5rem_rgba(122,77,91,0.16)] focus-within:z-10 focus-within:border-[rgba(200,121,147,0.48)] focus-within:shadow-[0_0.75rem_1.5rem_rgba(122,77,91,0.16)]${link ? ' cursor-pointer will-change-transform focus-visible:outline focus-visible:outline-[0.12rem] focus-visible:outline-offset-[0.16rem] focus-visible:outline-[var(--ledger-accent)]' : ''}`}
         >
           <AcornThumbnail entry={entry} />
           <div className="absolute inset-x-[0.55rem] bottom-[0.55rem] rounded-[0.48rem] border border-[rgba(255,255,255,0.48)] bg-[rgba(255,248,250,0.68)] px-[0.65rem] py-[0.55rem] shadow-[0_0.25rem_0.8rem_rgba(98,57,70,0.1)] backdrop-blur-md transition-colors duration-300 group-hover:bg-[rgba(255,250,251,0.82)] group-focus-within:bg-[rgba(255,250,251,0.82)]">
@@ -262,7 +272,7 @@ export default function AcornsSection() {
         && (selectedCategory === 'all' || entry.category === selectedCategory)
         && (selectedRole === 'all' || entry.role === selectedRole)
         && (selectedPlayerCount === 'all' || entry.playerCount === selectedPlayerCount))
-        .sort((a, b) => a.order - b.order),
+        .sort((a, b) => roleOrder(a.role) - roleOrder(b.role) || a.order - b.order),
     }))
     .filter((group) => group.entries.length), [entries, rules, selectedCategory, selectedPlayerCount, selectedRole, selectedRule]);
 
@@ -281,18 +291,18 @@ export default function AcornsSection() {
         <div className="flex shrink-0 flex-nowrap items-center gap-[0.35rem] whitespace-nowrap">
           <span className="mr-[0.15rem] afterroll-meta text-[0.68rem] tracking-[0.08em] text-[var(--ledger-soft)]">FILTER</span>
           <button type="button" aria-pressed={selectedRule === 'all'} onClick={() => setSelectedRule('all')} className={`rounded-full border px-[0.58rem] py-[0.2rem] afterroll-meta text-[0.72rem] ${selectedRule === 'all' ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.18)] text-[var(--ledger-accent)]' : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)]'}`}>룰 전체</button>
-          {rules.map((rule) => <button key={rule} type="button" aria-pressed={selectedRule === rule} onClick={() => setSelectedRule(rule)} className={`rounded-full border px-[0.58rem] py-[0.2rem] afterroll-meta text-[0.72rem] ${selectedRule === rule ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.18)] text-[var(--ledger-accent)]' : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)]'}`}>{rule}</button>)}
+          {rules.map((rule) => <button key={rule} type="button" aria-pressed={selectedRule === rule} onClick={() => setSelectedRule((current) => current === rule ? 'all' : rule)} className={`rounded-full border px-[0.58rem] py-[0.2rem] afterroll-meta text-[0.72rem] ${selectedRule === rule ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.18)] text-[var(--ledger-accent)]' : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)]'}`}>{rule}</button>)}
         </div>
         <div className="flex shrink-0 flex-nowrap items-center gap-[0.35rem] whitespace-nowrap border-l border-[rgba(200,121,147,0.28)] pl-[0.45rem]">
-          {(['all', 'BOTH', 'GM', 'PL'] as const).map((role) => <button key={role} type="button" aria-pressed={selectedRole === role} onClick={() => setSelectedRole(role)} className={`rounded-full border px-[0.58rem] py-[0.2rem] afterroll-meta text-[0.72rem] ${selectedRole === role ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.18)] text-[var(--ledger-accent)]' : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)]'}`}>{role === 'all' ? '역할 전체' : ROLE_LABEL[role]}</button>)}
+          {(['all', ...ROLE_ORDER] as const).map((role) => <button key={role} type="button" aria-pressed={selectedRole === role} onClick={() => setSelectedRole((current) => current === role ? 'all' : role)} className={`rounded-full border px-[0.58rem] py-[0.2rem] afterroll-meta text-[0.72rem] ${selectedRole === role ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.18)] text-[var(--ledger-accent)]' : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)]'}`}>{role === 'all' ? '역할 전체' : ROLE_LABEL[role]}</button>)}
         </div>
         <div className="flex shrink-0 flex-nowrap items-center gap-[0.35rem] whitespace-nowrap border-l border-[rgba(200,121,147,0.28)] pl-[0.45rem]">
           <button type="button" aria-pressed={selectedPlayerCount === 'all'} onClick={() => setSelectedPlayerCount('all')} className={`rounded-full border px-[0.58rem] py-[0.2rem] afterroll-meta text-[0.72rem] ${selectedPlayerCount === 'all' ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.18)] text-[var(--ledger-accent)]' : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)]'}`}>인원 전체</button>
-          {playerCounts.map((playerCount) => <button key={playerCount} type="button" aria-pressed={selectedPlayerCount === playerCount} onClick={() => setSelectedPlayerCount(playerCount)} className={`rounded-full border px-[0.58rem] py-[0.2rem] afterroll-meta text-[0.72rem] ${selectedPlayerCount === playerCount ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.18)] text-[var(--ledger-accent)]' : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)]'}`}>{playerCount}</button>)}
+          {playerCounts.map((playerCount) => <button key={playerCount} type="button" aria-pressed={selectedPlayerCount === playerCount} onClick={() => setSelectedPlayerCount((current) => current === playerCount ? 'all' : playerCount)} className={`rounded-full border px-[0.58rem] py-[0.2rem] afterroll-meta text-[0.72rem] ${selectedPlayerCount === playerCount ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.18)] text-[var(--ledger-accent)]' : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)]'}`}>{playerCount}</button>)}
         </div>
         <div className="flex shrink-0 flex-nowrap items-center gap-[0.35rem] whitespace-nowrap border-l border-[rgba(200,121,147,0.28)] pl-[0.45rem]">
           <button type="button" aria-pressed={selectedCategory === 'all'} onClick={() => setSelectedCategory('all')} className={`rounded-full border px-[0.58rem] py-[0.2rem] afterroll-meta text-[0.72rem] ${selectedCategory === 'all' ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.18)] text-[var(--ledger-accent)]' : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)]'}`}>분류 전체</button>
-          {CATEGORY_ORDER.map((category) => <button key={category} type="button" aria-pressed={selectedCategory === category} onClick={() => setSelectedCategory(category)} className={`rounded-full border px-[0.58rem] py-[0.2rem] afterroll-meta text-[0.72rem] ${selectedCategory === category ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.18)] text-[var(--ledger-accent)]' : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)]'}`}>{CATEGORY_LABEL[category]}</button>)}
+          {CATEGORY_ORDER.map((category) => <button key={category} type="button" aria-pressed={selectedCategory === category} onClick={() => setSelectedCategory((current) => current === category ? 'all' : category)} className={`rounded-full border px-[0.58rem] py-[0.2rem] afterroll-meta text-[0.72rem] ${selectedCategory === category ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.18)] text-[var(--ledger-accent)]' : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)]'}`}>{CATEGORY_LABEL[category]}</button>)}
         </div>
         </div>
         <div className="order-1 flex shrink-0 items-center justify-end gap-[0.45rem] self-end">
