@@ -232,118 +232,81 @@ function InfoSection({ section }: { section: TendencySection }) {
   );
 }
 
-function RulesTable({ rules, ownedRules }: { rules: TendencyRule[]; ownedRules: TendencyRule[] }) {
+function RuleCard({ rule }: { rule: TendencyRule }) {
   return (
-    <section className="rounded-[0.45rem] border border-[var(--atr-line)] bg-white/70">
-      <h2 className="border-b border-[var(--atr-line)] px-[0.85rem] py-[0.55rem] text-[0.88rem] font-bold text-[var(--atr-text)]">
-        주력 룰
-      </h2>
-      <div className="grid gap-[0.55rem] p-[0.75rem] md:hidden">
-        {rules.map((rule) => (
-          <article
-            key={rule.name}
-            className="rounded-[0.4rem] border border-[var(--atr-line)] bg-[#fff8fa] p-[0.65rem]"
-          >
-            <h3 className="break-words text-[0.9rem] font-bold text-[var(--atr-text)]">
-              {rule.name}
-            </h3>
-            <dl className="mt-[0.45rem] grid gap-[0.35rem] text-[0.8rem] leading-[1.45]">
-              <div className="grid grid-cols-[4.2rem_minmax(0,1fr)] gap-[0.5rem]">
-                <dt className="text-[var(--atr-soft)]">역할</dt>
-                <dd className="min-w-0 break-words text-[var(--atr-muted)]">{rule.role || '-'}</dd>
-              </div>
-              <div className="grid grid-cols-[4.2rem_minmax(0,1fr)] gap-[0.5rem]">
-                <dt className="text-[var(--atr-soft)]">숙련도</dt>
-                <dd className="min-w-0 break-words text-[var(--atr-muted)]">{rule.fluency || '-'}</dd>
-              </div>
-              <div className="grid grid-cols-[4.2rem_minmax(0,1fr)] gap-[0.5rem]">
-                <dt className="text-[var(--atr-soft)]">기타</dt>
-                <dd className="min-w-0 break-words text-[var(--atr-muted)]">{rule.note || '-'}</dd>
-              </div>
-            </dl>
-          </article>
-        ))}
-      </div>
-      <div className="hidden md:block">
-        <table className="w-full min-w-[26rem] border-collapse">
-          <thead>
-            <tr className="bg-[#fff0f4] text-left text-[0.74rem] text-[var(--atr-soft)]">
-              <th className="px-[0.75rem] py-[0.5rem]">룰</th>
-              <th className="px-[0.75rem] py-[0.5rem]">역할</th>
-              <th className="px-[0.75rem] py-[0.5rem]">숙련도</th>
-              <th className="px-[0.75rem] py-[0.5rem]">기타</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rules.map((rule) => (
-              <tr key={rule.name} className="border-t border-[var(--atr-line)] text-[0.84rem]">
-                <td className="px-[0.75rem] py-[0.55rem] font-bold text-[var(--atr-text)]">
-                  {rule.name}
-                </td>
-                <td className="px-[0.75rem] py-[0.55rem] text-[var(--atr-muted)]">{rule.role || '-'}</td>
-                <td className="px-[0.75rem] py-[0.55rem] text-[var(--atr-muted)]">{rule.fluency || '-'}</td>
-                <td className="px-[0.75rem] py-[0.55rem] text-[var(--atr-muted)]">{rule.note || '-'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <OwnedRulesDisclosure rules={ownedRules} />
-    </section>
+    <article className="rounded-[0.4rem] border border-[var(--atr-line)] bg-[#fff8fa] p-[0.65rem]">
+      <h3 className="break-words text-[0.9rem] font-bold text-[var(--atr-text)]">{rule.name}</h3>
+      <dl className="mt-[0.45rem] grid gap-[0.35rem] text-[0.8rem] leading-[1.45]">
+        <div className="grid grid-cols-[4.2rem_minmax(0,1fr)] gap-[0.5rem]"><dt className="text-[var(--atr-soft)]">역할</dt><dd className="min-w-0 break-words text-[var(--atr-muted)]">{rule.role || '-'}</dd></div>
+        <div className="grid grid-cols-[4.2rem_minmax(0,1fr)] gap-[0.5rem]"><dt className="text-[var(--atr-soft)]">숙련도</dt><dd className="min-w-0 break-words text-[var(--atr-muted)]">{rule.fluency || '-'}</dd></div>
+        <div className="grid grid-cols-[4.2rem_minmax(0,1fr)] gap-[0.5rem]"><dt className="text-[var(--atr-soft)]">기타</dt><dd className="min-w-0 break-words text-[var(--atr-muted)]">{rule.note || '-'}</dd></div>
+      </dl>
+    </article>
   );
 }
 
-function OwnedRulesDisclosure({ rules }: { rules: TendencyRule[] }) {
+function RulesTable({ rules, ownedRules }: { rules: TendencyRule[]; ownedRules: TendencyRule[] }) {
   const [isOpen, setIsOpen] = useState(false);
   const toggleLabel = isOpen ? '보유 룰북 접기' : '보유 룰북';
+  const toggleButton = (
+    <button type="button" aria-expanded={isOpen} onClick={() => setIsOpen((current) => !current)} className="relative flex min-h-[1.35rem] w-full items-center justify-center bg-[#fff0f4] px-[0.85rem] py-[0.1rem] text-center text-[0.68rem] font-bold text-[var(--atr-text)] transition-colors hover:bg-[rgba(232,169,186,0.24)]">
+      <span>{toggleLabel}</span>
+      <span aria-hidden="true" className="absolute right-[0.85rem] text-[0.75rem] text-[var(--atr-accent)]">{isOpen ? '−' : '+'}</span>
+    </button>
+  );
 
   return (
-    <section className="overflow-hidden border-t border-[var(--atr-line)]">
-      <button
-        type="button"
-        aria-expanded={isOpen}
-        onClick={() => setIsOpen((current) => !current)}
-        className="relative flex min-h-[1.35rem] w-full items-center justify-center bg-[#fff0f4] px-[0.85rem] py-[0.1rem] text-center text-[0.68rem] font-bold text-[var(--atr-text)] transition-colors hover:bg-[rgba(232,169,186,0.24)]"
-      >
-        <span>{toggleLabel}</span>
-        <span aria-hidden="true" className="absolute right-[0.85rem] text-[0.75rem] text-[var(--atr-accent)]">{isOpen ? '−' : '+'}</span>
-      </button>
-
-      <AnimatePresence initial={false}>
-        {isOpen ? (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden border-t border-[var(--atr-line)]"
-          >
-            {rules.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[26rem] border-collapse">
-                  <thead>
-                    <tr className="bg-[#fff0f4] text-left text-[0.74rem] text-[var(--atr-soft)]">
-                      <th className="px-[0.75rem] py-[0.5rem]">룰</th><th className="px-[0.75rem] py-[0.5rem]">역할</th><th className="px-[0.75rem] py-[0.5rem]">숙련도</th><th className="px-[0.75rem] py-[0.5rem]">비고</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rules.map((rule) => (
-                      <tr key={rule.name} className="border-t border-[var(--atr-line)] text-[0.84rem]">
-                        <td className="px-[0.75rem] py-[0.55rem] font-bold text-[var(--atr-text)]">{rule.name}</td>
-                        <td className="px-[0.75rem] py-[0.55rem] text-[var(--atr-muted)]">{rule.role || '-'}</td>
-                        <td className="px-[0.75rem] py-[0.55rem] text-[var(--atr-muted)]">{rule.fluency || '-'}</td>
-                        <td className="px-[0.75rem] py-[0.55rem] text-[var(--atr-muted)]">{rule.note || '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="px-[0.85rem] py-[0.75rem] text-[0.82rem] text-[var(--atr-muted)]">등록된 보유 룰북이 없습니다.</p>
-            )}
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+    <section className="rounded-[0.45rem] border border-[var(--atr-line)] bg-white/70">
+      <h2 className="border-b border-[var(--atr-line)] px-[0.85rem] py-[0.55rem] text-center text-[0.88rem] font-bold text-[var(--atr-text)]">주력 룰</h2>
+      <div className="grid gap-[0.55rem] p-[0.75rem] md:hidden">
+        {rules.map((rule) => <RuleCard key={rule.name} rule={rule} />)}
+        {toggleButton}
+        <AnimatePresence initial={false}>
+          {isOpen ? <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="grid gap-[0.55rem] overflow-hidden">{ownedRules.map((rule) => <RuleCard key={`owned-${rule.name}`} rule={rule} />)}</motion.div> : null}
+        </AnimatePresence>
+      </div>
+      <div className="hidden md:block">
+        <table className="w-full min-w-[26rem] table-fixed border-collapse">
+          <colgroup><col className="w-[24%]" /><col className="w-[18%]" /><col className="w-[18%]" /><col className="w-[40%]" /></colgroup>
+          <thead><tr className="bg-[#fff0f4] text-center text-[0.74rem] text-[var(--atr-soft)]"><th className="px-[0.75rem] py-[0.5rem]">룰</th><th className="px-[0.75rem] py-[0.5rem]">역할</th><th className="px-[0.75rem] py-[0.5rem]">숙련도</th><th className="px-[0.75rem] py-[0.5rem]">기타</th></tr></thead>
+          <tbody>
+            {rules.map((rule) => <tr key={rule.name} className="border-t border-[var(--atr-line)] text-center text-[0.84rem]"><td className="break-words px-[0.75rem] py-[0.55rem] font-bold text-[var(--atr-text)]">{rule.name}</td><td className="break-words px-[0.75rem] py-[0.55rem] text-[var(--atr-muted)]">{rule.role || '-'}</td><td className="break-words px-[0.75rem] py-[0.55rem] text-[var(--atr-muted)]">{rule.fluency || '-'}</td><td className="break-words px-[0.75rem] py-[0.55rem] text-[var(--atr-muted)]">{rule.note || '-'}</td></tr>)}
+            <tr className="border-t border-[var(--atr-line)]"><td colSpan={4} className="p-0">{toggleButton}</td></tr>
+            <AnimatePresence initial={false}>
+              {isOpen ? (
+                <motion.tr
+                  initial={{ opacity: 1 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <td colSpan={4} className="p-0">
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      {ownedRules.map((rule) => (
+                        <div
+                          key={`owned-${rule.name}`}
+                          className="grid grid-cols-[24%_18%_18%_40%] border-t border-[var(--atr-line)] bg-[#fff8fa] text-center text-[0.84rem]"
+                        >
+                          <span className="break-words px-[0.75rem] py-[0.55rem] font-bold text-[var(--atr-text)]">{rule.name}</span>
+                          <span className="break-words px-[0.75rem] py-[0.55rem] text-[var(--atr-muted)]">{rule.role || '-'}</span>
+                          <span className="break-words px-[0.75rem] py-[0.55rem] text-[var(--atr-muted)]">{rule.fluency || '-'}</span>
+                          <span className="break-words px-[0.75rem] py-[0.55rem] text-[var(--atr-muted)]">{rule.note || '-'}</span>
+                        </div>
+                      ))}
+                    </motion.div>
+                  </td>
+                </motion.tr>
+              ) : null}
+            </AnimatePresence>
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }
