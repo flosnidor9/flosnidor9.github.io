@@ -23,7 +23,6 @@ export type TendencyRule = {
   name: string;
   role: string;
   fluency: string;
-  book: string;
   note?: string;
 };
 
@@ -60,6 +59,7 @@ export type TendencyProfile = {
   detailTags: string[];
   sections: TendencySection[];
   rules: TendencyRule[];
+  ownedRules: TendencyRule[];
   dislikes: string[];
   ratings: TendencyRating[];
   details: TendencyDetailEntry[];
@@ -156,10 +156,11 @@ export const DEFAULT_TENDENCY_PROFILE: TendencyProfileInput = {
     },
   ],
   rules: [
-    { name: 'CoC', role: 'GM/PL', fluency: '능숙', book: '룰북' },
-    { name: '인세인', role: 'GM/PL', fluency: '미숙', book: '룰북' },
-    { name: '시노비가미', role: 'GM/PL', fluency: '능숙', book: '룰북' },
+    { name: 'CoC', role: 'GM/PL', fluency: '능숙' },
+    { name: '인세인', role: 'GM/PL', fluency: '미숙' },
+    { name: '시노비가미', role: 'GM/PL', fluency: '능숙' },
   ],
+  ownedRules: [],
   dislikes: ['2차 캐입 TRPG', '조용한 사담방'],
   ratings: [
     { label: '노출', level: '4', note: '성기 노출' },

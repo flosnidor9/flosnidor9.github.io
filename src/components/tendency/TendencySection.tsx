@@ -69,17 +69,17 @@ function parseRules(value: string): TendencyRule[] {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const [name = '', role = '', fluency = '', book = '', note = ''] = line
+      const [name = '', role = '', fluency = '', note = ''] = line
         .split('|')
         .map((part) => part.trim());
-      return { name, role, fluency, book, note };
+      return { name, role, fluency, note };
     })
     .filter((rule) => rule.name);
 }
 
 function stringifyRules(rules: TendencyRule[]) {
   return rules
-    .map((rule) => [rule.name, rule.role, rule.fluency, rule.book, rule.note ?? ''].join(' | '))
+    .map((rule) => [rule.name, rule.role, rule.fluency, rule.note ?? ''].join(' | '))
     .join('\n');
 }
 
@@ -232,7 +232,7 @@ function InfoSection({ section }: { section: TendencySection }) {
   );
 }
 
-function RulesTable({ rules }: { rules: TendencyRule[] }) {
+function RulesTable({ rules, ownedRules }: { rules: TendencyRule[]; ownedRules: TendencyRule[] }) {
   return (
     <section className="rounded-[0.45rem] border border-[var(--atr-line)] bg-white/70">
       <h2 className="border-b border-[var(--atr-line)] px-[0.85rem] py-[0.55rem] text-[0.88rem] font-bold text-[var(--atr-text)]">
@@ -288,6 +288,62 @@ function RulesTable({ rules }: { rules: TendencyRule[] }) {
           </tbody>
         </table>
       </div>
+      <OwnedRulesDisclosure rules={ownedRules} />
+    </section>
+  );
+}
+
+function OwnedRulesDisclosure({ rules }: { rules: TendencyRule[] }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const toggleLabel = isOpen ? '보유 룰북 접기' : '보유 룰북';
+
+  return (
+    <section className="overflow-hidden border-t border-[var(--atr-line)]">
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((current) => !current)}
+        className="relative flex min-h-[1.35rem] w-full items-center justify-center bg-[#fff0f4] px-[0.85rem] py-[0.1rem] text-center text-[0.68rem] font-bold text-[var(--atr-text)] transition-colors hover:bg-[rgba(232,169,186,0.24)]"
+      >
+        <span>{toggleLabel}</span>
+        <span aria-hidden="true" className="absolute right-[0.85rem] text-[0.75rem] text-[var(--atr-accent)]">{isOpen ? '−' : '+'}</span>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {isOpen ? (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden border-t border-[var(--atr-line)]"
+          >
+            {rules.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[26rem] border-collapse">
+                  <thead>
+                    <tr className="bg-[#fff0f4] text-left text-[0.74rem] text-[var(--atr-soft)]">
+                      <th className="px-[0.75rem] py-[0.5rem]">룰</th><th className="px-[0.75rem] py-[0.5rem]">역할</th><th className="px-[0.75rem] py-[0.5rem]">숙련도</th><th className="px-[0.75rem] py-[0.5rem]">비고</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rules.map((rule) => (
+                      <tr key={rule.name} className="border-t border-[var(--atr-line)] text-[0.84rem]">
+                        <td className="px-[0.75rem] py-[0.55rem] font-bold text-[var(--atr-text)]">{rule.name}</td>
+                        <td className="px-[0.75rem] py-[0.55rem] text-[var(--atr-muted)]">{rule.role || '-'}</td>
+                        <td className="px-[0.75rem] py-[0.55rem] text-[var(--atr-muted)]">{rule.fluency || '-'}</td>
+                        <td className="px-[0.75rem] py-[0.55rem] text-[var(--atr-muted)]">{rule.note || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="px-[0.85rem] py-[0.75rem] text-[0.82rem] text-[var(--atr-muted)]">등록된 보유 룰북이 없습니다.</p>
+            )}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </section>
   );
 }
@@ -470,6 +526,7 @@ function TendencyEditor({
     detailTags: profile.detailTags,
     sections: profile.sections,
     rules: profile.rules,
+    ownedRules: profile.ownedRules ?? DEFAULT_TENDENCY_PROFILE.ownedRules,
     dislikes: profile.dislikes,
     ratings: profile.ratings,
     details: profile.details,
@@ -481,6 +538,7 @@ function TendencyEditor({
     profile.sections.map((section) => stringifyItems(section.items)),
   );
   const [rulesText, setRulesText] = useState(stringifyRules(profile.rules));
+  const [ownedRulesText, setOwnedRulesText] = useState(stringifyRules(profile.ownedRules ?? []));
   const [dislikesText, setDislikesText] = useState(profile.dislikes.join('\n'));
   const [ratingsText, setRatingsText] = useState(stringifyRatings(profile.ratings));
   const [tagsText, setTagsText] = useState(profile.detailTags.join('\n'));
@@ -505,6 +563,7 @@ function TendencyEditor({
         detailTags: tagsText.split('\n').map((line) => line.trim()).filter(Boolean),
         sections: nextSections,
         rules: parseRules(rulesText),
+        ownedRules: parseRules(ownedRulesText),
         dislikes: dislikesText.split('\n').map((line) => line.trim()).filter(Boolean),
         ratings: parseRatings(ratingsText),
         details: parseDetails(detailsText),
@@ -526,9 +585,6 @@ function TendencyEditor({
   return (
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center bg-[rgba(76,51,61,0.28)] p-[1rem] backdrop-blur-[0.25rem]"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -583,30 +639,8 @@ function TendencyEditor({
                 value={tagsText}
                 onChange={(e) => setTagsText(e.target.value)}
                 rows={3}
-                className="resize-y rounded-[0.35rem] border border-[var(--atr-line)] bg-white px-[0.65rem] py-[0.5rem] text-[0.82rem] leading-[1.5] text-[var(--atr-text)] outline-none"
+                className="resize-y rounded-[0.35rem] border border-[var(--atr-line)] bg-white px-[0.65rem] py-[0.5rem] text-[0.82rem] font-normal leading-[1.5] text-[var(--atr-text)] outline-none"
               />
-            </label>
-
-            <label className="grid gap-[0.35rem] text-[0.78rem] font-bold text-[var(--atr-soft)]">
-              상세 비교
-              <textarea
-                value={detailsText}
-                onChange={(e) => setDetailsText(e.target.value)}
-                rows={8}
-                className="resize-y rounded-[0.35rem] border border-[var(--atr-line)] bg-white px-[0.65rem] py-[0.5rem] text-[0.82rem] leading-[1.5] text-[var(--atr-text)] outline-none"
-              />
-              <span className="font-normal">형식: prepare|session|roleplay | 항목 | GM 성향 | PL 성향</span>
-            </label>
-
-            <label className="grid gap-[0.35rem] text-[0.78rem] font-bold text-[var(--atr-soft)]">
-              트리거 / 조율 기준
-              <textarea
-                value={triggersText}
-                onChange={(e) => setTriggersText(e.target.value)}
-                rows={7}
-                className="resize-y rounded-[0.35rem] border border-[var(--atr-line)] bg-white px-[0.65rem] py-[0.5rem] text-[0.82rem] leading-[1.5] text-[var(--atr-text)] outline-none"
-              />
-              <span className="font-normal">형식: 항목 | ok/depict/ask/no | 메모</span>
             </label>
 
             {draft.sections.map((section, index) => (
@@ -636,7 +670,14 @@ function TendencyEditor({
                 value={rulesText}
                 onChange={(e) => setRulesText(e.target.value)}
                 rows={5}
-                className="resize-y rounded-[0.35rem] border border-[var(--atr-line)] bg-white px-[0.65rem] py-[0.5rem] text-[0.82rem] leading-[1.5] text-[var(--atr-text)] outline-none"
+                className="resize-y rounded-[0.35rem] border border-[var(--atr-line)] bg-white px-[0.65rem] py-[0.5rem] text-[0.82rem] font-normal leading-[1.5] text-[var(--atr-text)] outline-none"
+              />
+              <span className="mt-[0.3rem]">보유 룰북</span>
+              <textarea
+                value={ownedRulesText}
+                onChange={(e) => setOwnedRulesText(e.target.value)}
+                rows={5}
+                className="resize-y rounded-[0.35rem] border border-[var(--atr-line)] bg-white px-[0.65rem] py-[0.5rem] text-[0.82rem] font-normal leading-[1.5] text-[var(--atr-text)] outline-none"
               />
               <span className="font-normal">형식: 룰 | 역할 | 숙련도 | 기타</span>
             </label>
@@ -647,7 +688,7 @@ function TendencyEditor({
                 value={dislikesText}
                 onChange={(e) => setDislikesText(e.target.value)}
                 rows={3}
-                className="resize-y rounded-[0.35rem] border border-[var(--atr-line)] bg-white px-[0.65rem] py-[0.5rem] text-[0.82rem] leading-[1.5] text-[var(--atr-text)] outline-none"
+                className="resize-y rounded-[0.35rem] border border-[var(--atr-line)] bg-white px-[0.65rem] py-[0.5rem] text-[0.82rem] font-normal leading-[1.5] text-[var(--atr-text)] outline-none"
               />
             </label>
 
@@ -657,9 +698,31 @@ function TendencyEditor({
                 value={ratingsText}
                 onChange={(e) => setRatingsText(e.target.value)}
                 rows={4}
-                className="resize-y rounded-[0.35rem] border border-[var(--atr-line)] bg-white px-[0.65rem] py-[0.5rem] text-[0.82rem] leading-[1.5] text-[var(--atr-text)] outline-none"
+                className="resize-y rounded-[0.35rem] border border-[var(--atr-line)] bg-white px-[0.65rem] py-[0.5rem] text-[0.82rem] font-normal leading-[1.5] text-[var(--atr-text)] outline-none"
               />
               <span className="font-normal">형식: 항목 | 단계 | 설명</span>
+            </label>
+
+            <label className="grid gap-[0.35rem] text-[0.78rem] font-bold text-[var(--atr-soft)]">
+              상세 비교
+              <textarea
+                value={detailsText}
+                onChange={(e) => setDetailsText(e.target.value)}
+                rows={8}
+                className="resize-y rounded-[0.35rem] border border-[var(--atr-line)] bg-white px-[0.65rem] py-[0.5rem] text-[0.82rem] font-normal leading-[1.5] text-[var(--atr-text)] outline-none"
+              />
+              <span className="font-normal">형식: prepare|session|roleplay | 항목 | GM 성향 | PL 성향</span>
+            </label>
+
+            <label className="grid gap-[0.35rem] text-[0.78rem] font-bold text-[var(--atr-soft)]">
+              트리거 / 조율 기준
+              <textarea
+                value={triggersText}
+                onChange={(e) => setTriggersText(e.target.value)}
+                rows={7}
+                className="resize-y rounded-[0.35rem] border border-[var(--atr-line)] bg-white px-[0.65rem] py-[0.5rem] text-[0.82rem] font-normal leading-[1.5] text-[var(--atr-text)] outline-none"
+              />
+              <span className="font-normal">형식: 항목 | ok/depict/ask/no | 메모</span>
             </label>
           </div>
         </form>
@@ -727,7 +790,7 @@ export default function TendencySection() {
                   <InfoSection key={section.id} section={section} />
                 ))}
               </div>
-              <RulesTable rules={profile.rules} />
+              <RulesTable rules={profile.rules} ownedRules={profile.ownedRules ?? []} />
               <Boundaries dislikes={profile.dislikes} ratings={profile.ratings} />
               <DetailTendency
                 profile={profile}

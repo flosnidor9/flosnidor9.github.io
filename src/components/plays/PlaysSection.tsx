@@ -939,7 +939,7 @@ export default function PlaysSection() {
         openColumn &&
         createPortal(
           <>
-            <div className="fixed inset-0 z-[998]" onClick={closeFilter} />
+            <div className="fixed inset-0 z-[998]" onPointerDown={closeFilter} />
             <motion.div
               initial={{ opacity: 0, y: -4, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
