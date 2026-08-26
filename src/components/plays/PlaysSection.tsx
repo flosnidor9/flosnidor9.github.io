@@ -160,16 +160,6 @@ function getEntryDates(entry: PlayEntry, fallback: TitleDates | undefined): Titl
   return fallback ?? null;
 }
 
-function formatStart(dates: TitleDates | null): string {
-  return dates ? formatDate(dates.startDate) : '-';
-}
-
-function formatEnd(entry: PlayEntry, dates: TitleDates | null): string {
-  if (!dates) return '-';
-  if (entry.status === 'ongoing') return '~';
-  return formatDate(dates.endDate ?? dates.startDate);
-}
-
 const STATUS_LABEL: Record<PlayEntry['status'], string> = {
   scheduled: '예정',
   completed: '완주',
@@ -184,12 +174,12 @@ const STATUS_STYLE: Record<PlayEntry['status'], string> = {
   dropped: 'bg-[rgba(128,96,107,0.07)] text-[var(--ledger-muted)] border-[rgba(128,96,107,0.18)]',
 };
 
-const TH = 'px-[0.75rem] py-[0.55rem] text-left whitespace-nowrap';
+const TH = 'px-[0.75rem] py-[0.55rem] text-center whitespace-nowrap';
 const TD =
-  'afterroll-meta px-[0.75rem] py-[0.5rem] text-[0.8rem] text-[var(--ledger-muted)] align-middle whitespace-nowrap';
+  'afterroll-meta px-[0.75rem] py-[0.5rem] text-center text-[0.8rem] text-[var(--ledger-muted)] align-middle whitespace-nowrap';
 
 function colCount(isAdmin: boolean) {
-  return isAdmin ? 8 : 7;
+  return isAdmin ? 7 : 6;
 }
 
 // 클릭 가능한 컬럼 헤더
@@ -209,7 +199,7 @@ function ColHeader({
   return (
     <button
       onClick={(e) => onOpen(col, e)}
-      className={`afterroll-meta flex items-center gap-[0.22rem] text-[0.68rem] uppercase tracking-[0.06em] transition-colors ${
+      className={`afterroll-meta flex items-center justify-center gap-[0.22rem] text-[0.68rem] uppercase tracking-[0.06em] transition-colors ${
         isActive
           ? 'text-[var(--ledger-accent)]'
           : 'text-[var(--ledger-soft)] hover:text-[var(--ledger-ink)]'
@@ -594,7 +584,6 @@ export default function PlaysSection() {
                 </div>
               ) : (
                 filteredPlays.map((entry) => {
-                  const dates = getEntryDates(entry, titleDatesMap.get(entry.title));
                   const sessions = titleSessionsMap.get(entry.title) ?? [];
                   const totalDurationMinutes = getTotalDurationMinutes(sessions);
                   const isExpanded = expandedId === entry.id;
@@ -629,16 +618,21 @@ export default function PlaysSection() {
                           <span aria-hidden="true">·</span>
                           <span>{entry.type}</span>
                           <span aria-hidden="true">·</span>
+                          {entry.note && (
+                            <>
+                              <span>{entry.note}</span>
+                              <span aria-hidden="true">·</span>
+                            </>
+                          )}
                           <span>{entry.playerCount || '인원 미정'}</span>
                         </div>
-                        <div className="afterroll-meta mt-[0.4rem] flex items-center justify-between gap-[0.5rem] text-[0.72rem] text-[var(--ledger-soft)]">
-                          <span>{formatStart(dates)} ~ {formatEnd(entry, dates)}</span>
-                          {canExpand && (
+                        {canExpand && (
+                          <div className="afterroll-meta mt-[0.4rem] flex justify-end text-[0.72rem] text-[var(--ledger-soft)]">
                             <span className={`text-[0.62rem] transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
                               v
                             </span>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </button>
 
                       {isAdmin && (
@@ -726,20 +720,19 @@ export default function PlaysSection() {
             </div>
 
             <div className="ledger-paper-panel hidden overflow-x-auto rounded-[0.8rem] md:block">
-            <table className="w-full min-w-[40rem] border-collapse">
+            <table className="w-full min-w-[34rem] border-collapse">
               <thead>
                 <tr className="border-b border-[rgba(200,121,147,0.18)]">
-                  <th className={TH}>
-                    <ColHeader col="startYear" label="시작" openColumn={openColumn} isActive={isFilterActive('startYear')} onOpen={openFilter} />
-                  </th>
-                  <th className={TH}>
-                    <span className="afterroll-meta text-[0.68rem] uppercase tracking-[0.06em] text-[var(--ledger-soft)]">종료</span>
-                  </th>
                   <th className={TH}>
                     <ColHeader col="rule" label="룰" openColumn={openColumn} isActive={isFilterActive('rule')} onOpen={openFilter} />
                   </th>
                   <th className={`${TH} w-full`}>
-                    <ColHeader col="title" label="제목" openColumn={openColumn} isActive={isFilterActive('title')} onOpen={openFilter} />
+                    <span className="flex justify-center">
+                      <ColHeader col="title" label="제목" openColumn={openColumn} isActive={isFilterActive('title')} onOpen={openFilter} />
+                    </span>
+                  </th>
+                  <th className={TH}>
+                    <span className="afterroll-meta text-[0.68rem] uppercase tracking-[0.06em] text-[var(--ledger-soft)]">비고</span>
                   </th>
                   <th className={TH}>
                     <ColHeader col="playerCount" label="인원" openColumn={openColumn} isActive={isFilterActive('playerCount')} onOpen={openFilter} />
@@ -765,7 +758,6 @@ export default function PlaysSection() {
                   </tr>
                 ) : (
                   filteredPlays.map((entry, i) => {
-                    const dates = getEntryDates(entry, titleDatesMap.get(entry.title));
                     const sessions = titleSessionsMap.get(entry.title) ?? [];
                     const totalDurationMinutes = getTotalDurationMinutes(sessions);
                     const isExpanded = expandedId === entry.id;
@@ -782,11 +774,9 @@ export default function PlaysSection() {
                               : 'hover:bg-[rgba(232,169,186,0.08)]'
                           } ${isExpanded ? 'bg-[rgba(232,169,186,0.12)]' : ''}`}
                         >
-                          <td className={TD}>{formatStart(dates)}</td>
-                          <td className={TD}>{formatEnd(entry, dates)}</td>
                           <td className={TD}>{entry.rule || '-'}</td>
-                          <td className={`${TD} afterroll-title text-[var(--ledger-ink)] whitespace-normal`}>
-                            <span className="flex items-center gap-[0.35rem]">
+                          <td className={`${TD} afterroll-title text-center text-[var(--ledger-ink)] whitespace-normal`}>
+                            <span className="flex items-center justify-center gap-[0.35rem]">
                               {entry.title}
                               {canExpand && (
                                 <span
@@ -799,6 +789,7 @@ export default function PlaysSection() {
                               )}
                             </span>
                           </td>
+                          <td className={`${TD} whitespace-normal`}>{entry.note || '-'}</td>
                           <td className={TD}>{entry.playerCount ? `${entry.playerCount}` : '-'}</td>
                           <td className={TD}>{entry.type}</td>
                           <td className={TD}>

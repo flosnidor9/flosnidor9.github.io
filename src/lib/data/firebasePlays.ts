@@ -21,6 +21,7 @@ export type PlayEntry = {
   id: string;
   title: string;
   rule: string;
+  note?: string;
   playerCount: string;
   type: PlayType;
   participants: string[];

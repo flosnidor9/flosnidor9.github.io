@@ -369,6 +369,7 @@ export default function PlaysComposer({
 }: Props) {
   const [title, setTitle] = useState(editTarget?.title ?? '');
   const [rule, setRule] = useState(editTarget?.rule ?? '');
+  const [note, setNote] = useState(editTarget?.note ?? '');
   const [playerCount, setPlayerCount] = useState(editTarget?.playerCount ?? '');
   const [type, setType] = useState<PlayType>(editTarget?.type ?? 'PL');
   const [participants, setParticipants] = useState<string[]>(editTarget?.participants ?? []);
@@ -420,6 +421,7 @@ export default function PlaysComposer({
       const data = {
         title: title.trim(),
         rule,
+        note: note.trim(),
         playerCount,
         type,
         participants,
@@ -524,6 +526,23 @@ export default function PlaysComposer({
             onSelect={setRule}
             onAddOption={addRule}
           />
+
+          <div>
+            <label
+              htmlFor="play-note"
+              className="afterroll-meta mb-[0.4rem] block text-[0.72rem] uppercase tracking-[0.08em] text-[var(--ledger-soft)]"
+            >
+              비고
+            </label>
+            <input
+              id="play-note"
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="메모를 입력하세요"
+              className="w-full afterroll-meta rounded-[0.5rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] px-[0.7rem] py-[0.45rem] text-[0.85rem] text-[var(--ledger-ink)] outline-none placeholder:text-[var(--ledger-muted)] focus:border-[var(--ledger-accent)]"
+            />
+          </div>
 
           <SelectWithAdd
             label="인원"
