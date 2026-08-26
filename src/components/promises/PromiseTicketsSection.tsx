@@ -24,6 +24,16 @@ const EMPTY_TICKET: PromiseTicketInput = {
   isPrivate: false,
 };
 
+const TICKET_HOVER_LIFT = '-0.55rem';
+const TICKET_TILT_RANGE = 3;
+const TICKET_TILT_OFFSET = TICKET_TILT_RANGE / 2;
+const TICKET_HOVER_TRANSITION = { type: 'spring', stiffness: 360, damping: 22 };
+
+function getTicketTilt(ticketId: string) {
+  const hash = [...ticketId].reduce((value, character) => ((value << 5) - value) + character.charCodeAt(0), 0);
+  return (Math.abs(hash) % (TICKET_TILT_RANGE * 100)) / 100 - TICKET_TILT_OFFSET;
+}
+
 function ParticipantsSearchField({
   selected,
   participants,
@@ -155,8 +165,16 @@ function Ticket({ ticket, canEdit, onEdit, onDelete }: { ticket: PromiseTicket; 
     ? ticket.scenarioUrl
     : null;
   const shapeId = `promise-ticket-${ticket.id.replace(/[^a-zA-Z0-9]/g, '')}`;
+  const hoverTilt = getTicketTilt(ticket.id);
   return (
-    <motion.div layout initial={{ opacity: 0, y: '0.75rem' }} animate={{ opacity: 1, y: 0 }} className="promise-ticket-shadow">
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: '0.75rem' }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: TICKET_HOVER_LIFT, rotate: hoverTilt }}
+      transition={TICKET_HOVER_TRANSITION}
+      className="promise-ticket-shadow"
+    >
     <article className="promise-ticket">
       <svg className="promise-ticket__shape" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
         <defs>
@@ -218,7 +236,16 @@ export default function PromiseTicketsSection() {
     void updatePlaysOptions({ ...options, rules: [...options.rules, rule] });
   };
   return <>
-    <div className="mb-[1.25rem] flex flex-col gap-[0.8rem] sm:flex-row sm:items-end sm:justify-between"><div className="flex-1"><p className="afterroll-meta text-[0.75rem] text-[var(--ledger-soft)]">본인의 닉네임을 입력하면 공수표가 보입니다.</p><input value={nicknameQuery} onChange={(event) => setNicknameQuery(event.target.value)} aria-label="닉네임 검색" placeholder="닉네임 검색" className="mt-[0.35rem] block w-full max-w-[24rem] rounded-[0.45rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] px-[0.7rem] py-[0.5rem] text-[0.9rem] text-[var(--ledger-ink)] outline-none placeholder:text-[var(--ledger-muted)] focus:border-[var(--ledger-accent)]" /></div><div className="shrink-0">{isAdmin ? <button onClick={() => setEditing(null)} className="rounded-[0.45rem] border border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.16)] px-[0.8rem] py-[0.42rem] afterroll-meta text-[0.78rem] text-[var(--ledger-accent)]">+ 공수표 추가</button> : <AdminLoginButton />}</div></div>
+    <div className="mb-[1.25rem] flex flex-col gap-[0.8rem] sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex-1">
+        <p className="afterroll-meta text-[0.75rem] text-[var(--ledger-soft)]">본인의 닉네임을 입력하면 공수표가 보입니다.</p>
+        <input value={nicknameQuery} onChange={(event) => setNicknameQuery(event.target.value)} aria-label="닉네임 검색" placeholder="닉네임 검색" className="mt-[0.35rem] block w-full max-w-[24rem] rounded-[0.45rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] px-[0.7rem] py-[0.5rem] text-[0.9rem] text-[var(--ledger-ink)] outline-none placeholder:text-[var(--ledger-muted)] focus:border-[var(--ledger-accent)]" />
+      </div>
+      <div className="flex flex-wrap items-center justify-end gap-[0.45rem]">
+        {isAdmin && !authLoading && <button onClick={() => setEditing(null)} className="rounded-[0.45rem] border border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.16)] px-[0.8rem] py-[0.42rem] afterroll-meta text-[0.78rem] text-[var(--ledger-accent)]">+ 공수표 추가</button>}
+        <AdminLoginButton />
+      </div>
+    </div>
     {authLoading || loading ? <p className="afterroll-meta text-[0.82rem] text-[var(--ledger-muted)]">티켓을 불러오는 중...</p> : ordered.length ? <div className="grid gap-[1rem] sm:grid-cols-2">{ordered.map((ticket) => <Ticket key={`${ticket.isPrivate}-${ticket.id}`} ticket={ticket} canEdit={isAdmin} onEdit={() => setEditing(ticket)} onDelete={() => { if (window.confirm('이 공수표를 삭제할까요?')) void deletePromiseTicket(ticket); }} />)}</div> : <div className="rounded-[0.9rem] border border-dashed border-[rgba(172,151,110,0.38)] p-[2rem] text-center afterroll-meta text-[0.84rem] text-[var(--ledger-muted)]">{nicknameQuery.trim() ? '해당 닉네임의 공수표가 없습니다.' : '아직 발행된 공수표가 없습니다.'}</div>}
     <AnimatePresence>{editing !== undefined && <TicketForm ticket={editing} participants={options.participants} rules={options.rules} playCounts={playCounts} onAddRule={addRule} onClose={() => setEditing(undefined)} />}</AnimatePresence>
   </>;

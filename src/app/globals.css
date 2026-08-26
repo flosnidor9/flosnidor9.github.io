@@ -2494,6 +2494,8 @@ body.after-roll-theme a::after {
 .promise-ticket-shadow {
   width: min(100%, 13.5rem);
   justify-self: start;
+  transform-origin: center;
+  will-change: transform;
   filter: drop-shadow(0 0.7rem 0.45rem rgba(117, 49, 72, 0.42)) drop-shadow(0 1.15rem 1.1rem rgba(155, 77, 104, 0.28)) !important;
 }
 
