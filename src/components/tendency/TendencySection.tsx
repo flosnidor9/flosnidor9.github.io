@@ -48,14 +48,14 @@ const DETAIL_CATEGORY_IDS: Record<string, TendencyDetailEntry['category']> = {
 
 const TRIGGER_STATUS_LABELS: Record<TendencyTriggerItem['status'], string> = {
   ok: '문제 없음',
-  depict: '묘사 가능',
+  depict: '간략 묘사',
   ask: '사전 조율',
   no: '거절',
 };
 
 const TRIGGER_STATUS_IDS: Record<string, TendencyTriggerItem['status']> = {
   '문제 없음': 'ok',
-  '묘사 가능': 'depict',
+  '간략 묘사': 'depict',
   '사전 조율': 'ask',
   거절: 'no',
   ok: 'ok',
@@ -715,7 +715,7 @@ function TendencyEditor({
                 rows={7}
                 className="resize-y rounded-[0.35rem] border border-[var(--atr-line)] bg-white px-[0.65rem] py-[0.5rem] text-[0.82rem] font-normal leading-[1.5] text-[var(--atr-text)] outline-none"
               />
-              <span className="font-normal">형식: 항목 | 문제 없음/묘사 가능/사전 조율/거절 | 메모</span>
+              <span className="font-normal">형식: 항목 | 문제 없음/간략 묘사/사전 조율/거절 | 메모</span>
             </label>
           </div>
         </form>
