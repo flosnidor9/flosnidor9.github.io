@@ -212,7 +212,7 @@ function ColHeader({
   return (
     <button
       onClick={(e) => onOpen(col, e)}
-      className={`afterroll-meta flex items-center justify-center gap-[0.22rem] text-[0.68rem] uppercase tracking-[0.06em] transition-colors ${
+      className={`afterroll-meta inline-flex items-center justify-center gap-[0.22rem] text-[0.68rem] uppercase tracking-[0.06em] transition-colors ${
         isActive
           ? 'text-[var(--ledger-accent)]'
           : 'text-[var(--ledger-soft)] hover:text-[var(--ledger-ink)]'
@@ -743,7 +743,9 @@ export default function PlaysSection() {
               <thead>
                 <tr className="border-b border-[rgba(200,121,147,0.18)]">
                   <th className={TH}>
-                    <ColHeader col="rule" label="룰" openColumn={openColumn} isActive={isFilterActive('rule')} onOpen={openFilter} />
+                    <span className="flex justify-center">
+                      <ColHeader col="rule" label="룰" openColumn={openColumn} isActive={isFilterActive('rule')} onOpen={openFilter} />
+                    </span>
                   </th>
                   <th className={`${TH} w-full`}>
                     <span className="flex justify-center">
@@ -754,13 +756,19 @@ export default function PlaysSection() {
                     <span className="afterroll-meta text-[0.68rem] uppercase tracking-[0.06em] text-[var(--ledger-soft)]">비고</span>
                   </th>
                   <th className={TH}>
-                    <ColHeader col="playerCount" label="인원" openColumn={openColumn} isActive={isFilterActive('playerCount')} onOpen={openFilter} />
+                    <span className="flex justify-center">
+                      <ColHeader col="playerCount" label="인원" openColumn={openColumn} isActive={isFilterActive('playerCount')} onOpen={openFilter} />
+                    </span>
                   </th>
                   <th className={TH}>
-                    <ColHeader col="type" label="유형" openColumn={openColumn} isActive={isFilterActive('type')} onOpen={openFilter} />
+                    <span className="flex justify-center">
+                      <ColHeader col="type" label="유형" openColumn={openColumn} isActive={isFilterActive('type')} onOpen={openFilter} />
+                    </span>
                   </th>
                   <th className={TH}>
-                    <ColHeader col="status" label="상태" openColumn={openColumn} isActive={isFilterActive('status')} onOpen={openFilter} />
+                    <span className="flex justify-center">
+                      <ColHeader col="status" label="상태" openColumn={openColumn} isActive={isFilterActive('status')} onOpen={openFilter} />
+                    </span>
                   </th>
                   {isAdmin && <th className={TH} />}
                 </tr>
