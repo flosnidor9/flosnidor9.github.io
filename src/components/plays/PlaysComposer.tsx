@@ -373,11 +373,16 @@ export default function PlaysComposer({
   const [playerCount, setPlayerCount] = useState(editTarget?.playerCount ?? '');
   const [type, setType] = useState<PlayType>(editTarget?.type ?? 'PL');
   const [participants, setParticipants] = useState<string[]>(editTarget?.participants ?? []);
+  const [gmParticipant, setGmParticipant] = useState(editTarget?.gmParticipant ?? '');
   const [status, setStatus] = useState<PlayStatus>(editTarget?.status ?? 'ongoing');
   const [startDate, setStartDate] = useState(editTarget?.startDate ?? '');
   const [endDate, setEndDate] = useState(editTarget?.endDate ?? '');
   const [saving, setSaving] = useState(false);
   const [localOptions, setLocalOptions] = useState<PlaysOptions>(options);
+  const displayedParticipants = useMemo(() => {
+    if (type !== 'PL' || !gmParticipant || !participants.includes(gmParticipant)) return participants;
+    return [gmParticipant, ...participants.filter((participant) => participant !== gmParticipant)];
+  }, [gmParticipant, participants, type]);
 
   function handleTitleChange(v: string) {
     setTitle(v);
@@ -410,7 +415,11 @@ export default function PlaysComposer({
   }
 
   function toggleParticipant(p: string) {
-    setParticipants((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
+    setParticipants((prev) => {
+      const isSelected = prev.includes(p);
+      if (isSelected && gmParticipant === p) setGmParticipant('');
+      return isSelected ? prev.filter((x) => x !== p) : [...prev, p];
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -425,6 +434,7 @@ export default function PlaysComposer({
         playerCount,
         type,
         participants,
+        gmParticipant: type === 'PL' ? gmParticipant : '',
         status,
         startDate,
         endDate: endDate || null,
@@ -506,7 +516,10 @@ export default function PlaysComposer({
                 <button
                   key={t}
                   type="button"
-                  onClick={() => setType(t)}
+                  onClick={() => {
+                    setType(t);
+                    if (t === 'GM') setGmParticipant('');
+                  }}
                   className={`rounded-full border px-[1rem] py-[0.28rem] text-[0.85rem] font-medium transition-all ${
                     type === t
                       ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.22)] text-[var(--ledger-accent)]'
@@ -553,12 +566,37 @@ export default function PlaysComposer({
           />
 
           <ParticipantsSearchField
-            selected={participants}
+            selected={displayedParticipants}
             options={localOptions.participants}
             playCounts={participantPlayCounts}
             onToggle={toggleParticipant}
             onAddOption={addParticipant}
           />
+
+          {type === 'PL' && participants.length > 0 && (
+            <div>
+              <label className="afterroll-meta mb-[0.4rem] block text-[0.72rem] uppercase tracking-[0.08em] text-[var(--ledger-soft)]">
+                GM
+              </label>
+              <div className="flex flex-wrap gap-[0.35rem]">
+                {displayedParticipants.map((participant) => (
+                  <button
+                    key={participant}
+                    type="button"
+                    aria-pressed={gmParticipant === participant}
+                    onClick={() => setGmParticipant((current) => (current === participant ? '' : participant))}
+                    className={`rounded-full border px-[0.7rem] py-[0.28rem] text-[0.8rem] transition-all ${
+                      gmParticipant === participant
+                        ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.22)] text-[var(--ledger-accent)]'
+                        : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)] hover:border-[rgba(200,121,147,0.42)] hover:text-[var(--ledger-ink)]'
+                    }`}
+                  >
+                    {participant}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="afterroll-meta mb-[0.4rem] block text-[0.72rem] uppercase tracking-[0.08em] text-[var(--ledger-soft)]">

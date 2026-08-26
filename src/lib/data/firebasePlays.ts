@@ -25,6 +25,7 @@ export type PlayEntry = {
   playerCount: string;
   type: PlayType;
   participants: string[];
+  gmParticipant?: string;
   status: PlayStatus;
   startDate: string;
   endDate: string | null;

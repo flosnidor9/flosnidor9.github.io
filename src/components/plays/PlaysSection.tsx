@@ -160,6 +160,12 @@ function getEntryDates(entry: PlayEntry, fallback: TitleDates | undefined): Titl
   return fallback ?? null;
 }
 
+function getDisplayedParticipants(entry: PlayEntry): string[] {
+  const { participants, type, gmParticipant } = entry;
+  if (type !== 'PL' || !gmParticipant || !participants.includes(gmParticipant)) return participants;
+  return [gmParticipant, ...participants.filter((participant) => participant !== gmParticipant)];
+}
+
 const STATUS_LABEL: Record<PlayEntry['status'], string> = {
   scheduled: '예정',
   completed: '완주',
@@ -702,9 +708,16 @@ export default function PlaysSection() {
                               {hasParticipants && (
                                 <div className="flex flex-wrap gap-[0.3rem]">
                                   <span className="afterroll-meta mr-[0.15rem] text-[0.7rem] text-[var(--ledger-soft)]">참여자</span>
-                                  {entry.participants.map((participant) => (
-                                    <span key={participant} className="afterroll-meta rounded-full border border-[rgba(200,121,147,0.2)] bg-[rgba(232,169,186,0.12)] px-[0.5rem] py-[0.1rem] text-[0.72rem] text-[var(--ledger-soft)]">
-                                      {participant}
+                                  {getDisplayedParticipants(entry).map((participant) => (
+                                    <span
+                                      key={participant}
+                                      className={`afterroll-meta rounded-full border px-[0.5rem] py-[0.1rem] text-[0.72rem] ${
+                                        entry.type === 'PL' && entry.gmParticipant === participant
+                                          ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.22)] text-[var(--ledger-accent)]'
+                                          : 'border-[rgba(200,121,147,0.2)] bg-[rgba(232,169,186,0.12)] text-[var(--ledger-soft)]'
+                                      }`}
+                                    >
+                                      {participant}{entry.type === 'PL' && entry.gmParticipant === participant ? ' · GM' : ''}
                                     </span>
                                   ))}
                                 </div>
@@ -882,12 +895,16 @@ export default function PlaysSection() {
                                         <span className="afterroll-meta mr-[0.2rem] text-[0.7rem] text-[var(--ledger-soft)]">
                                           참여자
                                         </span>
-                                        {entry.participants.map((p) => (
+                                        {getDisplayedParticipants(entry).map((p) => (
                                           <span
                                             key={p}
-                                            className="afterroll-meta rounded-full border border-[rgba(200,121,147,0.2)] bg-[rgba(232,169,186,0.12)] px-[0.5rem] py-[0.1rem] text-[0.72rem] text-[var(--ledger-soft)]"
+                                            className={`afterroll-meta rounded-full border px-[0.5rem] py-[0.1rem] text-[0.72rem] ${
+                                              entry.type === 'PL' && entry.gmParticipant === p
+                                                ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.22)] text-[var(--ledger-accent)]'
+                                                : 'border-[rgba(200,121,147,0.2)] bg-[rgba(232,169,186,0.12)] text-[var(--ledger-soft)]'
+                                            }`}
                                           >
-                                            {p}
+                                            {p}{entry.type === 'PL' && entry.gmParticipant === p ? ' · GM' : ''}
                                           </span>
                                         ))}
                                       </div>
