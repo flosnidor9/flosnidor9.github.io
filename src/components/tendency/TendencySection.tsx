@@ -148,8 +148,8 @@ function ProfileStamp({ profile }: { profile: TendencyProfile }) {
   const profileUrl = buildTwitterProfileUrl(handle || profile.handle);
 
   return (
-    <aside className="ledger-paper-sheet relative overflow-hidden rounded-[0.6rem] p-[0.85rem]">
-      <div className="relative z-[1] aspect-[3/4] overflow-hidden rounded-[0.45rem] border border-[var(--atr-line)] bg-[#fff0f4]">
+    <div>
+      <div className="relative z-[1] aspect-square overflow-hidden rounded-[0.45rem] border border-[var(--atr-line)] bg-[#fff0f4]">
         {avatarSrc && !imageFailed ? (
           <Image
             src={avatarSrc}
@@ -203,7 +203,7 @@ function ProfileStamp({ profile }: { profile: TendencyProfile }) {
           {profile.statusLine}
         </p>
       </div>
-    </aside>
+    </div>
   );
 }
 
@@ -715,7 +715,11 @@ export default function TendencySection() {
           </div>
         ) : (
           <div className="grid gap-[1rem] lg:grid-cols-[16rem_minmax(0,1fr)]">
-            <ProfileStamp profile={profile} />
+            <aside className="ledger-paper-sheet relative self-stretch rounded-[0.6rem] p-[0.85rem]">
+              <div className="tendency-profile-sticky lg:sticky lg:top-0">
+                <ProfileStamp profile={profile} />
+              </div>
+            </aside>
 
             <div className="grid gap-[0.85rem]">
               <div className="grid gap-[0.85rem] md:grid-cols-2 xl:grid-cols-3">
