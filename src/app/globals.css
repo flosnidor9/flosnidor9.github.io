@@ -2492,17 +2492,17 @@ body.after-roll-theme a::after {
 }
 /* Promise tickets: perforated, detachable vintage tickets in the AfterTheRoll pink palette. */
 .promise-ticket-shadow {
-  width: min(100%, 13.5rem);
+  width: min(100%, 11.5rem);
   justify-self: start;
   transform-origin: center;
   will-change: transform;
-  filter: drop-shadow(0 0.7rem 0.45rem rgba(117, 49, 72, 0.42)) drop-shadow(0 1.15rem 1.1rem rgba(155, 77, 104, 0.28)) !important;
+  filter: drop-shadow(0 0.55rem 0.35rem rgba(117, 49, 72, 0.42)) drop-shadow(0 0.9rem 0.85rem rgba(155, 77, 104, 0.28)) !important;
 }
 
 .promise-ticket {
   position: relative;
   width: 100%;
-  height: 22rem;
+  height: 18rem;
   overflow: visible;
   background: transparent;
   -webkit-mask-image: none;

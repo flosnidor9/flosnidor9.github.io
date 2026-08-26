@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, type Transition } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import AdminLoginButton from '@/components/log/AdminLoginButton';
@@ -27,7 +27,20 @@ const EMPTY_TICKET: PromiseTicketInput = {
 const TICKET_HOVER_LIFT = '-0.55rem';
 const TICKET_TILT_RANGE = 3;
 const TICKET_TILT_OFFSET = TICKET_TILT_RANGE / 2;
-const TICKET_HOVER_TRANSITION = { type: 'spring', stiffness: 360, damping: 22 };
+const TICKET_HOVER_TRANSITION: Transition = { type: 'spring', stiffness: 360, damping: 22 };
+const TICKET_PUNCH_COUNT = 12;
+const TICKET_CORNER_INSET = 12;
+const TICKET_PUNCH_DIAMETER = 5.5;
+const TICKET_PUNCH_RADIUS = TICKET_PUNCH_DIAMETER / 2;
+const TICKET_PUNCH_CONTROL_OFFSET = TICKET_PUNCH_RADIUS * 0.55228475;
+const TICKET_PUNCH_GAP = (100 - (TICKET_CORNER_INSET * 2) - (TICKET_PUNCH_COUNT * TICKET_PUNCH_DIAMETER)) / (TICKET_PUNCH_COUNT - 1);
+const TICKET_RIGHT_EDGE = Array.from({ length: TICKET_PUNCH_COUNT }, (_, index) => (
+  `c -${TICKET_PUNCH_CONTROL_OFFSET} 0 -${TICKET_PUNCH_RADIUS} ${TICKET_PUNCH_RADIUS - TICKET_PUNCH_CONTROL_OFFSET} -${TICKET_PUNCH_RADIUS} ${TICKET_PUNCH_RADIUS} c 0 ${TICKET_PUNCH_CONTROL_OFFSET} ${TICKET_PUNCH_RADIUS - TICKET_PUNCH_CONTROL_OFFSET} ${TICKET_PUNCH_RADIUS} ${TICKET_PUNCH_RADIUS} ${TICKET_PUNCH_RADIUS}${index < TICKET_PUNCH_COUNT - 1 ? ` v ${TICKET_PUNCH_GAP}` : ''}`
+)).join(' ');
+const TICKET_LEFT_EDGE = Array.from({ length: TICKET_PUNCH_COUNT }, (_, index) => (
+  `c ${TICKET_PUNCH_CONTROL_OFFSET} 0 ${TICKET_PUNCH_RADIUS} -${TICKET_PUNCH_RADIUS - TICKET_PUNCH_CONTROL_OFFSET} ${TICKET_PUNCH_RADIUS} -${TICKET_PUNCH_RADIUS} c 0 -${TICKET_PUNCH_CONTROL_OFFSET} -${TICKET_PUNCH_RADIUS - TICKET_PUNCH_CONTROL_OFFSET} -${TICKET_PUNCH_RADIUS} -${TICKET_PUNCH_RADIUS} -${TICKET_PUNCH_RADIUS}${index < TICKET_PUNCH_COUNT - 1 ? ` v -${TICKET_PUNCH_GAP}` : ''}`
+)).join(' ');
+const TICKET_SHAPE_PATH = `M ${TICKET_CORNER_INSET} 0 H ${100 - TICKET_CORNER_INSET} Q ${100 - TICKET_CORNER_INSET} ${TICKET_CORNER_INSET} 100 ${TICKET_CORNER_INSET} ${TICKET_RIGHT_EDGE} Q ${100 - TICKET_CORNER_INSET} ${100 - TICKET_CORNER_INSET} ${100 - TICKET_CORNER_INSET} 100 H ${TICKET_CORNER_INSET} Q ${TICKET_CORNER_INSET} ${100 - TICKET_CORNER_INSET} 0 ${100 - TICKET_CORNER_INSET} ${TICKET_LEFT_EDGE} Q ${TICKET_CORNER_INSET} ${TICKET_CORNER_INSET} ${TICKET_CORNER_INSET} 0 Z`;
 
 function getTicketTilt(ticketId: string) {
   const hash = [...ticketId].reduce((value, character) => ((value << 5) - value) + character.charCodeAt(0), 0);
@@ -210,24 +223,18 @@ function Ticket({ ticket, canEdit, onEdit, onDelete }: { ticket: PromiseTicket; 
       <svg className="promise-ticket__shape" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
         <defs>
           <filter id={`${shapeId}-shadow`} x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="3" stdDeviation="2.2" floodColor="#753148" floodOpacity="0.36" /></filter>
-          <mask id={shapeId}><path fill="white" d="M 12 0 q 3.167 3.2 6.333 0 h 2.375 q 3.167 3.2 6.333 0 h 2.375 q 3.167 3.2 6.333 0 h 2.375 q 3.167 3.2 6.333 0 h 2.375 q 3.167 3.2 6.333 0 h 2.375 q 3.167 3.2 6.333 0 h 2.375 q 3.167 3.2 6.333 0 h 2.375 q 3.167 3.2 6.333 0 h 2.375 q 3.167 3.2 6.333 0 Q 88 12 100 12 V 88 Q 88 88 88 100 q -3.167 -3.2 -6.333 0 h -2.375 q -3.167 -3.2 -6.333 0 h -2.375 q -3.167 -3.2 -6.333 0 h -2.375 q -3.167 -3.2 -6.333 0 h -2.375 q -3.167 -3.2 -6.333 0 h -2.375 q -3.167 -3.2 -6.333 0 h -2.375 q -3.167 -3.2 -6.333 0 h -2.375 q -3.167 -3.2 -6.333 0 h -2.375 q -3.167 -3.2 -6.333 0 Q 12 88 0 88 V 12 Q 12 12 12 0 Z" /></mask>
+          <mask id={shapeId}><path fill="white" d={TICKET_SHAPE_PATH} /></mask>
         </defs>
         <rect width="100" height="100" fill="#f5c9d7" mask={`url(#${shapeId})`} filter={`url(#${shapeId}-shadow)`} />
       </svg>
       <div className="promise-ticket__main">
-        <div className="relative z-10 flex h-full flex-col items-center justify-center p-[1.1rem] text-center">
-          <div className="w-full"><p className="afterroll-meta text-[0.68rem] uppercase tracking-[0.14em] text-[var(--atr-accent)]">{ticket.rule || 'RULE 미정'} {ticket.role ? `· ${ticket.role}` : ''}</p><h2 className="afterroll-title mt-[0.25rem] text-[1.45rem] leading-tight text-[var(--ledger-ink)]">{ticket.scenarioName}</h2>{ticket.isPrivate && <span className="mt-[0.45rem] inline-block rounded-full border border-[rgba(200,121,147,0.35)] px-[0.45rem] py-[0.18rem] afterroll-meta text-[0.62rem] text-[var(--ledger-muted)]">비공개</span>}</div>
-          {ticket.participants.length > 0 && <div className="mt-[0.9rem] flex flex-wrap justify-center gap-[0.35rem]">{ticket.participants.map((person) => <span key={person} className="rounded-full bg-[rgba(232,169,186,0.22)] px-[0.55rem] py-[0.22rem] afterroll-meta text-[0.72rem] text-[var(--ledger-muted)]">{person}</span>)}</div>}
-          {ticket.note && <p className="mt-[0.8rem] whitespace-pre-wrap text-center afterroll-meta text-[0.82rem] leading-relaxed text-[var(--ledger-muted)]">{ticket.note}</p>}
-          <div className="mt-[1rem] flex w-full flex-col items-center gap-[0.55rem] border-t border-dashed border-[rgba(200,121,147,0.34)] pt-[0.65rem]">{scenarioUrl && <a href={scenarioUrl} target="_blank" rel="noreferrer" className="afterroll-meta text-[0.75rem] text-[var(--atr-accent)] underline decoration-[rgba(200,121,147,0.4)] underline-offset-[0.2rem]">시나리오 보러가기</a>}{canEdit && <span className="flex justify-center gap-[0.55rem]"><button onClick={onEdit} className="afterroll-meta text-[0.75rem] text-[var(--ledger-muted)]">수정</button><button onClick={onDelete} className="afterroll-meta text-[0.75rem] text-[var(--ledger-accent)]">삭제</button></span>}</div>
+          <div className="relative z-10 flex h-full flex-col items-center justify-center p-[0.85rem] text-center">
+          <div className="w-full"><p className="afterroll-meta text-[0.58rem] uppercase tracking-[0.12em] text-[var(--atr-accent)]">{ticket.rule || 'RULE 미정'} {ticket.role ? `· ${ticket.role}` : ''}</p><h2 className="afterroll-title mt-[0.2rem] text-[1.1rem] leading-tight text-[var(--ledger-ink)]">{ticket.scenarioName}</h2>{ticket.isPrivate && <span className="mt-[0.35rem] inline-block rounded-full border border-[rgba(200,121,147,0.35)] px-[0.4rem] py-[0.15rem] afterroll-meta text-[0.55rem] text-[var(--ledger-muted)]">비공개</span>}</div>
+          {ticket.participants.length > 0 && <div className="mt-[0.65rem] flex flex-wrap justify-center gap-[0.25rem]">{ticket.participants.map((person) => <span key={person} className="rounded-full bg-[rgba(232,169,186,0.22)] px-[0.42rem] py-[0.16rem] afterroll-meta text-[0.62rem] text-[var(--ledger-muted)]">{person}</span>)}</div>}
+          {ticket.note && <p className="mt-[0.6rem] whitespace-pre-wrap text-center afterroll-meta text-[0.7rem] leading-relaxed text-[var(--ledger-muted)]">{ticket.note}</p>}
+          <div className="mt-[0.7rem] flex w-full flex-col items-center gap-[0.4rem] border-t border-dashed border-[rgba(200,121,147,0.34)] pt-[0.5rem]">{scenarioUrl && <a href={scenarioUrl} target="_blank" rel="noreferrer" className="afterroll-meta text-[0.65rem] text-[var(--atr-accent)] underline decoration-[rgba(200,121,147,0.4)] underline-offset-[0.2rem]">시나리오 보러가기</a>}{canEdit && <span className="flex justify-center gap-[0.45rem]"><button onClick={onEdit} className="afterroll-meta text-[0.65rem] text-[var(--ledger-muted)]">수정</button><button onClick={onDelete} className="afterroll-meta text-[0.65rem] text-[var(--ledger-accent)]">삭제</button></span>}</div>
         </div>
       </div>
-      <div className="promise-ticket__punch promise-ticket__punch--top" aria-hidden="true" />
-      <div className="promise-ticket__punch promise-ticket__punch--bottom" aria-hidden="true" />
-      <div className="promise-ticket__corner promise-ticket__corner--top-left" aria-hidden="true" />
-      <div className="promise-ticket__corner promise-ticket__corner--top-right" aria-hidden="true" />
-      <div className="promise-ticket__corner promise-ticket__corner--bottom-left" aria-hidden="true" />
-      <div className="promise-ticket__corner promise-ticket__corner--bottom-right" aria-hidden="true" />
     </article>
     </motion.div>
   );
@@ -281,7 +288,7 @@ export default function PromiseTicketsSection() {
         <AdminLoginButton />
       </div>
     </div>
-    {authLoading || loading ? <p className="afterroll-meta text-[0.82rem] text-[var(--ledger-muted)]">티켓을 불러오는 중...</p> : ordered.length ? <div className="grid gap-[1rem] sm:grid-cols-2">{ordered.map((ticket) => <Ticket key={`${ticket.isPrivate}-${ticket.id}`} ticket={ticket} canEdit={isAdmin} onEdit={() => setEditing(ticket)} onDelete={() => { if (window.confirm('이 공수표를 삭제할까요?')) void deletePromiseTicket(ticket); }} />)}</div> : <div className="rounded-[0.9rem] border border-dashed border-[rgba(172,151,110,0.38)] p-[2rem] text-center afterroll-meta text-[0.84rem] text-[var(--ledger-muted)]">{nicknameQuery.trim() ? '해당 닉네임의 공수표가 없습니다.' : '아직 발행된 공수표가 없습니다.'}</div>}
+    {authLoading || loading ? <p className="afterroll-meta text-[0.82rem] text-[var(--ledger-muted)]">티켓을 불러오는 중...</p> : ordered.length ? <div className="grid gap-[0.8rem] sm:grid-cols-2 md:grid-cols-4">{ordered.map((ticket) => <Ticket key={`${ticket.isPrivate}-${ticket.id}`} ticket={ticket} canEdit={isAdmin} onEdit={() => setEditing(ticket)} onDelete={() => { if (window.confirm('이 공수표를 삭제할까요?')) void deletePromiseTicket(ticket); }} />)}</div> : <div className="rounded-[0.9rem] border border-dashed border-[rgba(172,151,110,0.38)] p-[2rem] text-center afterroll-meta text-[0.84rem] text-[var(--ledger-muted)]">{nicknameQuery.trim() ? '해당 닉네임의 공수표가 없습니다.' : '아직 발행된 공수표가 없습니다.'}</div>}
     <AnimatePresence>{editing !== undefined && <TicketForm ticket={editing} participants={options.participants} rules={options.rules} playCounts={playCounts} onAddRule={addRule} onAddParticipant={addParticipant} onClose={() => setEditing(undefined)} />}</AnimatePresence>
   </>;
 }
