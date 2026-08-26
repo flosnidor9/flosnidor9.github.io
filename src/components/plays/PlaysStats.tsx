@@ -10,7 +10,7 @@ type PlaySessionSummary = {
   isUpcoming: boolean;
 };
 
-const STATUS_LABEL = { completed: '완주', ongoing: '진행', dropped: '하차' } as const;
+const STATUS_LABEL = { scheduled: '예정', ongoing: '진행', completed: '완주', dropped: '하차' } as const;
 
 type CountEntry = [string, number, string[]];
 type ChartTooltip = { x: number; y: number; label: string; titles: string[] } | null;
@@ -240,7 +240,7 @@ export default function PlaysStats({ plays, titleDatesMap, titleSessionsMap }: P
   });
   const pcEntries = Object.entries(pcCounts).sort((a, b) => comparePlayerCounts(a[0], b[0]));
 
-  const statusCounts = { completed: 0, ongoing: 0, dropped: 0 };
+  const statusCounts = { scheduled: 0, ongoing: 0, completed: 0, dropped: 0 };
   plays.forEach((p) => {
     statusCounts[p.status] += 1;
   });
@@ -297,7 +297,7 @@ export default function PlaysStats({ plays, titleDatesMap, titleSessionsMap }: P
     <div className="flex flex-col gap-[0.8rem]">
       <StatCard label="상태 기록">
         <div className="flex flex-wrap gap-[1.8rem]">
-          {(['ongoing', 'completed', 'dropped'] as const).map((s) => (
+          {(['scheduled', 'ongoing', 'completed', 'dropped'] as const).map((s) => (
             <div key={s} className="text-center">
               <div className="afterroll-title text-[2rem] leading-none text-[var(--ledger-ink)]">
                 {statusCounts[s]}

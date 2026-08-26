@@ -353,6 +353,7 @@ function ParticipantsSearchField({
 }
 
 const STATUS_OPTIONS: { value: PlayStatus; label: string }[] = [
+  { value: 'scheduled', label: '예정' },
   { value: 'ongoing', label: '진행' },
   { value: 'completed', label: '완주' },
   { value: 'dropped', label: '하차' },

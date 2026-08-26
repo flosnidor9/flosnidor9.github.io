@@ -171,12 +171,14 @@ function formatEnd(entry: PlayEntry, dates: TitleDates | null): string {
 }
 
 const STATUS_LABEL: Record<PlayEntry['status'], string> = {
+  scheduled: '예정',
   completed: '완주',
   ongoing: '진행',
   dropped: '하차',
 };
 
 const STATUS_STYLE: Record<PlayEntry['status'], string> = {
+  scheduled: 'bg-[rgba(172,151,110,0.12)] text-[rgba(117,96,58,0.85)] border-[rgba(172,151,110,0.28)]',
   completed: 'bg-[rgba(94,132,146,0.12)] text-[rgba(61,95,111,0.85)] border-[rgba(94,132,146,0.28)]',
   ongoing: 'bg-[rgba(232,169,186,0.2)] text-[var(--ledger-accent)] border-[rgba(200,121,147,0.32)]',
   dropped: 'bg-[rgba(128,96,107,0.07)] text-[var(--ledger-muted)] border-[rgba(128,96,107,0.18)]',
@@ -504,7 +506,7 @@ export default function PlaysSection() {
     if (openColumn === 'status') {
       return (
         <div className={ddClass}>
-          {([['all', '전체'], ['ongoing', '진행'], ['completed', '완주'], ['dropped', '하차']] as const).map(([v, l]) => (
+          {([['all', '전체'], ['scheduled', '예정'], ['ongoing', '진행'], ['completed', '완주'], ['dropped', '하차']] as const).map(([v, l]) => (
             <button key={v} className={optCls(filterStatus === v)} onClick={() => { setFilterStatus(v); closeFilter(); }}>{l}</button>
           ))}
         </div>
@@ -561,7 +563,169 @@ export default function PlaysSection() {
             아직 등록된 플레이가 없습니다.
           </div>
         ) : (
-          <div className="ledger-paper-panel overflow-x-auto rounded-[0.8rem]">
+          <>
+            <div className="mb-[0.7rem] flex gap-[0.35rem] overflow-x-auto pb-[0.2rem] md:hidden">
+              {([
+                ['all', '전체'],
+                ['scheduled', '예정'],
+                ['ongoing', '진행'],
+                ['completed', '완주'],
+                ['dropped', '하차'],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setFilterStatus(value)}
+                  className={`afterroll-meta shrink-0 rounded-full border px-[0.7rem] py-[0.3rem] text-[0.76rem] transition-colors ${
+                    filterStatus === value
+                      ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.18)] text-[var(--ledger-accent)]'
+                      : 'border-[rgba(200,121,147,0.2)] text-[var(--ledger-muted)]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-col gap-[0.55rem] md:hidden">
+              {filteredPlays.length === 0 ? (
+                <div className="ledger-paper-panel rounded-[0.8rem] p-[1.5rem] text-center afterroll-meta text-[0.82rem] text-[var(--ledger-muted)]">
+                  해당 조건에 맞는 플레이가 없습니다.
+                </div>
+              ) : (
+                filteredPlays.map((entry) => {
+                  const dates = getEntryDates(entry, titleDatesMap.get(entry.title));
+                  const sessions = titleSessionsMap.get(entry.title) ?? [];
+                  const totalDurationMinutes = getTotalDurationMinutes(sessions);
+                  const isExpanded = expandedId === entry.id;
+                  const hasParticipants = entry.participants.length > 0;
+                  const hasSessions = sessions.length > 0;
+                  const canExpand = hasParticipants || hasSessions;
+                  return (
+                    <article
+                      key={entry.id}
+                      className={`ledger-paper-panel overflow-hidden rounded-[0.8rem] transition-colors ${
+                        isExpanded ? 'bg-[rgba(232,169,186,0.1)]' : ''
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => canExpand && toggleExpand(entry.id)}
+                        aria-expanded={canExpand ? isExpanded : undefined}
+                        className={`w-full px-[0.9rem] py-[0.8rem] text-left ${
+                          canExpand ? 'cursor-pointer' : 'cursor-default'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-[0.7rem]">
+                          <h2 className="afterroll-title min-w-0 text-[1.08rem] leading-snug text-[var(--ledger-ink)]">
+                            {entry.title}
+                          </h2>
+                          <span className={`shrink-0 rounded-full border px-[0.45rem] py-[0.1rem] text-[0.67rem] ${STATUS_STYLE[entry.status]}`}>
+                            {STATUS_LABEL[entry.status]}
+                          </span>
+                        </div>
+                        <div className="afterroll-meta mt-[0.45rem] flex flex-wrap gap-x-[0.45rem] gap-y-[0.18rem] text-[0.76rem] text-[var(--ledger-muted)]">
+                          <span>{entry.rule || '룰 미정'}</span>
+                          <span aria-hidden="true">·</span>
+                          <span>{entry.type}</span>
+                          <span aria-hidden="true">·</span>
+                          <span>{entry.playerCount || '인원 미정'}</span>
+                        </div>
+                        <div className="afterroll-meta mt-[0.4rem] flex items-center justify-between gap-[0.5rem] text-[0.72rem] text-[var(--ledger-soft)]">
+                          <span>{formatStart(dates)} ~ {formatEnd(entry, dates)}</span>
+                          {canExpand && (
+                            <span className={`text-[0.62rem] transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                              v
+                            </span>
+                          )}
+                        </div>
+                      </button>
+
+                      {isAdmin && (
+                        <div className="flex justify-end gap-[0.25rem] border-t border-[rgba(200,121,147,0.1)] px-[0.55rem] py-[0.35rem]">
+                          {deletingId === entry.id ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={async () => { await deletePlay(entry.id); setDeletingId(null); }}
+                                className="afterroll-meta rounded-[0.3rem] px-[0.45rem] py-[0.22rem] text-[0.7rem] text-[rgba(160,50,50,0.85)]"
+                              >
+                                삭제 확인
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeletingId(null)}
+                                className="afterroll-meta rounded-[0.3rem] px-[0.45rem] py-[0.22rem] text-[0.7rem] text-[var(--ledger-muted)]"
+                              >
+                                취소
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => openEdit(entry)}
+                                className="afterroll-meta rounded-[0.3rem] px-[0.45rem] py-[0.22rem] text-[0.7rem] text-[var(--ledger-muted)]"
+                              >
+                                수정
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeletingId(entry.id)}
+                                className="afterroll-meta rounded-[0.3rem] px-[0.45rem] py-[0.22rem] text-[0.7rem] text-[rgba(160,50,50,0.8)]"
+                              >
+                                삭제
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      <AnimatePresence initial={false}>
+                        {isExpanded && canExpand && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.18 }}
+                            className="overflow-hidden border-t border-[rgba(200,121,147,0.12)]"
+                          >
+                            <div className="flex flex-col gap-[0.6rem] px-[0.9rem] py-[0.7rem]">
+                              {hasSessions && (
+                                <div>
+                                  <div className="afterroll-meta mb-[0.35rem] text-[0.7rem] text-[var(--ledger-soft)]">
+                                    플레이 기록 <span className="ml-[0.35rem] text-[var(--ledger-accent)]">총 {formatDuration(totalDurationMinutes)}</span>
+                                  </div>
+                                  <div className="flex flex-col gap-[0.25rem]">
+                                    {sessions.map((session) => (
+                                      <div key={session.id} className="afterroll-meta rounded-[0.4rem] border border-[rgba(200,121,147,0.14)] bg-[rgba(255,248,250,0.62)] px-[0.55rem] py-[0.38rem] text-[0.72rem] text-[var(--ledger-muted)]">
+                                        {formatDate(session.date)} · {formatSessionTime(session)} · {formatDuration(session.durationMinutes)}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {hasParticipants && (
+                                <div className="flex flex-wrap gap-[0.3rem]">
+                                  <span className="afterroll-meta mr-[0.15rem] text-[0.7rem] text-[var(--ledger-soft)]">참여자</span>
+                                  {entry.participants.map((participant) => (
+                                    <span key={participant} className="afterroll-meta rounded-full border border-[rgba(200,121,147,0.2)] bg-[rgba(232,169,186,0.12)] px-[0.5rem] py-[0.1rem] text-[0.72rem] text-[var(--ledger-soft)]">
+                                      {participant}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </article>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="ledger-paper-panel hidden overflow-x-auto rounded-[0.8rem] md:block">
             <table className="w-full min-w-[40rem] border-collapse">
               <thead>
                 <tr className="border-b border-[rgba(200,121,147,0.18)]">
@@ -749,7 +913,8 @@ export default function PlaysSection() {
                 )}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )
       ) : (
         <PlaysStats plays={plays} titleDatesMap={titleDatesMap} titleSessionsMap={titleSessionsMap} />

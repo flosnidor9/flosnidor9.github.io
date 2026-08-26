@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-export type PlayStatus = 'completed' | 'ongoing' | 'dropped';
+export type PlayStatus = 'scheduled' | 'completed' | 'ongoing' | 'dropped';
 export type PlayType = 'GM' | 'PL';
 
 export type PlayEntry = {
