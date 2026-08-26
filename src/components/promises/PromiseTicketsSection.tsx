@@ -30,6 +30,7 @@ const TICKET_TILT_RANGE = 3;
 const TICKET_TILT_OFFSET = TICKET_TILT_RANGE / 2;
 const COMPLETED_STAMP_TILT_MIN = -16;
 const COMPLETED_STAMP_TILT_MAX = 12;
+const PROMISE_NOTE_MAX_LENGTH = 80;
 const TICKET_HOVER_TRANSITION: Transition = { type: 'spring', stiffness: 360, damping: 22 };
 const TICKET_PUNCH_COUNT = 9;
 const TICKET_CORNER_INSET = 12;
@@ -196,7 +197,8 @@ function TicketForm({ ticket, participants, rules, playCounts, onAddRule, onAddP
           </fieldset>
           <ParticipantsSearchField selected={form.participants} participants={participants} playCounts={playCounts} onToggle={(person) => set('participants', form.participants.includes(person) ? form.participants.filter((item) => item !== person) : [...form.participants, person])} onAddOption={onAddParticipant} />
           <label className="afterroll-meta text-[0.75rem] text-[var(--ledger-soft)]">메모
-            <textarea value={form.note} onChange={(e) => set('note', e.target.value)} rows={3} className="mt-[0.35rem] w-full resize-y rounded-[0.45rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] px-[0.7rem] py-[0.5rem] text-[0.9rem] text-[var(--ledger-ink)] outline-none focus:border-[var(--ledger-accent)]" />
+            <textarea value={form.note} onChange={(e) => set('note', e.target.value)} maxLength={PROMISE_NOTE_MAX_LENGTH} rows={3} className="mt-[0.35rem] w-full resize-y rounded-[0.45rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] px-[0.7rem] py-[0.5rem] text-[0.9rem] text-[var(--ledger-ink)] outline-none focus:border-[var(--ledger-accent)]" />
+            <span className="mt-[0.25rem] block text-right text-[0.68rem] text-[var(--ledger-muted)]">{form.note.length} / {PROMISE_NOTE_MAX_LENGTH}</span>
           </label>
           <label className="afterroll-meta text-[0.75rem] text-[var(--ledger-soft)]">시나리오 링크
             <input type="url" value={form.scenarioUrl} onChange={(e) => set('scenarioUrl', e.target.value)} placeholder="https://" className="mt-[0.35rem] w-full rounded-[0.45rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] px-[0.7rem] py-[0.5rem] text-[0.9rem] text-[var(--ledger-ink)] outline-none focus:border-[var(--ledger-accent)]" />
@@ -240,12 +242,16 @@ function Ticket({ ticket, canEdit, onEdit, onDelete }: { ticket: PromiseTicket; 
       {ticket.isCompleted && <span className="promise-ticket__completed-stamp" style={{ '--completed-stamp-tilt': `${completedStampTilt}deg` } as CSSProperties} aria-label="완료된 공수표">사용 완료</span>}
       <div className="promise-ticket__main">
           <div className="relative z-10 flex h-full flex-col p-[0.85rem] pb-[1.65rem] text-center">
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center">
+          <div className="promise-ticket__content">
+          <div className="promise-ticket__title-slot">
             <div className="w-full"><p className="afterroll-meta text-[0.58rem] uppercase tracking-[0.12em] text-[var(--atr-accent)]">{ticket.rule || 'RULE 미정'} {ticket.role ? `· ${ticket.role}` : ''}</p><h2 className="afterroll-title mt-[0.2rem] text-[1.1rem] leading-tight text-[var(--ledger-ink)]">{ticket.scenarioName}</h2>{ticket.isPrivate && <span className="mt-[0.35rem] inline-block rounded-full border border-[rgba(200,121,147,0.35)] px-[0.4rem] py-[0.15rem] afterroll-meta text-[0.55rem] text-[var(--ledger-muted)]">비공개</span>}</div>
-            {ticket.participants.length > 0 && <div className="mt-[0.65rem] flex flex-wrap justify-center gap-[0.25rem]">{ticket.participants.map((person) => <span key={person} className="rounded-full bg-[rgba(232,169,186,0.22)] px-[0.42rem] py-[0.16rem] afterroll-meta text-[0.62rem] text-[var(--ledger-muted)]">{person}</span>)}</div>}
-            {ticket.note && <p className="mt-[0.6rem] whitespace-pre-wrap text-center afterroll-meta text-[0.7rem] leading-relaxed text-[var(--ledger-muted)]">{ticket.note}</p>}
           </div>
-          <div className="mt-[0.7rem] flex w-full shrink-0 flex-col items-center gap-[0.4rem] border-t border-dashed border-[rgba(200,121,147,0.34)] pt-[0.5rem]">{scenarioUrl && <a href={scenarioUrl} target="_blank" rel="noreferrer" className="afterroll-meta text-[0.65rem] text-[var(--atr-accent)] underline decoration-[rgba(200,121,147,0.4)] underline-offset-[0.2rem]">시나리오 보러가기</a>}{canEdit && <span className="flex justify-center gap-[0.45rem]"><button onClick={onEdit} className="afterroll-meta text-[0.65rem] text-[var(--ledger-muted)]">수정</button><button onClick={onDelete} className="afterroll-meta text-[0.65rem] text-[var(--ledger-accent)]">삭제</button></span>}</div>
+          <div className="promise-ticket__details">
+            {ticket.participants.length > 0 && <div className="mt-[0.65rem] flex flex-wrap justify-center gap-[0.25rem]">{ticket.participants.map((person) => <span key={person} className="rounded-full bg-[rgba(232,169,186,0.22)] px-[0.42rem] py-[0.16rem] afterroll-meta text-[0.62rem] text-[var(--ledger-muted)]">{person}</span>)}</div>}
+          {ticket.note && <p className="mx-auto mt-[0.6rem] w-full max-w-[8rem] whitespace-pre-line break-keep text-center afterroll-meta text-[0.7rem] leading-relaxed text-[var(--ledger-muted)]">{ticket.note}</p>}
+          </div>
+          </div>
+          <div className={`promise-ticket__footer${canEdit ? '' : ' promise-ticket__footer--public'}`}>{scenarioUrl && <a href={scenarioUrl} target="_blank" rel="noreferrer" className="afterroll-meta text-[0.65rem] text-[var(--atr-accent)] underline decoration-[rgba(200,121,147,0.4)] underline-offset-[0.2rem]">시나리오 보러가기</a>}{canEdit && <span className="flex justify-center gap-[0.45rem]"><button onClick={onEdit} className="afterroll-meta text-[0.65rem] text-[var(--ledger-muted)]">수정</button><button onClick={onDelete} className="afterroll-meta text-[0.65rem] text-[var(--ledger-accent)]">삭제</button></span>}</div>
         </div>
       </div>
     </article>
