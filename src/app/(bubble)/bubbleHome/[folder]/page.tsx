@@ -1,6 +1,7 @@
-﻿import { notFound, redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { getFolder, getFolders } from '@/lib/data/folders';
 import { toGalleryPath } from '@/lib/galleryPath';
+import { SITE_ORIGIN } from '@/lib/config/site';
 
 type Props = {
   params: Promise<{ folder: string }>;
@@ -17,9 +18,10 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: Props) {
   const { folder: slug } = await params;
   const folder = getFolder(slug);
-  if (!folder) return { title: 'Not Found' };
+  if (!folder) return { metadataBase: SITE_ORIGIN, title: 'Not Found' };
 
   return {
+    metadataBase: SITE_ORIGIN,
     title: `${folder.title} | Personal Archive`,
     description: `${folder.title} - ${folder.count} images`,
   };

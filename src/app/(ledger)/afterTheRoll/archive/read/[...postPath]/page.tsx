@@ -9,6 +9,7 @@ import { fromGallerySegments } from '@/lib/galleryPath';
 import TrpgLogReader from '@/components/trpg/TrpgLogReader';
 import EncryptedTrpgLogReader from '@/components/trpg/EncryptedTrpgLogReader';
 import TrpgCastPanel from '@/components/trpg/TrpgCastPanel';
+import { SITE_ORIGIN } from '@/lib/config/site';
 
 const EMPTY_EXPORT_POST_PATH = ['__empty__', '__empty__'];
 
@@ -42,12 +43,13 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props) {
   const resolved = splitPostPath((await params).postPath);
-  if (!resolved) return { title: 'Not Found' };
+  if (!resolved) return { metadataBase: SITE_ORIGIN, title: 'Not Found' };
 
   const post = getTrpgPost(resolved.folderSlug, resolved.postSlug);
-  if (!post) return { title: 'Not Found' };
+  if (!post) return { metadataBase: SITE_ORIGIN, title: 'Not Found' };
 
   return {
+    metadataBase: SITE_ORIGIN,
     title: `${post.title} | After the Roll`,
     description: post.description || post.title,
   };

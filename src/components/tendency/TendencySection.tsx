@@ -238,7 +238,33 @@ function RulesTable({ rules }: { rules: TendencyRule[] }) {
       <h2 className="border-b border-[var(--atr-line)] px-[0.85rem] py-[0.55rem] text-[0.88rem] font-bold text-[var(--atr-text)]">
         주력 룰
       </h2>
-      <div className="overflow-x-auto">
+      <div className="grid gap-[0.55rem] p-[0.75rem] md:hidden">
+        {rules.map((rule) => (
+          <article
+            key={rule.name}
+            className="rounded-[0.4rem] border border-[var(--atr-line)] bg-[#fff8fa] p-[0.65rem]"
+          >
+            <h3 className="break-words text-[0.9rem] font-bold text-[var(--atr-text)]">
+              {rule.name}
+            </h3>
+            <dl className="mt-[0.45rem] grid gap-[0.35rem] text-[0.8rem] leading-[1.45]">
+              <div className="grid grid-cols-[4.2rem_minmax(0,1fr)] gap-[0.5rem]">
+                <dt className="text-[var(--atr-soft)]">역할</dt>
+                <dd className="min-w-0 break-words text-[var(--atr-muted)]">{rule.role || '-'}</dd>
+              </div>
+              <div className="grid grid-cols-[4.2rem_minmax(0,1fr)] gap-[0.5rem]">
+                <dt className="text-[var(--atr-soft)]">숙련도</dt>
+                <dd className="min-w-0 break-words text-[var(--atr-muted)]">{rule.fluency || '-'}</dd>
+              </div>
+              <div className="grid grid-cols-[4.2rem_minmax(0,1fr)] gap-[0.5rem]">
+                <dt className="text-[var(--atr-soft)]">기타</dt>
+                <dd className="min-w-0 break-words text-[var(--atr-muted)]">{rule.note || '-'}</dd>
+              </div>
+            </dl>
+          </article>
+        ))}
+      </div>
+      <div className="hidden md:block">
         <table className="w-full min-w-[26rem] border-collapse">
           <thead>
             <tr className="bg-[#fff0f4] text-left text-[0.74rem] text-[var(--atr-soft)]">

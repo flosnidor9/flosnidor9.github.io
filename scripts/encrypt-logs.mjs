@@ -9,27 +9,19 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, '..');
 const isCi = process.env.GITHUB_ACTIONS === 'true';
 
-const masterKey = process.env.TRPG_MASTER_KEY;
-if (!masterKey) {
-  const message = 'TRPG_MASTER_KEY 없음 — 암호화 건너뜀';
+function exitIfRequired(message) {
   if (isCi) {
     console.error(message);
     process.exit(1);
   }
-  console.log(message);
   process.exit(0);
 }
 
+const masterKey = process.env.TRPG_MASTER_KEY;
+if (!masterKey) exitIfRequired('TRPG_MASTER_KEY 없음 — 암호화 건너뜀');
+
 const encPath = path.join(rootDir, 'passwords.enc.json');
-if (!fs.existsSync(encPath)) {
-  const message = 'passwords.enc.json 없음 — 암호화 건너뜀';
-  if (isCi) {
-    console.error(message);
-    process.exit(1);
-  }
-  console.log(message);
-  process.exit(0);
-}
+if (!fs.existsSync(encPath)) exitIfRequired('passwords.enc.json 없음 — 암호화 건너뜀');
 
 const { salt, iv, ciphertext, authTag } = JSON.parse(fs.readFileSync(encPath, 'utf8'));
 const masterKeyBuf = pbkdf2Sync(masterKey, Buffer.from(salt, 'hex'), 100000, 32, 'sha256');

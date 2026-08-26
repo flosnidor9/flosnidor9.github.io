@@ -1,17 +1,20 @@
-import type { Metadata } from "next";
-import "../globals.css";
-import GNB from "@/components/layout/GNB";
-import PersistentHeroBackground from "@/components/hero/PersistentHeroBackground";
-import { getFavoriteImagePaths } from "@/lib/data/images";
-import Providers from "@/components/providers/Providers";
+import type { Metadata } from 'next';
+import '../globals.css';
+import GNB from '@/components/layout/GNB';
+import PersistentHeroBackground from '@/components/hero/PersistentHeroBackground';
+import { getFavoriteImagePaths } from '@/lib/data/images';
+import Providers from '@/components/providers/Providers';
+import { DEFAULT_OG_IMAGE_URL, SITE_ORIGIN } from '@/lib/config/site';
 
 export const metadata: Metadata = {
-  title: "Bubble Home | Personal Archive",
-  description: "물방울처럼 둥둥 떠다니는 추억들",
+  metadataBase: SITE_ORIGIN,
+  title: 'Bubble Home | Personal Archive',
+  description: 'A soft archive of favorite images, folders, and remembered scenes.',
   openGraph: {
-    title: "Bubble Home | Personal Archive",
-    description: "물방울처럼 둥둥 떠다니는 추억들",
-    type: "website",
+    title: 'Bubble Home | Personal Archive',
+    description: 'A soft archive of favorite images, folders, and remembered scenes.',
+    type: 'website',
+    images: [DEFAULT_OG_IMAGE_URL],
   },
 };
 
@@ -28,7 +31,10 @@ export default function BubbleLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500&display=swap"
+          rel="stylesheet"
+        />
       </head>
       <body className="antialiased">
         <Providers>

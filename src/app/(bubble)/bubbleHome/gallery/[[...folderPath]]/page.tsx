@@ -9,6 +9,7 @@ import {
 import { fromGallerySegments, toGalleryPath } from '@/lib/galleryPath';
 import GalleryClient from '../GalleryClient';
 import FolderDetailScene from '@/components/folder/FolderDetailScene';
+import { SITE_ORIGIN } from '@/lib/config/site';
 
 type Props = {
   params: Promise<{ folderPath?: string[] }>;
@@ -38,18 +39,20 @@ export async function generateMetadata({ params }: Props) {
   const { folderPath = [] } = await params;
   if (folderPath.length === 0) {
     return {
+      metadataBase: SITE_ORIGIN,
       title: 'Gallery | Personal Archive',
       description: 'Top-level categories',
     };
   }
 
   const slug = fromGallerySegments(folderPath);
-  if (!slug) return { title: 'Not Found' };
+  if (!slug) return { metadataBase: SITE_ORIGIN, title: 'Not Found' };
 
   const folder = getFolder(slug, 'bubble');
-  if (!folder) return { title: 'Not Found' };
+  if (!folder) return { metadataBase: SITE_ORIGIN, title: 'Not Found' };
 
   return {
+    metadataBase: SITE_ORIGIN,
     title: `${folder.title} | Personal Archive`,
     description: folder.isLeaf
       ? `${folder.title} - ${folder.count} images`

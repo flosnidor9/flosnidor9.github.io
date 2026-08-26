@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import { getAllLogPosts, getLogPostBySlug } from '@/lib/logs';
 import LogCommentsSection from '@/components/log/LogCommentsSection';
+import { SITE_ORIGIN } from '@/lib/config/site';
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -20,10 +21,11 @@ export async function generateMetadata({ params }: Props) {
   const post = getLogPostBySlug(slug);
 
   if (!post) {
-    return { title: 'Not Found | Log' };
+    return { metadataBase: SITE_ORIGIN, title: 'Not Found | Log' };
   }
 
   return {
+    metadataBase: SITE_ORIGIN,
     title: `${post.title} | Log`,
     description: post.content.slice(0, 140),
   };
