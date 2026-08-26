@@ -752,7 +752,7 @@ export default function PlaysSection() {
           </div>
         )
       ) : (
-        <PlaysStats plays={plays} titleDatesMap={titleDatesMap} />
+        <PlaysStats plays={plays} titleDatesMap={titleDatesMap} titleSessionsMap={titleSessionsMap} />
       )}
 
       {/* 컬럼 필터 드롭다운 (portal) */}

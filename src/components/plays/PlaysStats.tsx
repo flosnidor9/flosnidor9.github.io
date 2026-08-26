@@ -4,12 +4,213 @@ import { useState } from 'react';
 import type { PlayEntry } from '@/lib/data/firebasePlays';
 
 type TitleDates = { startDate: string; endDate: string | null };
+type PlaySessionSummary = {
+  date: string;
+  startTime: string | null;
+  isUpcoming: boolean;
+};
 
 const STATUS_LABEL = { completed: '완주', ongoing: '진행', dropped: '하차' } as const;
+
+type CountEntry = [string, number, string[]];
+type ChartTooltip = { x: number; y: number; label: string; titles: string[] } | null;
+
+const CHART_WIDTH = 720;
+const CHART_HEIGHT = 240;
+const CHART_PAD_X = 28;
+const CHART_PAD_TOP = 24;
+const CHART_PAD_BOTTOM = 46;
+const CHART_INNER_WIDTH = CHART_WIDTH - CHART_PAD_X * 2;
+const CHART_INNER_HEIGHT = CHART_HEIGHT - CHART_PAD_TOP - CHART_PAD_BOTTOM;
+const TIE_MAN_RANK = 0;
+const MULTI_PLAYER_RANK = Number.MAX_SAFE_INTEGER;
+
+function getYearMonthEntries(
+  year: string,
+  counts: Record<string, number>,
+  titlesByMonth: Record<string, string[]>
+) {
+  return Array.from({ length: 12 }, (_, index): CountEntry => {
+    const month = String(index + 1).padStart(2, '0');
+    const key = `${year}-${month}`;
+    return [key, counts[key] ?? 0, titlesByMonth[key] ?? []];
+  });
+}
+
+function shouldShowChartLabel(index: number, entries: CountEntry[]) {
+  if (entries.length <= 8) return true;
+  return index === 0 || index === entries.length - 1 || entries[index][0].endsWith('-01');
+}
+
+function getPlayerCountRank(playerCount: string) {
+  const normalized = playerCount.trim();
+  if (normalized === '타이만') return TIE_MAN_RANK;
+  if (normalized === '다인') return MULTI_PLAYER_RANK;
+
+  const numericCount = Number.parseInt(normalized, 10);
+  return Number.isFinite(numericCount) && numericCount > 0
+    ? numericCount
+    : MULTI_PLAYER_RANK - 1;
+}
+
+function comparePlayerCounts(a: string, b: string) {
+  const rankDiff = getPlayerCountRank(a) - getPlayerCountRank(b);
+  if (rankDiff !== 0) return rankDiff;
+  return a.localeCompare(b, 'ko');
+}
+
+function TrendChart({
+  entries,
+  formatLabel,
+  hideZeroMarkers = false,
+  showAllLabels = false,
+}: {
+  entries: CountEntry[];
+  formatLabel: (label: string) => string;
+  hideZeroMarkers?: boolean;
+  showAllLabels?: boolean;
+}) {
+  const [tooltip, setTooltip] = useState<ChartTooltip>(null);
+  const maxCount = Math.max(1, ...entries.map(([, count]) => count));
+  const getX = (index: number) =>
+    entries.length === 1
+      ? CHART_PAD_X + CHART_INNER_WIDTH / 2
+      : CHART_PAD_X + (CHART_INNER_WIDTH * index) / (entries.length - 1);
+  const getY = (count: number) => CHART_PAD_TOP + CHART_INNER_HEIGHT - (CHART_INNER_HEIGHT * count) / maxCount;
+  const points = entries.map(([, count], index) => `${getX(index)},${getY(count)}`).join(' ');
+  const areaPoints = `${CHART_PAD_X},${CHART_PAD_TOP + CHART_INNER_HEIGHT} ${points} ${
+    CHART_PAD_X + CHART_INNER_WIDTH
+  },${CHART_PAD_TOP + CHART_INNER_HEIGHT}`;
+  const gridValues = [0, Math.ceil(maxCount / 2), maxCount];
+  const tooltipAlign =
+    tooltip && tooltip.x > CHART_WIDTH * 0.72
+      ? 'right'
+      : tooltip && tooltip.x < CHART_WIDTH * 0.28
+        ? 'left'
+        : 'center';
+
+  return (
+    <div className="relative">
+      <svg
+        viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+        className="h-[15rem] w-full"
+        role="img"
+        aria-label="Play count trend chart"
+      >
+        {gridValues.map((value) => {
+          const y = getY(value);
+          return (
+            <g key={value}>
+              <line
+                x1={CHART_PAD_X}
+                y1={y}
+                x2={CHART_PAD_X + CHART_INNER_WIDTH}
+                y2={y}
+                stroke="var(--atr-line)"
+                strokeWidth="1"
+                opacity="0.65"
+              />
+              <text
+                x={CHART_PAD_X - 12}
+                y={y + 4}
+                textAnchor="end"
+                className="afterroll-meta fill-[var(--ledger-muted)] text-[0.62rem]"
+              >
+                {value}
+              </text>
+            </g>
+          );
+        })}
+        <polygon points={areaPoints} fill="var(--ledger-accent)" opacity="0.08" />
+        <polyline
+          points={points}
+          fill="none"
+          stroke="var(--ledger-accent)"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {entries.map(([label, count, titles], index) => {
+          const x = getX(index);
+          const y = getY(count);
+          const showMarker = count > 0 || !hideZeroMarkers;
+          const showLabel = (showAllLabels || shouldShowChartLabel(index, entries)) && showMarker;
+          const displayLabel = formatLabel(label);
+          return (
+            <g key={label}>
+              {showMarker && (
+                <>
+                  <circle cx={x} cy={y} r="4" fill="var(--ledger-accent)" opacity="0.9" />
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r="12"
+                    fill="transparent"
+                    className="cursor-help"
+                    tabIndex={0}
+                    onMouseEnter={() => setTooltip({ x, y, label: displayLabel, titles })}
+                    onMouseLeave={() => setTooltip(null)}
+                    onFocus={() => setTooltip({ x, y, label: displayLabel, titles })}
+                    onBlur={() => setTooltip(null)}
+                  />
+                  <text
+                    x={x}
+                    y={y - 10}
+                    textAnchor="middle"
+                    className="afterroll-title pointer-events-none fill-[var(--ledger-ink)] text-[0.68rem]"
+                  >
+                    {count}
+                  </text>
+                </>
+              )}
+              {showLabel && (
+                <text
+                  x={x}
+                  y={CHART_HEIGHT - 16}
+                  textAnchor="middle"
+                  className="afterroll-meta fill-[var(--ledger-muted)] text-[0.62rem]"
+                >
+                  {displayLabel}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+      {tooltip && (
+        <div
+          className={`pointer-events-none absolute z-10 w-max max-w-[min(22rem,calc(100%-1rem))] -translate-y-full rounded-[0.35rem] border border-[var(--atr-line)] bg-white/95 px-[0.7rem] py-[0.55rem] shadow-[0_0.5rem_1.4rem_rgba(68,52,36,0.14)] ${
+            tooltipAlign === 'right'
+              ? '-translate-x-full'
+              : tooltipAlign === 'left'
+                ? 'translate-x-0'
+                : '-translate-x-1/2'
+          }`}
+          style={{
+            left: `${(tooltip.x / CHART_WIDTH) * 100}%`,
+            top: `${(tooltip.y / CHART_HEIGHT) * 100}%`,
+          }}
+        >
+          <div className="afterroll-meta mb-[0.32rem] text-[0.68rem] text-[var(--ledger-soft)]">
+            {tooltip.label}
+          </div>
+          <div className="flex flex-col gap-[0.18rem]">
+            {tooltip.titles.map((title, index) => (
+              <div key={`${title}-${index}`} className="afterroll-meta text-[0.72rem] leading-snug text-[var(--ledger-ink)]">
+                {title}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   plays: PlayEntry[];
   titleDatesMap: Map<string, TitleDates>;
+  titleSessionsMap: Map<string, PlaySessionSummary[]>;
 }
 
 function StatCard({ label, children }: { label: string; children: React.ReactNode }) {
@@ -23,8 +224,9 @@ function StatCard({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
-export default function PlaysStats({ plays, titleDatesMap }: Props) {
+export default function PlaysStats({ plays, titleDatesMap, titleSessionsMap }: Props) {
   const [participantSearch, setParticipantSearch] = useState('');
+  const [selectedMonthYear, setSelectedMonthYear] = useState('');
 
   const ruleCounts: Record<string, number> = {};
   plays.forEach((p) => {
@@ -36,11 +238,7 @@ export default function PlaysStats({ plays, titleDatesMap }: Props) {
   plays.forEach((p) => {
     if (p.playerCount) pcCounts[p.playerCount] = (pcCounts[p.playerCount] ?? 0) + 1;
   });
-  const pcEntries = Object.entries(pcCounts).sort((a, b) => {
-    const na = parseInt(a[0], 10) || 0;
-    const nb = parseInt(b[0], 10) || 0;
-    return na - nb;
-  });
+  const pcEntries = Object.entries(pcCounts).sort((a, b) => comparePlayerCounts(a[0], b[0]));
 
   const statusCounts = { completed: 0, ongoing: 0, dropped: 0 };
   plays.forEach((p) => {
@@ -54,16 +252,38 @@ export default function PlaysStats({ plays, titleDatesMap }: Props) {
 
   const yearCounts: Record<string, number> = {};
   const monthCounts: Record<string, number> = {};
+  const yearTitles: Record<string, string[]> = {};
+  const monthTitles: Record<string, string[]> = {};
   plays.forEach((p) => {
     const sd = p.startDate || titleDatesMap.get(p.title)?.startDate;
     if (!sd) return;
     const year = sd.slice(0, 4);
-    const month = sd.slice(0, 7);
     yearCounts[year] = (yearCounts[year] ?? 0) + 1;
+    yearTitles[year] = [...(yearTitles[year] ?? []), p.title];
+
+    const sessions = titleSessionsMap.get(p.title) ?? [];
+    if (sessions.length > 0) {
+      const activeMonths = new Set(sessions.map((session) => session.date.slice(0, 7)));
+      activeMonths.forEach((month) => {
+        monthCounts[month] = (monthCounts[month] ?? 0) + 1;
+        monthTitles[month] = [...(monthTitles[month] ?? []), p.title];
+      });
+      return;
+    }
+
+    const month = sd.slice(0, 7);
     monthCounts[month] = (monthCounts[month] ?? 0) + 1;
+    monthTitles[month] = [...(monthTitles[month] ?? []), p.title];
   });
-  const yearEntries = Object.entries(yearCounts).sort((a, b) => b[0].localeCompare(a[0]));
-  const monthEntries = Object.entries(monthCounts).sort((a, b) => b[0].localeCompare(a[0]));
+  const yearEntries = Object.entries(yearCounts)
+    .map(([year, count]): CountEntry => [year, count, yearTitles[year] ?? []])
+    .sort((a, b) => a[0].localeCompare(b[0]));
+  const monthYears = [...new Set(Object.keys(monthCounts).map((month) => month.slice(0, 4)))]
+    .sort((a, b) => b.localeCompare(a));
+  const activeMonthYear = monthYears.includes(selectedMonthYear)
+    ? selectedMonthYear
+    : monthYears[0] ?? '';
+  const monthEntries = activeMonthYear ? getYearMonthEntries(activeMonthYear, monthCounts, monthTitles) : [];
 
   if (plays.length === 0) {
     return (
@@ -104,7 +324,7 @@ export default function PlaysStats({ plays, titleDatesMap }: Props) {
                 <span className="afterroll-meta w-[6rem] shrink-0 text-[0.85rem] text-[var(--ledger-ink)]">
                   {rule}
                 </span>
-                <div className="h-[0.28rem] flex-1 overflow-hidden rounded-full bg-[rgba(88, 125, 163,0.1)]">
+                <div className="h-[0.25rem] flex-1 overflow-hidden rounded-full bg-[rgba(88, 125, 163,0.1)]">
                   <div
                     className="h-full rounded-full bg-[var(--ledger-accent)]"
                     style={{ width: `${(count / plays.length) * 100}%`, opacity: 0.6 }}
@@ -121,14 +341,21 @@ export default function PlaysStats({ plays, titleDatesMap }: Props) {
 
       {pcEntries.length > 0 && (
         <StatCard label="인원수">
-          <div className="flex flex-wrap gap-[0.5rem]">
+          <div className="flex flex-col gap-[0.4rem]">
             {pcEntries.map(([pc, count]) => (
-              <div
-                key={pc}
-                className="rounded-[0.3rem] border border-[var(--atr-line)] bg-[rgba(88, 125, 163,0.05)] px-[0.9rem] py-[0.55rem] text-center"
-              >
-                <div className="afterroll-title text-[1.4rem] leading-none text-[var(--ledger-ink)]">{count}</div>
-                <div className="afterroll-meta mt-[0.2rem] text-[0.7rem] text-[var(--ledger-muted)]">{pc}P</div>
+              <div key={pc} className="flex items-center gap-[0.6rem]">
+                <span className="afterroll-meta w-[6rem] shrink-0 text-[0.85rem] text-[var(--ledger-ink)]">
+                  {pc}
+                </span>
+                <div className="h-[0.25rem] flex-1 overflow-hidden rounded-full bg-[rgba(88, 125, 163,0.1)]">
+                  <div
+                    className="h-full rounded-full bg-[var(--ledger-accent)]"
+                    style={{ width: `${(count / plays.length) * 100}%`, opacity: 0.6 }}
+                  />
+                </div>
+                <span className="afterroll-meta w-[2.5rem] text-right text-[0.8rem] text-[var(--ledger-muted)]">
+                  {count}
+                </span>
               </div>
             ))}
           </div>
@@ -162,35 +389,39 @@ export default function PlaysStats({ plays, titleDatesMap }: Props) {
 
       {yearEntries.length > 0 && (
         <StatCard label="연도 기록">
-          <div className="flex flex-wrap gap-[0.5rem]">
-            {yearEntries.map(([year, count]) => (
-              <div
-                key={year}
-                className="rounded-[0.3rem] border border-[var(--atr-line)] bg-[rgba(88, 125, 163,0.05)] px-[0.9rem] py-[0.55rem] text-center"
-              >
-                <div className="afterroll-title text-[1.4rem] leading-none text-[var(--ledger-ink)]">{count}</div>
-                <div className="afterroll-meta mt-[0.2rem] text-[0.7rem] text-[var(--ledger-muted)]">{year}</div>
-              </div>
-            ))}
-          </div>
+          <TrendChart entries={yearEntries} formatLabel={(year) => year} showAllLabels />
         </StatCard>
       )}
 
       {monthEntries.length > 0 && (
         <StatCard label="월별 기록">
-          <div className="flex flex-wrap gap-[0.4rem]">
-            {monthEntries.map(([month, count]) => (
-              <div
-                key={month}
-                className="rounded-[0.3rem] border border-[var(--atr-line)] bg-[rgba(88, 125, 163,0.05)] px-[0.65rem] py-[0.45rem] text-center"
-              >
-                <div className="afterroll-title text-[1.1rem] leading-none text-[var(--ledger-ink)]">{count}</div>
-                <div className="afterroll-meta mt-[0.18rem] text-[0.65rem] text-[var(--ledger-muted)]">
-                  {month.replace('-', '.')}
-                </div>
-              </div>
-            ))}
-          </div>
+          {monthYears.length > 1 && (
+            <div className="mb-[0.8rem] flex flex-wrap gap-[0.35rem]">
+              {monthYears.map((year) => {
+                const selected = year === activeMonthYear;
+                return (
+                  <button
+                    key={year}
+                    type="button"
+                    onClick={() => setSelectedMonthYear(year)}
+                    className={`rounded-[0.3rem] border px-[0.65rem] py-[0.32rem] afterroll-meta text-[0.72rem] transition-colors ${
+                      selected
+                        ? 'border-[var(--ledger-accent)] bg-[rgba(88,125,163,0.12)] text-[var(--ledger-ink)]'
+                        : 'border-[var(--atr-line)] bg-white/50 text-[var(--ledger-muted)] hover:border-[var(--ledger-soft)] hover:text-[var(--ledger-ink)]'
+                    }`}
+                  >
+                    {year}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <TrendChart
+            entries={monthEntries}
+            formatLabel={(month) => `${Number(month.slice(5, 7))}월`}
+            hideZeroMarkers
+            showAllLabels
+          />
         </StatCard>
       )}
     </div>
