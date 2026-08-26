@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef, useCallback, Fragment } from 'react';
+import { useState, useEffect, useMemo, useCallback, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,7 +8,6 @@ import AdminLoginButton from '@/components/log/AdminLoginButton';
 import {
   subscribeToPlays,
   subscribeToPlaysOptions,
-  updatePlaysOptions,
   deletePlay,
   type PlayEntry,
   type PlaysOptions,
@@ -268,31 +267,6 @@ export default function PlaysSection() {
     const u2 = subscribeToPlaysOptions(setOptions);
     return () => { u1(); u2(); };
   }, []);
-
-  const optionsRef = useRef(options);
-  useEffect(() => { optionsRef.current = options; }, [options]);
-
-  useEffect(() => {
-    if (playsLoading) return;
-    const cur = optionsRef.current;
-    const usedRules = new Set(plays.map((p) => p.rule).filter(Boolean));
-    const usedPlayerCounts = new Set(plays.map((p) => p.playerCount).filter(Boolean));
-    const usedParticipants = new Set(plays.flatMap((p) => p.participants ?? []));
-    const cleanedRules = cur.rules.filter((r) => usedRules.has(r));
-    const cleanedPlayerCounts = cur.playerCounts.filter((c) => usedPlayerCounts.has(c));
-    const cleanedParticipants = cur.participants.filter((p) => usedParticipants.has(p));
-    const changed =
-      cleanedRules.length !== cur.rules.length ||
-      cleanedPlayerCounts.length !== cur.playerCounts.length ||
-      cleanedParticipants.length !== cur.participants.length;
-    if (changed) {
-      void updatePlaysOptions({
-        rules: cleanedRules,
-        playerCounts: cleanedPlayerCounts,
-        participants: cleanedParticipants,
-      });
-    }
-  }, [plays, playsLoading]);
 
   const fetchCalendarEvents = useCallback(async () => {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_API_KEY;
