@@ -28,19 +28,18 @@ const TICKET_HOVER_LIFT = '-0.55rem';
 const TICKET_TILT_RANGE = 3;
 const TICKET_TILT_OFFSET = TICKET_TILT_RANGE / 2;
 const TICKET_HOVER_TRANSITION: Transition = { type: 'spring', stiffness: 360, damping: 22 };
-const TICKET_PUNCH_COUNT = 12;
+const TICKET_PUNCH_COUNT = 9;
 const TICKET_CORNER_INSET = 12;
-const TICKET_PUNCH_DIAMETER = 5.5;
-const TICKET_PUNCH_RADIUS = TICKET_PUNCH_DIAMETER / 2;
-const TICKET_PUNCH_CONTROL_OFFSET = TICKET_PUNCH_RADIUS * 0.55228475;
+const TICKET_PUNCH_DIAMETER = 6.333;
+const TICKET_PUNCH_DEPTH = 3.2;
 const TICKET_PUNCH_GAP = (100 - (TICKET_CORNER_INSET * 2) - (TICKET_PUNCH_COUNT * TICKET_PUNCH_DIAMETER)) / (TICKET_PUNCH_COUNT - 1);
-const TICKET_RIGHT_EDGE = Array.from({ length: TICKET_PUNCH_COUNT }, (_, index) => (
-  `c -${TICKET_PUNCH_CONTROL_OFFSET} 0 -${TICKET_PUNCH_RADIUS} ${TICKET_PUNCH_RADIUS - TICKET_PUNCH_CONTROL_OFFSET} -${TICKET_PUNCH_RADIUS} ${TICKET_PUNCH_RADIUS} c 0 ${TICKET_PUNCH_CONTROL_OFFSET} ${TICKET_PUNCH_RADIUS - TICKET_PUNCH_CONTROL_OFFSET} ${TICKET_PUNCH_RADIUS} ${TICKET_PUNCH_RADIUS} ${TICKET_PUNCH_RADIUS}${index < TICKET_PUNCH_COUNT - 1 ? ` v ${TICKET_PUNCH_GAP}` : ''}`
+const TICKET_TOP_EDGE = Array.from({ length: TICKET_PUNCH_COUNT }, (_, index) => (
+  `q ${TICKET_PUNCH_DIAMETER / 2} ${TICKET_PUNCH_DEPTH} ${TICKET_PUNCH_DIAMETER} 0${index < TICKET_PUNCH_COUNT - 1 ? ` h ${TICKET_PUNCH_GAP}` : ''}`
 )).join(' ');
-const TICKET_LEFT_EDGE = Array.from({ length: TICKET_PUNCH_COUNT }, (_, index) => (
-  `c ${TICKET_PUNCH_CONTROL_OFFSET} 0 ${TICKET_PUNCH_RADIUS} -${TICKET_PUNCH_RADIUS - TICKET_PUNCH_CONTROL_OFFSET} ${TICKET_PUNCH_RADIUS} -${TICKET_PUNCH_RADIUS} c 0 -${TICKET_PUNCH_CONTROL_OFFSET} -${TICKET_PUNCH_RADIUS - TICKET_PUNCH_CONTROL_OFFSET} -${TICKET_PUNCH_RADIUS} -${TICKET_PUNCH_RADIUS} -${TICKET_PUNCH_RADIUS}${index < TICKET_PUNCH_COUNT - 1 ? ` v -${TICKET_PUNCH_GAP}` : ''}`
+const TICKET_BOTTOM_EDGE = Array.from({ length: TICKET_PUNCH_COUNT }, (_, index) => (
+  `q -${TICKET_PUNCH_DIAMETER / 2} -${TICKET_PUNCH_DEPTH} -${TICKET_PUNCH_DIAMETER} 0${index < TICKET_PUNCH_COUNT - 1 ? ` h -${TICKET_PUNCH_GAP}` : ''}`
 )).join(' ');
-const TICKET_SHAPE_PATH = `M ${TICKET_CORNER_INSET} 0 H ${100 - TICKET_CORNER_INSET} Q ${100 - TICKET_CORNER_INSET} ${TICKET_CORNER_INSET} 100 ${TICKET_CORNER_INSET} ${TICKET_RIGHT_EDGE} Q ${100 - TICKET_CORNER_INSET} ${100 - TICKET_CORNER_INSET} ${100 - TICKET_CORNER_INSET} 100 H ${TICKET_CORNER_INSET} Q ${TICKET_CORNER_INSET} ${100 - TICKET_CORNER_INSET} 0 ${100 - TICKET_CORNER_INSET} ${TICKET_LEFT_EDGE} Q ${TICKET_CORNER_INSET} ${TICKET_CORNER_INSET} ${TICKET_CORNER_INSET} 0 Z`;
+const TICKET_SHAPE_PATH = `M ${TICKET_CORNER_INSET} 0 ${TICKET_TOP_EDGE} Q ${100 - TICKET_CORNER_INSET} ${TICKET_CORNER_INSET} 100 ${TICKET_CORNER_INSET} V ${100 - TICKET_CORNER_INSET} Q ${100 - TICKET_CORNER_INSET} ${100 - TICKET_CORNER_INSET} ${100 - TICKET_CORNER_INSET} 100 ${TICKET_BOTTOM_EDGE} Q ${TICKET_CORNER_INSET} ${100 - TICKET_CORNER_INSET} 0 ${100 - TICKET_CORNER_INSET} V ${TICKET_CORNER_INSET} Q ${TICKET_CORNER_INSET} ${TICKET_CORNER_INSET} ${TICKET_CORNER_INSET} 0 Z`;
 
 function getTicketTilt(ticketId: string) {
   const hash = [...ticketId].reduce((value, character) => ((value << 5) - value) + character.charCodeAt(0), 0);
@@ -288,7 +287,7 @@ export default function PromiseTicketsSection() {
         <AdminLoginButton />
       </div>
     </div>
-    {authLoading || loading ? <p className="afterroll-meta text-[0.82rem] text-[var(--ledger-muted)]">티켓을 불러오는 중...</p> : ordered.length ? <div className="grid gap-[0.8rem] sm:grid-cols-2 md:grid-cols-4">{ordered.map((ticket) => <Ticket key={`${ticket.isPrivate}-${ticket.id}`} ticket={ticket} canEdit={isAdmin} onEdit={() => setEditing(ticket)} onDelete={() => { if (window.confirm('이 공수표를 삭제할까요?')) void deletePromiseTicket(ticket); }} />)}</div> : <div className="rounded-[0.9rem] border border-dashed border-[rgba(172,151,110,0.38)] p-[2rem] text-center afterroll-meta text-[0.84rem] text-[var(--ledger-muted)]">{nicknameQuery.trim() ? '해당 닉네임의 공수표가 없습니다.' : '아직 발행된 공수표가 없습니다.'}</div>}
+    {authLoading || loading ? <p className="afterroll-meta text-[0.82rem] text-[var(--ledger-muted)]">티켓을 불러오는 중...</p> : ordered.length ? <div className="grid gap-[0.8rem] [grid-template-columns:repeat(auto-fit,minmax(min(100%,10rem),1fr))]">{ordered.map((ticket) => <Ticket key={`${ticket.isPrivate}-${ticket.id}`} ticket={ticket} canEdit={isAdmin} onEdit={() => setEditing(ticket)} onDelete={() => { if (window.confirm('이 공수표를 삭제할까요?')) void deletePromiseTicket(ticket); }} />)}</div> : <div className="rounded-[0.9rem] border border-dashed border-[rgba(172,151,110,0.38)] p-[2rem] text-center afterroll-meta text-[0.84rem] text-[var(--ledger-muted)]">{nicknameQuery.trim() ? '해당 닉네임의 공수표가 없습니다.' : '아직 발행된 공수표가 없습니다.'}</div>}
     <AnimatePresence>{editing !== undefined && <TicketForm ticket={editing} participants={options.participants} rules={options.rules} playCounts={playCounts} onAddRule={addRule} onAddParticipant={addParticipant} onClose={() => setEditing(undefined)} />}</AnimatePresence>
   </>;
 }
