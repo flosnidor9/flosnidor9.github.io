@@ -717,7 +717,7 @@ export default function CalendarSection() {
       <div className="mx-auto max-w-[72rem]">
         <header className="mb-[1.5rem] border-b border-[var(--atr-line)] pb-[0.85rem]">
           <p className="afterroll-meta text-[0.74rem] uppercase tracking-[0.14em] text-[var(--ledger-soft)]">Play Calendar</p>
-          <h1 className="afterroll-title mt-[0.18rem] text-[2.1rem] leading-none text-[var(--ledger-ink)] md:text-[2.7rem]">캘린더</h1>
+          <h1 className="afterroll-title mt-[0.18rem] text-[2.4rem] leading-none text-[var(--ledger-ink)]">캘린더</h1>
         </header>
         <AnnualPlayGraph
           year={year}

@@ -67,7 +67,7 @@ export default function TrpgArchiveClient({ posts, title, backHref, backLabel }:
 
         <header className="relative mb-[1.5rem] border-b border-[var(--atr-line)] pb-[0.85rem]">
           <p className="afterroll-meta text-[0.74rem] uppercase tracking-[0.14em] text-[var(--ledger-soft)]">Session Logs</p>
-          <h1 className="afterroll-title mt-[0.18rem] text-[2.1rem] leading-none text-[var(--ledger-ink)] md:text-[3.8rem]">{title}</h1>
+          <h1 className="afterroll-title mt-[0.18rem] text-[2.4rem] leading-none text-[var(--ledger-ink)]">{title}</h1>
         </header>
 
         <section className="relative grid gap-[1rem] md:grid-cols-[13rem_minmax(0,1fr)]">

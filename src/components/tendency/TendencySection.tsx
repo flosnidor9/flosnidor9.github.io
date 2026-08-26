@@ -747,7 +747,7 @@ export default function TendencySection() {
         <header className="mb-[1rem] flex flex-wrap items-center justify-between gap-[0.75rem] border-b border-[var(--atr-line)] pb-[0.85rem]">
           <div>
             <p className="text-[0.74rem] uppercase tracking-[0.14em] text-[var(--atr-soft)]">TRPG Profile</p>
-            <h1 className="mt-[0.18rem] text-[1.8rem] font-bold leading-none text-[var(--atr-text)] md:text-[2.35rem]">
+            <h1 className="mt-[0.18rem] text-[2.4rem] font-bold leading-none text-[var(--atr-text)]">
               성향표
             </h1>
           </div>

@@ -86,7 +86,7 @@ export default async function TrpgReadPage({ params }: Props) {
             Log File Viewer
           </p>
           <div className="flex flex-wrap items-baseline gap-x-[0.85rem] gap-y-[0.35rem]">
-            <h1 className="afterroll-title text-[2.25rem] leading-[1.04] text-[var(--ledger-ink)] md:text-[3.5rem]">
+            <h1 className="afterroll-title text-[2.4rem] leading-[1.04] text-[var(--ledger-ink)]">
               {post.title}
             </h1>
             {post.date ? (
