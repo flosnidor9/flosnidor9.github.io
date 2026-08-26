@@ -30,6 +30,40 @@ const DETAIL_TABS = [
 
 type DetailTab = (typeof DETAIL_TABS)[number]['id'];
 
+const DETAIL_CATEGORY_LABELS: Record<TendencyDetailEntry['category'], string> = {
+  prepare: '준비',
+  session: '진행',
+  roleplay: '롤플레이',
+};
+
+const DETAIL_CATEGORY_IDS: Record<string, TendencyDetailEntry['category']> = {
+  준비: 'prepare',
+  진행: 'session',
+  롤플: 'roleplay',
+  롤플레이: 'roleplay',
+  prepare: 'prepare',
+  session: 'session',
+  roleplay: 'roleplay',
+};
+
+const TRIGGER_STATUS_LABELS: Record<TendencyTriggerItem['status'], string> = {
+  ok: '문제 없음',
+  depict: '묘사 가능',
+  ask: '사전 조율',
+  no: '거절',
+};
+
+const TRIGGER_STATUS_IDS: Record<string, TendencyTriggerItem['status']> = {
+  '문제 없음': 'ok',
+  '묘사 가능': 'depict',
+  '사전 조율': 'ask',
+  거절: 'no',
+  ok: 'ok',
+  depict: 'depict',
+  ask: 'ask',
+  no: 'no',
+};
+
 function normalizeTwitterHandle(handle: string) {
   return handle
     .trim()
@@ -108,9 +142,7 @@ function parseDetails(value: string): TendencyDetailEntry[] {
       const [category = 'prepare', label = '', gm = '', pl = ''] = line
         .split('|')
         .map((part) => part.trim());
-      const safeCategory = ['prepare', 'session', 'roleplay'].includes(category)
-        ? (category as TendencyDetailEntry['category'])
-        : 'prepare';
+      const safeCategory = DETAIL_CATEGORY_IDS[category] ?? 'prepare';
       return { category: safeCategory, label, gm, pl };
     })
     .filter((entry) => entry.label);
@@ -118,7 +150,7 @@ function parseDetails(value: string): TendencyDetailEntry[] {
 
 function stringifyDetails(details: TendencyDetailEntry[]) {
   return details
-    .map((entry) => [entry.category, entry.label, entry.gm, entry.pl].join(' | '))
+    .map((entry) => [DETAIL_CATEGORY_LABELS[entry.category], entry.label, entry.gm, entry.pl].join(' | '))
     .join('\n');
 }
 
@@ -129,16 +161,14 @@ function parseTriggers(value: string): TendencyTriggerItem[] {
     .filter(Boolean)
     .map((line) => {
       const [label = '', status = 'ok', note = ''] = line.split('|').map((part) => part.trim());
-      const safeStatus = ['ok', 'depict', 'ask', 'no'].includes(status)
-        ? (status as TendencyTriggerItem['status'])
-        : 'ok';
+      const safeStatus = TRIGGER_STATUS_IDS[status] ?? 'ok';
       return { label, status: safeStatus, note };
     })
     .filter((item) => item.label);
 }
 
 function stringifyTriggers(items: TendencyTriggerItem[]) {
-  return items.map((item) => [item.label, item.status, item.note ?? ''].join(' | ')).join('\n');
+  return items.map((item) => [item.label, TRIGGER_STATUS_LABELS[item.status], item.note ?? ''].join(' | ')).join('\n');
 }
 
 function ProfileStamp({ profile }: { profile: TendencyProfile }) {
@@ -359,19 +389,19 @@ function DetailCompareTable({ entries }: { entries: TendencyDetailEntry[] }) {
     <div className="overflow-hidden rounded-[0.45rem] border border-[var(--atr-line)] bg-white/70">
       <div className="hidden grid-cols-[0.72fr_1fr_1fr] border-b border-[var(--atr-line)] bg-[#fff0f4] text-[0.76rem] font-bold text-[var(--atr-soft)] md:grid">
         <span className="px-[0.75rem] py-[0.55rem]">항목</span>
-        <span className="px-[0.75rem] py-[0.55rem]">GM 성향</span>
-        <span className="px-[0.75rem] py-[0.55rem]">PL 성향</span>
+        <span className="px-[0.75rem] py-[0.55rem]">마스터 성향</span>
+        <span className="px-[0.75rem] py-[0.55rem]">플레이어 성향</span>
       </div>
       <div className="divide-y divide-[var(--atr-line)]">
         {entries.map((entry) => (
           <div key={`${entry.category}-${entry.label}`} className="grid gap-[0.45rem] p-[0.75rem] md:grid-cols-[0.72fr_1fr_1fr] md:gap-0">
             <div className="text-[0.86rem] font-bold text-[var(--atr-text)]">{entry.label}</div>
             <div className="rounded-[0.35rem] bg-[rgba(232,169,186,0.11)] p-[0.55rem] text-[0.82rem] leading-[1.55] text-[var(--atr-muted)] md:rounded-none md:bg-transparent md:px-[0.75rem] md:py-0">
-              <span className="mr-[0.35rem] font-bold text-[var(--atr-accent)] md:hidden">GM</span>
+              <span className="mr-[0.35rem] font-bold text-[var(--atr-accent)] md:hidden">마스터</span>
               {entry.gm}
             </div>
             <div className="rounded-[0.35rem] bg-[rgba(88,125,163,0.08)] p-[0.55rem] text-[0.82rem] leading-[1.55] text-[var(--atr-muted)] md:rounded-none md:bg-transparent md:px-[0.75rem] md:py-0">
-              <span className="mr-[0.35rem] font-bold text-[var(--atr-accent)] md:hidden">PL</span>
+              <span className="mr-[0.35rem] font-bold text-[var(--atr-accent)] md:hidden">플레이어</span>
               {entry.pl}
             </div>
           </div>
@@ -382,10 +412,10 @@ function DetailCompareTable({ entries }: { entries: TendencyDetailEntry[] }) {
 }
 
 function triggerLabel(status: TendencyTriggerItem['status']) {
-  if (status === 'ok') return 'O 상관 없음';
-  if (status === 'depict') return '△ 단순 묘사';
-  if (status === 'ask') return '! 사전 조율';
-  return 'X 거절';
+  if (status === 'ok') return `O ${TRIGGER_STATUS_LABELS.ok}`;
+  if (status === 'depict') return `△ ${TRIGGER_STATUS_LABELS.depict}`;
+  if (status === 'ask') return `! ${TRIGGER_STATUS_LABELS.ask}`;
+  return `X ${TRIGGER_STATUS_LABELS.no}`;
 }
 
 function triggerClass(status: TendencyTriggerItem['status']) {
@@ -411,7 +441,7 @@ function DetailTendency({
       <div className="border-b border-[var(--atr-line)] p-[0.85rem]">
         <div>
           <div>
-            <p className="text-[0.72rem] uppercase tracking-[0.14em] text-[var(--atr-soft)]">Detailed tendency</p>
+            <p className="text-[0.72rem] tracking-[0.14em] text-[var(--atr-soft)]">성향 상세 비교</p>
             <h2 className="mt-[0.12rem] text-[1.1rem] font-bold text-[var(--atr-text)]">상세 성향</h2>
           </div>
         </div>
@@ -674,7 +704,7 @@ function TendencyEditor({
                 rows={8}
                 className="resize-y rounded-[0.35rem] border border-[var(--atr-line)] bg-white px-[0.65rem] py-[0.5rem] text-[0.82rem] font-normal leading-[1.5] text-[var(--atr-text)] outline-none"
               />
-              <span className="font-normal">형식: prepare|session|roleplay | 항목 | GM 성향 | PL 성향</span>
+              <span className="font-normal">형식: 준비/진행/롤플레이 | 항목 | 마스터 성향 | 플레이어 성향</span>
             </label>
 
             <label className="grid gap-[0.35rem] text-[0.78rem] font-bold text-[var(--atr-soft)]">
@@ -685,7 +715,7 @@ function TendencyEditor({
                 rows={7}
                 className="resize-y rounded-[0.35rem] border border-[var(--atr-line)] bg-white px-[0.65rem] py-[0.5rem] text-[0.82rem] font-normal leading-[1.5] text-[var(--atr-text)] outline-none"
               />
-              <span className="font-normal">형식: 항목 | ok/depict/ask/no | 메모</span>
+              <span className="font-normal">형식: 항목 | 문제 없음/묘사 가능/사전 조율/거절 | 메모</span>
             </label>
           </div>
         </form>
