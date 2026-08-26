@@ -39,16 +39,23 @@ function ParticipantsSearchField({
   participants,
   playCounts,
   onToggle,
+  onAddOption,
 }: {
   selected: string[];
   participants: string[];
   playCounts: Map<string, number>;
   onToggle: (participant: string) => void;
+  onAddOption: (participant: string) => void;
 }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const normalizedQuery = query.trim().toLowerCase();
+  const exactParticipant = useMemo(
+    () => participants.find((participant) => participant.toLowerCase() === normalizedQuery),
+    [normalizedQuery, participants],
+  );
+  const canAdd = Boolean(normalizedQuery) && !exactParticipant;
   const matches = useMemo(() => {
     if (!normalizedQuery) return [];
     return participants
@@ -65,13 +72,36 @@ function ParticipantsSearchField({
     return () => document.removeEventListener('mousedown', close);
   }, []);
 
+  function selectParticipant(participant: string) {
+    onToggle(participant);
+    setQuery('');
+    setOpen(false);
+  }
+
+  function addParticipantFromQuery() {
+    const participant = query.trim();
+    if (!participant) return;
+    onAddOption(participant);
+    onToggle(participant);
+    setQuery('');
+    setOpen(false);
+  }
+
+  function commitQuery() {
+    if (exactParticipant) {
+      selectParticipant(exactParticipant);
+      return;
+    }
+    addParticipantFromQuery();
+  }
+
   return (
     <div ref={ref}>
       <p className="afterroll-meta mb-[0.4rem] text-[0.75rem] text-[var(--ledger-soft)]">참여자</p>
       {selected.length > 0 && <div className="mb-[0.45rem] flex flex-wrap gap-[0.35rem]">{selected.map((person) => <button key={person} type="button" onClick={() => onToggle(person)} className="rounded-full border border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.2)] px-[0.65rem] py-[0.28rem] text-[0.78rem] text-[var(--ledger-accent)]">{person}<span className="ml-[0.35rem] opacity-70">{playCounts.get(person) ?? 0}회</span></button>)}</div>}
       <div className="relative">
-        <input value={query} onFocus={() => setOpen(true)} onChange={(event) => { setQuery(event.target.value); setOpen(true); }} placeholder="참여자 검색" className="w-full rounded-[0.45rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] px-[0.7rem] py-[0.5rem] text-[0.9rem] text-[var(--ledger-ink)] outline-none placeholder:text-[var(--ledger-muted)] focus:border-[var(--ledger-accent)]" />
-        {open && normalizedQuery && <div className="absolute z-10 mt-[0.3rem] max-h-[13rem] w-full overflow-y-auto rounded-[0.5rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] shadow-[0_0.4rem_1rem_rgba(112,82,66,0.1)]">{matches.length ? matches.map((person) => <button key={person} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => { onToggle(person); setQuery(''); setOpen(false); }} className={`flex w-full items-center justify-between px-[0.8rem] py-[0.5rem] text-left transition-colors hover:bg-[rgba(232,169,186,0.15)] ${selected.includes(person) ? 'text-[var(--ledger-accent)]' : 'text-[var(--ledger-ink)]'}`}><span className="afterroll-meta text-[0.84rem]">{person}</span><span className="afterroll-meta text-[0.72rem] text-[var(--ledger-muted)]">같이 {playCounts.get(person) ?? 0}회</span></button>) : <p className="px-[0.8rem] py-[0.6rem] afterroll-meta text-[0.78rem] text-[var(--ledger-muted)]">일치하는 참여자가 없습니다.</p>}</div>}
+        <input value={query} onFocus={() => setOpen(true)} onChange={(event) => { setQuery(event.target.value); setOpen(true); }} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); commitQuery(); } if (event.key === 'Escape') { setQuery(''); setOpen(false); } }} placeholder="참여자 검색 또는 추가..." className="w-full rounded-[0.45rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] px-[0.7rem] py-[0.5rem] text-[0.9rem] text-[var(--ledger-ink)] outline-none placeholder:text-[var(--ledger-muted)] focus:border-[var(--ledger-accent)]" />
+        {open && normalizedQuery && <div className="absolute z-10 mt-[0.3rem] max-h-[13rem] w-full overflow-y-auto rounded-[0.5rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] shadow-[0_0.4rem_1rem_rgba(112,82,66,0.1)]">{matches.map((person) => <button key={person} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => selectParticipant(person)} className={`flex w-full items-center justify-between px-[0.8rem] py-[0.5rem] text-left transition-colors hover:bg-[rgba(232,169,186,0.15)] ${selected.includes(person) ? 'text-[var(--ledger-accent)]' : 'text-[var(--ledger-ink)]'}`}><span className="afterroll-meta text-[0.84rem]">{person}</span><span className="afterroll-meta text-[0.72rem] text-[var(--ledger-muted)]">같이 {playCounts.get(person) ?? 0}회</span></button>)}{canAdd && <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={addParticipantFromQuery} className="flex w-full items-center justify-between px-[0.8rem] py-[0.5rem] text-left transition-colors hover:bg-[rgba(232,169,186,0.15)]"><span className="afterroll-meta text-[0.84rem] text-[var(--ledger-ink)]">{query.trim()}</span><span className="afterroll-meta text-[0.72rem] text-[var(--ledger-accent)]">새로 추가</span></button>}{!matches.length && !canAdd && <p className="px-[0.8rem] py-[0.6rem] afterroll-meta text-[0.78rem] text-[var(--ledger-muted)]">일치하는 참여자가 없습니다.</p>}</div>}
       </div>
     </div>
   );
@@ -94,12 +124,13 @@ function SelectWithAdd({ value, options, onSelect, onAddOption }: {
   return <div><p className="afterroll-meta mb-[0.4rem] text-[0.75rem] text-[var(--ledger-soft)]">룰</p><div className="flex flex-wrap gap-[0.35rem]">{options.map((rule) => <button key={rule} type="button" onClick={() => onSelect(value === rule ? '' : rule)} className={`rounded-full border px-[0.7rem] py-[0.28rem] text-[0.8rem] transition-all ${value === rule ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.22)] text-[var(--ledger-accent)]' : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)] hover:border-[rgba(200,121,147,0.42)] hover:text-[var(--ledger-ink)]'}`}>{rule}</button>)}{adding ? <div className="flex items-center gap-[0.3rem]"><input autoFocus value={newRule} onChange={(event) => setNewRule(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); commit(); } if (event.key === 'Escape') setAdding(false); }} className="w-[6rem] rounded-full border border-[var(--ledger-accent)] bg-transparent px-[0.6rem] py-[0.26rem] text-[0.8rem] text-[var(--ledger-ink)] outline-none" /><button type="button" onClick={commit} className="text-[0.75rem] text-[var(--ledger-accent)]">추가</button><button type="button" onClick={() => { setNewRule(''); setAdding(false); }} className="text-[0.75rem] text-[var(--ledger-muted)]">취소</button></div> : <button type="button" onClick={() => setAdding(true)} className="rounded-full border border-dashed border-[rgba(200,121,147,0.26)] px-[0.7rem] py-[0.28rem] text-[0.8rem] text-[var(--ledger-muted)] transition-all hover:border-[rgba(200,121,147,0.45)] hover:text-[var(--ledger-ink)]">+</button>}</div></div>;
 }
 
-function TicketForm({ ticket, participants, rules, playCounts, onAddRule, onClose }: {
+function TicketForm({ ticket, participants, rules, playCounts, onAddRule, onAddParticipant, onClose }: {
   ticket: PromiseTicket | null;
   participants: string[];
   rules: string[];
   playCounts: Map<string, number>;
   onAddRule: (rule: string) => void;
+  onAddParticipant: (participant: string) => void;
   onClose: () => void;
 }) {
   const [form, setForm] = useState<PromiseTicketInput>(ticket ?? EMPTY_TICKET);
@@ -142,7 +173,7 @@ function TicketForm({ ticket, participants, rules, playCounts, onAddRule, onClos
               {(['PL', 'GM'] as const).map((role) => <button key={role} type="button" onClick={() => set('role', role)} className={`rounded-full border px-[0.8rem] py-[0.28rem] text-[0.8rem] transition-all ${form.role === role ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.22)] text-[var(--ledger-accent)]' : 'border-[rgba(200,121,147,0.22)] text-[var(--ledger-muted)] hover:border-[rgba(200,121,147,0.42)] hover:text-[var(--ledger-ink)]'}`}>{role}</button>)}
             </div>
           </fieldset>
-          <ParticipantsSearchField selected={form.participants} participants={participants} playCounts={playCounts} onToggle={(person) => set('participants', form.participants.includes(person) ? form.participants.filter((item) => item !== person) : [...form.participants, person])} />
+          <ParticipantsSearchField selected={form.participants} participants={participants} playCounts={playCounts} onToggle={(person) => set('participants', form.participants.includes(person) ? form.participants.filter((item) => item !== person) : [...form.participants, person])} onAddOption={onAddParticipant} />
           <label className="afterroll-meta text-[0.75rem] text-[var(--ledger-soft)]">메모
             <textarea value={form.note} onChange={(e) => set('note', e.target.value)} rows={3} className="mt-[0.35rem] w-full resize-y rounded-[0.45rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] px-[0.7rem] py-[0.5rem] text-[0.9rem] text-[var(--ledger-ink)] outline-none focus:border-[var(--ledger-accent)]" />
           </label>
@@ -235,6 +266,10 @@ export default function PromiseTicketsSection() {
     if (options.rules.includes(rule)) return;
     void updatePlaysOptions({ ...options, rules: [...options.rules, rule] });
   };
+  const addParticipant = (participant: string) => {
+    if (options.participants.includes(participant)) return;
+    void updatePlaysOptions({ ...options, participants: [...options.participants, participant] });
+  };
   return <>
     <div className="mb-[1.25rem] flex flex-col gap-[0.8rem] sm:flex-row sm:items-end sm:justify-between">
       <div className="flex-1">
@@ -247,6 +282,6 @@ export default function PromiseTicketsSection() {
       </div>
     </div>
     {authLoading || loading ? <p className="afterroll-meta text-[0.82rem] text-[var(--ledger-muted)]">티켓을 불러오는 중...</p> : ordered.length ? <div className="grid gap-[1rem] sm:grid-cols-2">{ordered.map((ticket) => <Ticket key={`${ticket.isPrivate}-${ticket.id}`} ticket={ticket} canEdit={isAdmin} onEdit={() => setEditing(ticket)} onDelete={() => { if (window.confirm('이 공수표를 삭제할까요?')) void deletePromiseTicket(ticket); }} />)}</div> : <div className="rounded-[0.9rem] border border-dashed border-[rgba(172,151,110,0.38)] p-[2rem] text-center afterroll-meta text-[0.84rem] text-[var(--ledger-muted)]">{nicknameQuery.trim() ? '해당 닉네임의 공수표가 없습니다.' : '아직 발행된 공수표가 없습니다.'}</div>}
-    <AnimatePresence>{editing !== undefined && <TicketForm ticket={editing} participants={options.participants} rules={options.rules} playCounts={playCounts} onAddRule={addRule} onClose={() => setEditing(undefined)} />}</AnimatePresence>
+    <AnimatePresence>{editing !== undefined && <TicketForm ticket={editing} participants={options.participants} rules={options.rules} playCounts={playCounts} onAddRule={addRule} onAddParticipant={addParticipant} onClose={() => setEditing(undefined)} />}</AnimatePresence>
   </>;
 }
