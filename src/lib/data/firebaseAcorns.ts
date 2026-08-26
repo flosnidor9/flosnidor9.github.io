@@ -24,6 +24,8 @@ export type AcornEntry = {
   category: AcornCategory;
   role: AcornRole;
   playerCount: string;
+  link?: string;
+  imageUrl?: string;
   participants: string[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
