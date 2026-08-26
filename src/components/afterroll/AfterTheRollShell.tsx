@@ -6,7 +6,8 @@ import { type ReactNode, useMemo } from 'react';
 import { motion } from 'framer-motion';
 
 const NAV_ITEMS = [
-  { label: '캘린더', href: '/afterTheRoll', exact: true, icon: 'folder' },
+  { label: '성향표', href: '/afterTheRoll', exact: true, icon: 'folder' },
+  { label: '캘린더', href: '/afterTheRoll/calendar', exact: false, icon: 'table' },
   { label: '로그', href: '/afterTheRoll/logs', exact: false, icon: 'folder' },
   { label: '플레이', href: '/afterTheRoll/plays', exact: false, icon: 'table' },
 ] as const;
@@ -17,13 +18,15 @@ function normalizePath(pathname: string) {
 
 function getActiveItem(pathname: string) {
   const path = normalizePath(pathname);
-  return NAV_ITEMS.find((item) => {
-    if (item.exact) return path === item.href;
-    if (item.href === '/afterTheRoll/logs') {
-      return path === item.href || path.startsWith('/afterTheRoll/archive');
-    }
-    return path === item.href || path.startsWith(`${item.href}/`);
-  }) ?? NAV_ITEMS[0];
+  return (
+    NAV_ITEMS.find((item) => {
+      if (item.exact) return path === item.href;
+      if (item.href === '/afterTheRoll/logs') {
+        return path === item.href || path.startsWith('/afterTheRoll/archive');
+      }
+      return path === item.href || path.startsWith(`${item.href}/`);
+    }) ?? NAV_ITEMS[0]
+  );
 }
 
 function getBreadcrumbs(pathname: string, activeLabel: string) {
@@ -35,7 +38,10 @@ function getBreadcrumbs(pathname: string, activeLabel: string) {
 export default function AfterTheRollShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const activeItem = useMemo(() => getActiveItem(pathname), [pathname]);
-  const breadcrumbs = useMemo(() => getBreadcrumbs(pathname, activeItem.label), [activeItem.label, pathname]);
+  const breadcrumbs = useMemo(
+    () => getBreadcrumbs(pathname, activeItem.label),
+    [activeItem.label, pathname],
+  );
 
   return (
     <div className="atr-file-shell">
@@ -49,10 +55,21 @@ export default function AfterTheRollShell({ children }: { children: ReactNode })
           {NAV_ITEMS.map((item) => {
             const isActive = item.href === activeItem.href;
             return (
-              <Link key={item.href} href={item.href} className={isActive ? 'atr-file-nav-item atr-file-nav-active' : 'atr-file-nav-item'}>
-                <span className={item.icon === 'table' ? 'atr-table-icon' : 'atr-folder-icon'} aria-hidden="true" />
+              <Link
+                key={item.href}
+                href={item.href}
+                className={
+                  isActive ? 'atr-file-nav-item atr-file-nav-active' : 'atr-file-nav-item'
+                }
+              >
+                <span
+                  className={item.icon === 'table' ? 'atr-table-icon' : 'atr-folder-icon'}
+                  aria-hidden="true"
+                />
                 <span>{item.label}</span>
-                {isActive ? <motion.span layoutId="atr-file-active" className="atr-file-active-mark" /> : null}
+                {isActive ? (
+                  <motion.span layoutId="atr-file-active" className="atr-file-active-mark" />
+                ) : null}
               </Link>
             );
           })}

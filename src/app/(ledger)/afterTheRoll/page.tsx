@@ -1,5 +1,5 @@
-import CalendarSection from '@/components/calendar/CalendarSection';
+import TendencySection from '@/components/tendency/TendencySection';
 
 export default function AfterTheRollPage() {
-  return <CalendarSection />;
+  return <TendencySection />;
 }
