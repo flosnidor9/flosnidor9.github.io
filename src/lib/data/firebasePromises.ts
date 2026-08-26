@@ -23,6 +23,7 @@ export type PromiseTicket = {
   participants: string[];
   note: string;
   scenarioUrl: string;
+  isCompleted: boolean;
   isPrivate: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -38,11 +39,15 @@ function collectionName(isPrivate: boolean) {
 }
 
 function toEntries(snapshot: QuerySnapshot<DocumentData>, isPrivate: boolean) {
-  return snapshot.docs.map((entry) => ({
-    id: entry.id,
-    ...entry.data(),
-    isPrivate,
-  })) as PromiseTicket[];
+  return snapshot.docs.map((entry) => {
+    const data = entry.data();
+    return {
+      id: entry.id,
+      ...data,
+      isCompleted: Boolean(data.isCompleted),
+      isPrivate,
+    };
+  }) as PromiseTicket[];
 }
 
 export function subscribeToPromiseTickets(

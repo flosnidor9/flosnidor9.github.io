@@ -2509,6 +2509,40 @@ body.after-roll-theme a::after {
   mask-image: none;
 }
 
+.promise-ticket--completed {
+  filter: saturate(0.72);
+}
+
+.promise-ticket--completed::after {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  content: '';
+  pointer-events: none;
+  opacity: 0.34;
+  background: repeating-linear-gradient(-45deg, transparent 0 0.55rem, rgba(113, 64, 79, 0.16) 0.55rem 0.68rem);
+}
+
+.promise-ticket__completed-stamp {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.85rem;
+  z-index: 20;
+  transform: rotate(var(--completed-stamp-tilt, -12deg));
+  border: 0.16rem double rgba(145, 71, 88, 0.78);
+  border-radius: 0.24rem;
+  padding: 0.52rem 0.8rem;
+  color: rgba(128, 57, 75, 0.9);
+  background: rgba(255, 239, 243, 0.18);
+  font-family: var(--atr-font-ui);
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
 .promise-ticket__main {
   position: absolute;
   inset: 0;

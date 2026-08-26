@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion, type Transition } from 'framer-motion';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import AdminLoginButton from '@/components/log/AdminLoginButton';
 import { subscribeToPlays, subscribeToPlaysOptions, updatePlaysOptions, type PlayEntry, type PlaysOptions } from '@/lib/data/firebasePlays';
@@ -21,12 +21,15 @@ const EMPTY_TICKET: PromiseTicketInput = {
   participants: [],
   note: '',
   scenarioUrl: '',
+  isCompleted: false,
   isPrivate: false,
 };
 
 const TICKET_HOVER_LIFT = '-0.55rem';
 const TICKET_TILT_RANGE = 3;
 const TICKET_TILT_OFFSET = TICKET_TILT_RANGE / 2;
+const COMPLETED_STAMP_TILT_MIN = -16;
+const COMPLETED_STAMP_TILT_MAX = 12;
 const TICKET_HOVER_TRANSITION: Transition = { type: 'spring', stiffness: 360, damping: 22 };
 const TICKET_PUNCH_COUNT = 9;
 const TICKET_CORNER_INSET = 12;
@@ -44,6 +47,12 @@ const TICKET_SHAPE_PATH = `M ${TICKET_CORNER_INSET} 0 ${TICKET_TOP_EDGE} Q ${100
 function getTicketTilt(ticketId: string) {
   const hash = [...ticketId].reduce((value, character) => ((value << 5) - value) + character.charCodeAt(0), 0);
   return (Math.abs(hash) % (TICKET_TILT_RANGE * 100)) / 100 - TICKET_TILT_OFFSET;
+}
+
+function getCompletedStampTilt(ticketId: string) {
+  const hash = [...ticketId].reduce((value, character) => ((value << 5) - value) + character.charCodeAt(0), 0);
+  const normalizedHash = (Math.abs(hash) % 10_000) / 10_000;
+  return COMPLETED_STAMP_TILT_MIN + normalizedHash * (COMPLETED_STAMP_TILT_MAX - COMPLETED_STAMP_TILT_MIN);
 }
 
 function ParticipantsSearchField({
@@ -192,6 +201,7 @@ function TicketForm({ ticket, participants, rules, playCounts, onAddRule, onAddP
           <label className="afterroll-meta text-[0.75rem] text-[var(--ledger-soft)]">시나리오 링크
             <input type="url" value={form.scenarioUrl} onChange={(e) => set('scenarioUrl', e.target.value)} placeholder="https://" className="mt-[0.35rem] w-full rounded-[0.45rem] border border-[rgba(200,121,147,0.24)] bg-[#fff8fa] px-[0.7rem] py-[0.5rem] text-[0.9rem] text-[var(--ledger-ink)] outline-none focus:border-[var(--ledger-accent)]" />
           </label>
+          <label className="flex items-center gap-[0.5rem] afterroll-meta text-[0.8rem] text-[var(--ledger-muted)]"><input type="checkbox" checked={form.isCompleted} onChange={(e) => set('isCompleted', e.target.checked)} /> 완료됨</label>
           <label className="flex items-center gap-[0.5rem] afterroll-meta text-[0.8rem] text-[var(--ledger-muted)]"><input type="checkbox" checked={form.isPrivate} onChange={(e) => set('isPrivate', e.target.checked)} /> 비공개 (수정 권한 보유자만 볼 수 있음)</label>
           <div className="flex justify-end gap-[0.5rem] border-t border-[rgba(200,121,147,0.18)] pt-[0.85rem]">
             <button type="button" onClick={onClose} className="afterroll-meta px-[0.8rem] py-[0.4rem] text-[0.82rem] text-[var(--ledger-muted)]">취소</button>
@@ -209,6 +219,7 @@ function Ticket({ ticket, canEdit, onEdit, onDelete }: { ticket: PromiseTicket; 
     : null;
   const shapeId = `promise-ticket-${ticket.id.replace(/[^a-zA-Z0-9]/g, '')}`;
   const hoverTilt = getTicketTilt(ticket.id);
+  const completedStampTilt = getCompletedStampTilt(ticket.id);
   return (
     <motion.div
       layout
@@ -218,14 +229,15 @@ function Ticket({ ticket, canEdit, onEdit, onDelete }: { ticket: PromiseTicket; 
       transition={TICKET_HOVER_TRANSITION}
       className="promise-ticket-shadow"
     >
-    <article className="promise-ticket">
+    <article className={ticket.isCompleted ? 'promise-ticket promise-ticket--completed' : 'promise-ticket'}>
       <svg className="promise-ticket__shape" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
         <defs>
           <filter id={`${shapeId}-shadow`} x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="3" stdDeviation="2.2" floodColor="#753148" floodOpacity="0.36" /></filter>
           <mask id={shapeId}><path fill="white" d={TICKET_SHAPE_PATH} /></mask>
         </defs>
-        <rect width="100" height="100" fill="#f5c9d7" mask={`url(#${shapeId})`} filter={`url(#${shapeId}-shadow)`} />
+        <rect width="100" height="100" fill={ticket.isCompleted ? '#dec5cc' : '#f5c9d7'} mask={`url(#${shapeId})`} filter={`url(#${shapeId}-shadow)`} />
       </svg>
+      {ticket.isCompleted && <span className="promise-ticket__completed-stamp" style={{ '--completed-stamp-tilt': `${completedStampTilt}deg` } as CSSProperties} aria-label="완료된 공수표">사용 완료</span>}
       <div className="promise-ticket__main">
           <div className="relative z-10 flex h-full flex-col items-center justify-center p-[0.85rem] text-center">
           <div className="w-full"><p className="afterroll-meta text-[0.58rem] uppercase tracking-[0.12em] text-[var(--atr-accent)]">{ticket.rule || 'RULE 미정'} {ticket.role ? `· ${ticket.role}` : ''}</p><h2 className="afterroll-title mt-[0.2rem] text-[1.1rem] leading-tight text-[var(--ledger-ink)]">{ticket.scenarioName}</h2>{ticket.isPrivate && <span className="mt-[0.35rem] inline-block rounded-full border border-[rgba(200,121,147,0.35)] px-[0.4rem] py-[0.15rem] afterroll-meta text-[0.55rem] text-[var(--ledger-muted)]">비공개</span>}</div>
