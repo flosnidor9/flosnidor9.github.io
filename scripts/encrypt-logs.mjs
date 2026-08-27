@@ -47,6 +47,15 @@ function encrypt(content, password) {
   return { salt: s.toString('hex'), iv: ivBuf.toString('hex'), ciphertext: ct.toString('hex'), authTag: tag.toString('hex') };
 }
 
+function isEncryptedPayload(content) {
+  try {
+    const parsed = JSON.parse(content);
+    return ['salt', 'iv', 'ciphertext', 'authTag'].every((key) => typeof parsed[key] === 'string');
+  } catch {
+    return false;
+  }
+}
+
 function walkDir(dir, callback) {
   if (!fs.existsSync(dir)) return;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -71,13 +80,6 @@ walkDir(TRPG_SRC, (filePath) => {
 
   lockedCount++;
   const postSlug = path.basename(filePath, '.md');
-  const password = passwords[postSlug];
-  if (!password) {
-    console.warn(`⚠  passwords.json 에 "${postSlug}" 없음 — 건너뜀`);
-    errorCount++;
-    return;
-  }
-
   const folderRel = path.relative(TRPG_SRC, path.dirname(filePath));
   const outHtmlPath = path.join(TRPG_OUT, folderRel, data.htmlPath);
   if (!fs.existsSync(outHtmlPath)) {
@@ -87,6 +89,19 @@ walkDir(TRPG_SRC, (filePath) => {
   }
 
   const htmlContent = fs.readFileSync(outHtmlPath, 'utf8');
+  if (isEncryptedPayload(htmlContent)) {
+    console.log(`✓ 이미 암호화됨: ${folderRel}/${data.htmlPath}`);
+    count++;
+    return;
+  }
+
+  const password = passwords[postSlug];
+  if (!password) {
+    console.warn(`⚠  passwords.json 에 "${postSlug}" 없음 — 건너뜀`);
+    errorCount++;
+    return;
+  }
+
   fs.writeFileSync(outHtmlPath, JSON.stringify(encrypt(htmlContent, password)));
 
   console.log(`✓ 암호화: ${folderRel}/${data.htmlPath}`);

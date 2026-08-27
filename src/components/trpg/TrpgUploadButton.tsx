@@ -1,9 +1,9 @@
 'use client';
 
-import { ChangeEvent, type ReactNode, useRef, useState } from 'react';
+import { ChangeEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
-import { buildTrpgUploadFiles, commitTrpgUpload, type TrpgUploadDraft } from '@/lib/trpgUpload';
+import { buildTrpgUploadFiles, commitTrpgUpload, encryptTrpgLogContent, saveTrpgPassword, type TrpgUploadDraft } from '@/lib/trpgUpload';
 
 const TOKEN_STORAGE_KEY = 'after-the-roll-github-token';
 const FORMAT_OPTIONS = [
@@ -25,6 +25,7 @@ export default function TrpgUploadButton() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [token, setToken] = useState('');
+  const [rememberToken, setRememberToken] = useState(true);
   const [source, setSource] = useState<{ name: string; html: string } | null>(null);
   const [title, setTitle] = useState('');
   const [scenarioTitle, setScenarioTitle] = useState('');
@@ -34,8 +35,16 @@ export default function TrpgUploadButton() {
   const [format, setFormat] = useState<TrpgUploadDraft['format']>('roll20');
   const [mainChannels, setMainChannels] = useState('main');
   const [locked, setLocked] = useState(false);
+  const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [masterKey, setMasterKey] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const savedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (savedToken) setToken(savedToken);
+  }, []);
 
   if (loading || !isAdmin) return null;
 
@@ -47,12 +56,23 @@ export default function TrpgUploadButton() {
     if (!title) setTitle(file.name.replace(/\.(source\.)?html?$/i, ''));
   };
 
+  const closeDialog = () => {
+    setMasterKey('');
+    setPassword('');
+    setPasswordConfirm('');
+    setOpen(false);
+  };
+
   const submit = async () => {
     if (!source || !title.trim() || !scenarioTitle.trim() || !date.match(/^\d{4}\.\d{2}\.\d{2}$/)) {
       setStatus('원본 HTML, 로그 제목, 시나리오명, 날짜를 확인해 주세요.');
       return;
     }
-    const accessToken = token.trim() || window.sessionStorage.getItem(TOKEN_STORAGE_KEY) || '';
+    if (locked && (!password || password !== passwordConfirm || !masterKey)) {
+      setStatus('비공개 로그의 비밀번호, 비밀번호 확인, 마스터키를 확인해 주세요.');
+      return;
+    }
+    const accessToken = token.trim() || window.localStorage.getItem(TOKEN_STORAGE_KEY) || '';
     if (!accessToken) {
       setStatus('GitHub fine-grained access token을 입력해 주세요.');
       return;
@@ -61,12 +81,21 @@ export default function TrpgUploadButton() {
     const draft: TrpgUploadDraft = {
       title: title.trim(), scenarioTitle: scenarioTitle.trim(), description: description.trim(), date,
       tags: tagsFromInput(tags), format, locked, mainChannels: tagsFromInput(mainChannels),
-      sourceFileName: source.name, sourceHtml: source.html,
+      sourceFileName: source.name, sourceHtml: locked ? await encryptTrpgLogContent(source.html, password) : source.html,
     };
     setSubmitting(true);
     setStatus('로그 파일과 메타데이터를 저장하는 중…');
     try {
-      if (token.trim()) window.sessionStorage.setItem(TOKEN_STORAGE_KEY, token.trim());
+      if (rememberToken) {
+        window.localStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
+      } else {
+        window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+      }
+      if (locked) {
+        setStatus('비밀번호 목록을 안전하게 갱신하는 중…');
+        const { postSlug } = buildTrpgUploadFiles(draft);
+        await saveTrpgPassword(accessToken, masterKey, postSlug, password);
+      }
       const folder = await commitTrpgUpload(accessToken, draft);
       setStatus(`${folder}에 저장했습니다. 저장소 동기화 배포 후 로그 목록에 표시됩니다.`);
     } catch (error) {
@@ -90,7 +119,7 @@ export default function TrpgUploadButton() {
           <motion.div initial={{ opacity: 0, y: '1rem' }} animate={{ opacity: 1, y: 0 }} className="ledger-paper-sheet mx-auto my-[2rem] max-w-[44rem] p-[1rem] md:p-[1.4rem]">
             <div className="mb-[1rem] flex items-start justify-between gap-[1rem] border-b border-[var(--atr-line)] pb-[0.8rem]">
               <div><p className="afterroll-meta text-[0.72rem] uppercase tracking-[0.14em] text-[var(--atr-accent)]">Archive intake</p><h2 className="afterroll-title mt-[0.2rem] text-[2rem]">로그 올리기</h2></div>
-              <button type="button" onClick={() => setOpen(false)} className="afterroll-meta text-[0.78rem] text-[var(--ledger-muted)]">닫기</button>
+              <button type="button" onClick={closeDialog} className="afterroll-meta text-[0.78rem] text-[var(--ledger-muted)]">닫기</button>
             </div>
             <div className="grid gap-[0.8rem] md:grid-cols-2">
               <Field label="로그 원본 HTML"><input ref={fileInputRef} type="file" accept=".html,.htm,text/html" onChange={readSource} className="w-full text-[0.78rem]" /></Field>
@@ -100,13 +129,14 @@ export default function TrpgUploadButton() {
               <Field label="날짜 (YYYY.MM.DD)"><input value={date} onChange={(event) => setDate(event.target.value)} placeholder="2026.08.28" /></Field>
               <Field label="태그 (쉼표로 구분)"><input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="시노비가미, PL, 4인" /></Field>
               <Field label="메인 채널 (쉼표로 구분)"><input value={mainChannels} onChange={(event) => setMainChannels(event.target.value)} placeholder="main" /></Field>
-              <Field label="공개 설정"><label className="flex items-center gap-[0.5rem] text-[0.9rem]"><input type="checkbox" checked={locked} onChange={(event) => setLocked(event.target.checked)} /> 비공개 로그</label></Field>
+              <Field label="공개 설정"><label className="flex items-center gap-[0.5rem] text-[0.9rem]"><input type="checkbox" checked={locked} onChange={(event) => setLocked(event.target.checked)} className="!h-[0.95rem] !w-[0.95rem] shrink-0" /> 비공개 로그</label></Field>
             </div>
+            {locked ? <div className="grid gap-[0.8rem] md:grid-cols-2"><Field label="로그 비밀번호"><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" placeholder="열람용 비밀번호" /></Field><Field label="비밀번호 확인"><input type="password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} autoComplete="new-password" placeholder="한 번 더 입력" /></Field><Field label="마스터키"><input type="password" value={masterKey} onChange={(event) => setMasterKey(event.target.value)} autoComplete="off" placeholder="TRPG_MASTER_KEY" /></Field><p className="afterroll-meta md:col-span-2 text-[0.72rem] text-[var(--ledger-soft)]">마스터키는 저장하지 않습니다. 기존 비밀번호 목록을 갱신해 나중에 비밀번호를 복구할 수 있게 합니다.</p></div> : null}
             <Field label="설명"><textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} /></Field>
-            <div className="mt-[0.8rem] border-t border-[var(--atr-line)] pt-[0.8rem]"><Field label="GitHub access token"><input type="password" value={token} onChange={(event) => setToken(event.target.value)} placeholder="fine-grained token (Contents: Read and write)" autoComplete="off" /><p className="mt-[0.3rem] text-[0.72rem] text-[var(--ledger-soft)]">토큰은 이 브라우저 탭이 닫히면 사라집니다. `flosnidor9/Trpg-Logs`의 Contents 읽기·쓰기 권한만 부여하세요.</p></Field></div>
+            <div className="mt-[0.8rem] border-t border-[var(--atr-line)] pt-[0.8rem]"><Field label="GitHub access token"><input type="password" value={token} onChange={(event) => setToken(event.target.value)} placeholder="fine-grained token (Contents: Read and write)" autoComplete="current-password" /><label className="mt-[0.5rem] flex items-center gap-[0.45rem] text-[0.8rem] text-[var(--ledger-muted)]"><input type="checkbox" checked={rememberToken} onChange={(event) => setRememberToken(event.target.checked)} className="!h-[0.95rem] !w-[0.95rem] shrink-0" /> 이 기기에 토큰 저장</label><p className="mt-[0.3rem] text-[0.72rem] text-[var(--ledger-soft)]">비공개 로그를 올릴 때는 `Trpg-Logs`와 `flosnidor9.github.io` 두 저장소의 Contents 읽기·쓰기 권한이 필요합니다.</p></Field></div>
             {previewPath ? <p className="afterroll-meta mt-[0.8rem] text-[0.72rem] text-[var(--ledger-soft)]">저장 위치: {previewPath}</p> : null}
             {status ? <p className="mt-[0.8rem] text-[0.86rem] text-[var(--ledger-muted)]" role="status">{status}</p> : null}
-            <div className="mt-[1rem] flex justify-end gap-[0.6rem]"><button type="button" onClick={() => setOpen(false)} className="ledger-index-tab afterroll-meta px-[0.8rem] py-[0.45rem] text-[0.78rem]">취소</button><motion.button type="button" whileTap={{ scale: 0.98 }} onClick={submit} disabled={submitting} className="ledger-stamp afterroll-meta px-[0.9rem] py-[0.45rem] text-[0.78rem] disabled:opacity-50">{submitting ? '저장 중…' : '저장소에 올리기'}</motion.button></div>
+            <div className="mt-[1rem] flex justify-end gap-[0.6rem]"><button type="button" onClick={closeDialog} className="ledger-index-tab afterroll-meta px-[0.8rem] py-[0.45rem] text-[0.78rem]">취소</button><motion.button type="button" whileTap={{ scale: 0.98 }} onClick={submit} disabled={submitting} className="ledger-stamp afterroll-meta px-[0.9rem] py-[0.45rem] text-[0.78rem] disabled:opacity-50">{submitting ? '저장 중…' : '저장소에 올리기'}</motion.button></div>
           </motion.div>
         </div>
       ) : null}
