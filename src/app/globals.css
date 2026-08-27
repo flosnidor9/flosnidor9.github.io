@@ -1245,10 +1245,6 @@ body.after-roll-theme .trpg-log-reader img {
   box-shadow: none !important;
 }
 
-body.after-roll-theme .trpg-media-bubble {
-  background: rgba(251, 252, 253, 0.92) !important;
-}
-
 body.after-roll-theme tbody tr {
   border-color: rgba(88, 125, 163, 0.11) !important;
 }
