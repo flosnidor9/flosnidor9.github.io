@@ -3,7 +3,7 @@
 import { ChangeEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
-import { buildTrpgUploadFiles, commitTrpgUpload, encryptTrpgLogContent, saveTrpgPassword, type TrpgUploadDraft } from '@/lib/trpgUpload';
+import { buildTrpgUploadFiles, commitTrpgUpload, encryptTrpgLogContent, resolveTrpgUploadTitle, saveTrpgPassword, type TrpgUploadDraft } from '@/lib/trpgUpload';
 import { expandCcaArchive, isCompressedCcaArchive } from '@/lib/ccaArchive';
 
 const TOKEN_STORAGE_KEY = 'after-the-roll-github-token';
@@ -68,6 +68,12 @@ function toggleCastSelection(current: CastSelection[], pcName: string, selected:
   return [...current, { plName: '', pcName, imageIndex: null }];
 }
 
+function formatCastDescription(gmName: string, cast: CastSelection[]) {
+  const plNames = uniqueNames(cast.map((entry) => entry.plName));
+  if (!gmName.trim() && plNames.length === 0) return '';
+  return `GM: ${gmName.trim()} · PL: ${plNames.join(', ')}`;
+}
+
 export default function TrpgUploadButton() {
   const { isAdmin, loading } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -80,7 +86,7 @@ export default function TrpgUploadButton() {
   const [castSelections, setCastSelections] = useState<CastSelection[]>([]);
   const [hoveredImageSource, setHoveredImageSource] = useState<string | null>(null);
   const [title, setTitle] = useState('');
-  const [scenarioTitle, setScenarioTitle] = useState('');
+  const [gmName, setGmName] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(dateToday);
   const [tags, setTags] = useState('');
@@ -92,6 +98,7 @@ export default function TrpgUploadButton() {
   const [masterKey, setMasterKey] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const generatedDescriptionRef = useRef('');
 
   useEffect(() => {
     const savedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
@@ -101,6 +108,12 @@ export default function TrpgUploadButton() {
   }, []);
 
   if (loading || !isAdmin) return null;
+
+  const updateDescriptionFromCast = (nextGmName = gmName, nextCastSelections = castSelections) => {
+    const generatedDescription = formatCastDescription(nextGmName, nextCastSelections);
+    setDescription((current) => (current === '' || current === generatedDescriptionRef.current ? generatedDescription : current));
+    generatedDescriptionRef.current = generatedDescription;
+  };
 
   const readSource = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -123,9 +136,30 @@ export default function TrpgUploadButton() {
     setOpen(false);
   };
 
+  const resetForm = () => {
+    setSource(null);
+    setSpeakers([]);
+    setImageSources([]);
+    setCastSelections([]);
+    setHoveredImageSource(null);
+    setTitle('');
+    setGmName('');
+    setDescription('');
+    setDate(dateToday());
+    setTags('');
+    setFormat('roll20');
+    setMainChannels('main');
+    setLocked(false);
+    setPassword('');
+    setPasswordConfirm('');
+    setStatus(null);
+    generatedDescriptionRef.current = '';
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const submit = async () => {
-    if (!source || !title.trim() || !scenarioTitle.trim() || !date.match(/^\d{4}\.\d{2}\.\d{2}$/)) {
-      setStatus('원본 HTML, 로그 제목, 시나리오명, 날짜를 확인해 주세요.');
+    if (!source || !title.trim() || !date.match(/^\d{4}\.\d{2}\.\d{2}$/)) {
+      setStatus('원본 HTML, 제목, 날짜를 확인해 주세요.');
       return;
     }
     if (locked && (!password || password !== passwordConfirm || !masterKey)) {
@@ -139,8 +173,8 @@ export default function TrpgUploadButton() {
     }
 
     const draft: TrpgUploadDraft = {
-      title: title.trim(), scenarioTitle: scenarioTitle.trim(), description: description.trim(), date,
-      tags: tagsFromInput(tags), format, locked, mainChannels: tagsFromInput(mainChannels),
+      title: title.trim(), gmName: gmName.trim(), description: description.trim(), date,
+      tags: tagsFromInput(tags), format, locked, mainChannels: format === 'roll20' ? [] : tagsFromInput(mainChannels),
       sourceFileName: source.name, sourceHtml: locked ? await encryptTrpgLogContent(source.html, password) : source.html,
       cast: castSelections.map(({ plName, pcName, imageIndex }) => ({
         plName,
@@ -158,12 +192,13 @@ export default function TrpgUploadButton() {
         window.localStorage.removeItem(TOKEN_STORAGE_KEY);
         window.localStorage.removeItem(MASTER_KEY_STORAGE_KEY);
       }
+      const resolvedDraft = await resolveTrpgUploadTitle(accessToken, draft);
       if (locked) {
         setStatus('비밀번호 목록을 안전하게 갱신하는 중…');
-        const { postSlug } = buildTrpgUploadFiles(draft);
+        const { postSlug } = buildTrpgUploadFiles(resolvedDraft);
         await saveTrpgPassword(accessToken, masterKey, postSlug, password);
       }
-      const folder = await commitTrpgUpload(accessToken, draft);
+      const folder = await commitTrpgUpload(accessToken, resolvedDraft);
       setStatus(`${folder}에 저장했습니다. 저장소 동기화 배포 후 로그 목록에 표시됩니다.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : '업로드 중 오류가 발생했습니다.');
@@ -172,8 +207,8 @@ export default function TrpgUploadButton() {
     }
   };
 
-  const previewPath = source && title && scenarioTitle && date.match(/^\d{4}/)
-    ? buildTrpgUploadFiles({ title, scenarioTitle, description, date, tags: tagsFromInput(tags), format, locked, mainChannels: tagsFromInput(mainChannels), sourceFileName: source.name, sourceHtml: source.html, cast: castSelections.map(({ plName, pcName, imageIndex }) => ({ plName, pcName, iconSrc: imageIndex === null ? '' : imageSources[imageIndex] ?? '' })) }).folderPath
+  const previewPath = source && title && date.match(/^\d{4}/)
+    ? buildTrpgUploadFiles({ title, gmName, description, date, tags: tagsFromInput(tags), format, locked, mainChannels: format === 'roll20' ? [] : tagsFromInput(mainChannels), sourceFileName: source.name, sourceHtml: source.html, cast: castSelections.map(({ plName, pcName, imageIndex }) => ({ plName, pcName, iconSrc: imageIndex === null ? '' : imageSources[imageIndex] ?? '' })) }).folderPath
     : null;
 
   return (
@@ -197,13 +232,13 @@ export default function TrpgUploadButton() {
                 </div>
               </Field>
               <Field label="형식"><select value={format} onChange={(event) => setFormat(event.target.value as TrpgUploadDraft['format'])}>{FORMAT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></Field>
-              <Field label="로그 제목"><input value={title} onChange={(event) => setTitle(event.target.value)} /></Field>
-              <Field label="시나리오명"><input value={scenarioTitle} onChange={(event) => setScenarioTitle(event.target.value)} /></Field>
+              <Field label="제목"><input value={title} onChange={(event) => setTitle(event.target.value)} /></Field>
               <Field label="날짜 (YYYY.MM.DD)"><input value={date} onChange={(event) => setDate(event.target.value)} placeholder="2026.08.28" /></Field>
               <Field label="태그 (쉼표로 구분)"><input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="시노비가미, PL, 4인" /></Field>
-              <Field label="메인 채널 (쉼표로 구분)"><input value={mainChannels} onChange={(event) => setMainChannels(event.target.value)} placeholder="main" /></Field>
+              {format !== 'roll20' ? <Field label="메인 채널 (쉼표로 구분)"><input value={mainChannels} onChange={(event) => setMainChannels(event.target.value)} placeholder="main" /></Field> : null}
               <Field label="공개 설정"><label className="flex items-center gap-[0.5rem] text-[0.9rem]"><input type="checkbox" checked={locked} onChange={(event) => setLocked(event.target.checked)} className="!h-[0.95rem] !w-[0.95rem] shrink-0" /> 비공개 로그</label></Field>
             </div>
+            <Field label="CAST · GM 이름"><input value={gmName} onChange={(event) => setGmName(event.target.value)} onBlur={(event) => updateDescriptionFromCast(event.currentTarget.value)} placeholder="GM 이름" /></Field>
             {speakers.length > 0 ? (
               <Field label="발화자 미리보기 — CAST 연결">
                 <p className="mb-[0.5rem] text-[0.78rem] text-[var(--ledger-soft)]">PC를 선택한 뒤 PL 이름과 HTML 안의 아이콘을 연결하세요. 선택한 항목만 MD에 기록됩니다.</p>
@@ -226,6 +261,7 @@ export default function TrpgUploadButton() {
                             <input
                               value={selection.plName}
                               onChange={(event) => setCastSelections((current) => current.map((entry) => entry.pcName === speaker ? { ...entry, plName: event.target.value } : entry))}
+                              onBlur={(event) => updateDescriptionFromCast(gmName, castSelections.map((entry) => entry.pcName === speaker ? { ...entry, plName: event.currentTarget.value } : entry))}
                               placeholder="PL 이름"
                               aria-label={`${speaker} PL 이름`}
                             />
@@ -238,11 +274,12 @@ export default function TrpgUploadButton() {
                               >
                                 NONE
                               </button>
-                              {imageSources.map((source, imageIndex) => (
+                              {imageSources.map((source, imageIndex) => [source, imageIndex] as const).filter(([, imageIndex]) => selection.imageIndex === null || imageIndex === selection.imageIndex).map(([source, imageIndex]) => (
                                 <button
                                   key={imageIndex}
                                   type="button"
-                                  onClick={() => setCastSelections((current) => current.map((entry) => entry.pcName === speaker ? { ...entry, imageIndex } : entry))}
+                                  onClick={() => selection.imageIndex === imageIndex && setCastSelections((current) => current.map((entry) => entry.pcName === speaker ? { ...entry, imageIndex: null } : entry))}
+                                  onDoubleClick={() => setCastSelections((current) => current.map((entry) => entry.pcName === speaker ? { ...entry, imageIndex } : entry))}
                                   className={`aspect-square rounded-[0.14rem] border bg-cover bg-top bg-no-repeat ${selection.imageIndex === imageIndex ? 'border-[var(--atr-accent)] ring-1 ring-[var(--atr-accent)]' : 'border-[var(--atr-line)]'}`}
                                   style={{ backgroundImage: `url("${source}")` }}
                                   aria-label={`${speaker} 아이콘으로 HTML 이미지 ${imageIndex + 1} 선택`}
@@ -271,7 +308,7 @@ export default function TrpgUploadButton() {
                 <div role="img" aria-label="아이콘 확대 미리보기" className="aspect-square w-full rounded-[0.16rem] bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url("${hoveredImageSource}")` }} />
               </div>
             ) : null}
-            <div className="mt-[1rem] flex justify-end gap-[0.6rem]"><button type="button" onClick={closeDialog} className="ledger-index-tab afterroll-meta px-[0.8rem] py-[0.45rem] text-[0.78rem]">취소</button><motion.button type="button" whileTap={{ scale: 0.98 }} onClick={submit} disabled={submitting} className="ledger-stamp afterroll-meta px-[0.9rem] py-[0.45rem] text-[0.78rem] disabled:opacity-50">{submitting ? '저장 중…' : '저장소에 올리기'}</motion.button></div>
+            <div className="mt-[1rem] flex justify-end gap-[0.6rem]"><button type="button" onClick={resetForm} disabled={submitting} className="ledger-index-tab afterroll-meta px-[0.8rem] py-[0.45rem] text-[0.78rem] disabled:opacity-50">초기화</button><button type="button" onClick={closeDialog} className="ledger-index-tab afterroll-meta px-[0.8rem] py-[0.45rem] text-[0.78rem]">취소</button><motion.button type="button" whileTap={{ scale: 0.98 }} onClick={submit} disabled={submitting} className="ledger-stamp afterroll-meta px-[0.9rem] py-[0.45rem] text-[0.78rem] disabled:opacity-50">{submitting ? '저장 중…' : '저장소에 올리기'}</motion.button></div>
           </motion.div>
         </div>
       ) : null}

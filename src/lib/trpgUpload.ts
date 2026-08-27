@@ -16,7 +16,7 @@ type UploadFile = {
 
 export type TrpgUploadDraft = {
   title: string;
-  scenarioTitle: string;
+  gmName: string;
   description: string;
   date: string;
   tags: string[];
@@ -37,10 +37,6 @@ function safeSegment(value: string, fallback: string) {
   return normalized.replace(/\s+/g, ' ').replace(/^\.+|\.+$/g, '') || fallback;
 }
 
-function slugFromFileName(fileName: string, fallback: string) {
-  return safeSegment(fileName.replace(/\.[^/.]+$/, ''), fallback);
-}
-
 function dataImageFile(value: string, index: number, folderPath: string): UploadFile | null {
   const match = value.match(/^data:image\/(png|jpe?g|gif|webp);base64,([\s\S]+)$/i);
   if (!match) return null;
@@ -56,8 +52,8 @@ function dataImageFile(value: string, index: number, folderPath: string): Upload
 
 export function buildTrpgUploadFiles(draft: TrpgUploadDraft) {
   const year = draft.date.slice(0, 4);
-  const scenario = safeSegment(draft.scenarioTitle, 'untitled-scenario');
-  const postSlug = slugFromFileName(draft.sourceFileName, safeSegment(draft.title, 'untitled-log'));
+  const scenario = safeSegment(draft.title, 'untitled-log');
+  const postSlug = scenario;
   const folderPath = `${TRPG_UPLOAD_ROOT}/${year}/${scenario}`;
   const htmlFileName = `${postSlug}.source.html`;
   const castImageFiles: UploadFile[] = [];
@@ -74,6 +70,7 @@ export function buildTrpgUploadFiles(draft: TrpgUploadDraft) {
     `title: ${yamlValue(draft.title)}`,
     `description: ${yamlValue(draft.description)}`,
     `date: ${yamlValue(draft.date)}`,
+    ...(draft.gmName ? [`gmName: ${yamlValue(draft.gmName)}`] : []),
     'tags:',
     ...draft.tags.map((tag) => `  - ${yamlValue(tag)}`),
     `htmlPath: ${yamlValue(htmlFileName)}`,
@@ -175,6 +172,28 @@ async function getExistingFileSha(token: string, path: string) {
   if (!response.ok) throw new Error('GitHub 저장소의 기존 파일을 확인하지 못했습니다.');
   const data = (await response.json()) as { sha?: string };
   return data.sha ?? null;
+}
+
+async function pathExists(token: string, path: string) {
+  const response = await fetch(githubContentsUrl(TRPG_UPLOAD_REPOSITORY, path), {
+    headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}` },
+  });
+  if (response.status === 404) return false;
+  if (!response.ok) throw new Error('기존 로그 이름을 확인하지 못했습니다. GitHub 권한을 확인해 주세요.');
+  return true;
+}
+
+export async function resolveTrpgUploadTitle(token: string, draft: TrpgUploadDraft) {
+  const year = draft.date.slice(0, 4);
+  const baseTitle = safeSegment(draft.title, 'untitled-log');
+  let index = 1;
+
+  while (true) {
+    const title = index === 1 ? baseTitle : `${baseTitle} ${index}탁`;
+    const folderPath = `${TRPG_UPLOAD_ROOT}/${year}/${title}`;
+    if (!(await pathExists(token, folderPath))) return { ...draft, title };
+    index += 1;
+  }
 }
 
 export async function saveTrpgPassword(token: string, masterKey: string, postSlug: string, password: string) {
