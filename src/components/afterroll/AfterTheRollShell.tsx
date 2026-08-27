@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { label: '도토리 목록', href: '/afterTheRoll/acorns', exact: false, icon: 'table' },
   { label: '공수표 목록', href: '/afterTheRoll/promises', exact: false, icon: 'folder' },
   { label: '로그', href: '/afterTheRoll/logs', exact: false, icon: 'folder' },
+  { label: '방명록', href: '/afterTheRoll/guestbook', exact: false, icon: 'folder' },
 ] as const;
 
 function normalizePath(pathname: string) {
