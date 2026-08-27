@@ -2132,6 +2132,19 @@ body.after-roll-theme::after {
   color: var(--atr-text);
 }
 
+.atr-file-nav-icon {
+  width: 0.82rem;
+  height: 0.82rem;
+  flex: 0 0 auto;
+  color: #d389a0;
+  filter: drop-shadow(0 0.05rem 0.08rem rgba(135, 71, 91, 0.18));
+}
+
+.atr-file-nav-item:hover .atr-file-nav-icon,
+.atr-file-nav-active .atr-file-nav-icon {
+  color: var(--atr-accent);
+}
+
 .atr-file-active-mark {
   position: absolute;
   inset-block: 0.35rem;
