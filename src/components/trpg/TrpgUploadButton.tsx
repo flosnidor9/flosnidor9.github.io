@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { buildTrpgUploadFiles, commitTrpgUpload, encryptTrpgLogContent, saveTrpgPassword, type TrpgUploadDraft } from '@/lib/trpgUpload';
 
 const TOKEN_STORAGE_KEY = 'after-the-roll-github-token';
+const MASTER_KEY_STORAGE_KEY = 'after-the-roll-master-key';
 const FORMAT_OPTIONS = [
   { value: 'roll20', label: 'Roll20' },
   { value: 'ccfolia', label: 'CCFOLIA' },
@@ -43,7 +44,9 @@ export default function TrpgUploadButton() {
 
   useEffect(() => {
     const savedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
+    const savedMasterKey = window.localStorage.getItem(MASTER_KEY_STORAGE_KEY);
     if (savedToken) setToken(savedToken);
+    if (savedMasterKey) setMasterKey(savedMasterKey);
   }, []);
 
   if (loading || !isAdmin) return null;
@@ -57,7 +60,7 @@ export default function TrpgUploadButton() {
   };
 
   const closeDialog = () => {
-    setMasterKey('');
+    setMasterKey(window.localStorage.getItem(MASTER_KEY_STORAGE_KEY) ?? '');
     setPassword('');
     setPasswordConfirm('');
     setOpen(false);
@@ -88,8 +91,10 @@ export default function TrpgUploadButton() {
     try {
       if (rememberToken) {
         window.localStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
+        if (locked) window.localStorage.setItem(MASTER_KEY_STORAGE_KEY, masterKey);
       } else {
         window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+        window.localStorage.removeItem(MASTER_KEY_STORAGE_KEY);
       }
       if (locked) {
         setStatus('비밀번호 목록을 안전하게 갱신하는 중…');
@@ -131,9 +136,9 @@ export default function TrpgUploadButton() {
               <Field label="메인 채널 (쉼표로 구분)"><input value={mainChannels} onChange={(event) => setMainChannels(event.target.value)} placeholder="main" /></Field>
               <Field label="공개 설정"><label className="flex items-center gap-[0.5rem] text-[0.9rem]"><input type="checkbox" checked={locked} onChange={(event) => setLocked(event.target.checked)} className="!h-[0.95rem] !w-[0.95rem] shrink-0" /> 비공개 로그</label></Field>
             </div>
-            {locked ? <div className="grid gap-[0.8rem] md:grid-cols-2"><Field label="로그 비밀번호"><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" placeholder="열람용 비밀번호" /></Field><Field label="비밀번호 확인"><input type="password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} autoComplete="new-password" placeholder="한 번 더 입력" /></Field><Field label="마스터키"><input type="password" value={masterKey} onChange={(event) => setMasterKey(event.target.value)} autoComplete="off" placeholder="TRPG_MASTER_KEY" /></Field><p className="afterroll-meta md:col-span-2 text-[0.72rem] text-[var(--ledger-soft)]">마스터키는 저장하지 않습니다. 기존 비밀번호 목록을 갱신해 나중에 비밀번호를 복구할 수 있게 합니다.</p></div> : null}
+            {locked ? <div className="grid gap-[0.8rem] md:grid-cols-2"><Field label="로그 비밀번호"><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" placeholder="열람용 비밀번호" /></Field><Field label="비밀번호 확인"><input type="password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} autoComplete="new-password" placeholder="한 번 더 입력" /></Field><Field label="마스터키"><input type="password" value={masterKey} onChange={(event) => setMasterKey(event.target.value)} autoComplete="off" placeholder="TRPG_MASTER_KEY" /></Field><p className="afterroll-meta md:col-span-2 text-[0.72rem] text-[var(--ledger-soft)]">기존 비밀번호 목록을 갱신해 나중에 비밀번호를 복구할 수 있게 합니다.</p></div> : null}
             <Field label="설명"><textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} /></Field>
-            <div className="mt-[0.8rem] border-t border-[var(--atr-line)] pt-[0.8rem]"><Field label="GitHub access token"><input type="password" value={token} onChange={(event) => setToken(event.target.value)} placeholder="fine-grained token (Contents: Read and write)" autoComplete="current-password" /><label className="mt-[0.5rem] flex items-center gap-[0.45rem] text-[0.8rem] text-[var(--ledger-muted)]"><input type="checkbox" checked={rememberToken} onChange={(event) => setRememberToken(event.target.checked)} className="!h-[0.95rem] !w-[0.95rem] shrink-0" /> 이 기기에 토큰 저장</label><p className="mt-[0.3rem] text-[0.72rem] text-[var(--ledger-soft)]">비공개 로그를 올릴 때는 `Trpg-Logs`와 `flosnidor9.github.io` 두 저장소의 Contents 읽기·쓰기 권한이 필요합니다.</p></Field></div>
+            <div className="mt-[0.8rem] border-t border-[var(--atr-line)] pt-[0.8rem]"><Field label="GitHub access token"><input type="password" value={token} onChange={(event) => setToken(event.target.value)} placeholder="fine-grained token (Contents: Read and write)" autoComplete="current-password" /><label className="mt-[0.5rem] flex items-center gap-[0.45rem] text-[0.8rem] text-[var(--ledger-muted)]"><input type="checkbox" checked={rememberToken} onChange={(event) => setRememberToken(event.target.checked)} className="!h-[0.95rem] !w-[0.95rem] shrink-0" /> 이 기기에 토큰과 마스터키 저장</label><p className="mt-[0.3rem] text-[0.72rem] text-[var(--ledger-soft)]">개인 기기에서만 사용하세요. 비공개 로그를 올릴 때는 `Trpg-Logs`와 `flosnidor9.github.io` 두 저장소의 Contents 읽기·쓰기 권한이 필요합니다.</p></Field></div>
             {previewPath ? <p className="afterroll-meta mt-[0.8rem] text-[0.72rem] text-[var(--ledger-soft)]">저장 위치: {previewPath}</p> : null}
             {status ? <p className="mt-[0.8rem] text-[0.86rem] text-[var(--ledger-muted)]" role="status">{status}</p> : null}
             <div className="mt-[1rem] flex justify-end gap-[0.6rem]"><button type="button" onClick={closeDialog} className="ledger-index-tab afterroll-meta px-[0.8rem] py-[0.45rem] text-[0.78rem]">취소</button><motion.button type="button" whileTap={{ scale: 0.98 }} onClick={submit} disabled={submitting} className="ledger-stamp afterroll-meta px-[0.9rem] py-[0.45rem] text-[0.78rem] disabled:opacity-50">{submitting ? '저장 중…' : '저장소에 올리기'}</motion.button></div>
