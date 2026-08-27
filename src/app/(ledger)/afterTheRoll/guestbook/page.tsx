@@ -1,5 +1,4 @@
 import FirebaseGuestbook from '@/components/guestbook/FirebaseGuestbook';
-import AdminLoginButton from '@/components/log/AdminLoginButton';
 
 export const dynamic = 'force-static';
 
@@ -14,7 +13,6 @@ export default function AfterTheRollGuestbookPage() {
               방명록
             </h1>
           </div>
-          <AdminLoginButton />
         </header>
 
         <FirebaseGuestbook

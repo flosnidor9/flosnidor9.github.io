@@ -6,7 +6,6 @@ import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { subscribeToLogs, type FirebaseLogEntry } from '@/lib/data/firebaseLog';
 import LogComposer from './LogComposer';
-import AdminLoginButton from './AdminLoginButton';
 
 // 해시태그 색상 매핑
 const tagColors: Record<string, string> = {
@@ -240,11 +239,6 @@ export default function FirebaseLogSection() {
 
   return (
     <div>
-      {/* 관리자 로그인 버튼 */}
-      <div className="mb-[1.5rem] flex justify-end">
-        <AdminLoginButton />
-      </div>
-
       {/* 관리자: 작성 폼 */}
       {isAdmin && <LogComposer timelineRef={timelineRef} />}
 

@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import AdminLoginButton from '@/components/log/AdminLoginButton';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   DEFAULT_TENDENCY_PROFILE,
@@ -761,7 +760,6 @@ export default function TendencySection() {
                 성향표 편집
               </button>
             )}
-            <AdminLoginButton />
           </div>
         </header>
 

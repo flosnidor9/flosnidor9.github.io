@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import AdminLoginButton from '@/components/log/AdminLoginButton';
 import { ACORN_RULE_ORDER, ACORN_SEED, type SeedAcorn } from '@/lib/data/acornSeed';
 import {
   addAcorn,
@@ -307,7 +306,6 @@ export default function AcornsSection() {
         </div>
         <div className="order-1 flex shrink-0 items-center justify-end gap-[0.45rem] self-end">
           {isAdmin && !authLoading && <button onClick={() => setEditing(null)} className="rounded-[0.45rem] border border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.16)] px-[0.8rem] py-[0.42rem] afterroll-meta text-[0.78rem] text-[var(--ledger-accent)]">+ 도토리 추가</button>}
-          <AdminLoginButton />
         </div>
       </div>
       {grouped.length ? <div className="grid gap-[1.65rem]">{grouped.map(({ rule, entries: ruleEntries }) => <section key={rule}><div className="mb-[0.48rem] flex items-baseline gap-[0.55rem]"><h2 className="afterroll-title text-[1.45rem] text-[var(--ledger-ink)]">{rule}</h2><span className="afterroll-meta text-[0.68rem] text-[var(--ledger-soft)]">{ruleEntries.length}개</span><span className="h-px flex-1 bg-[rgba(200,121,147,0.28)]" /></div><AcornList entries={ruleEntries} isAdmin={isAdmin} onEdit={setEditing} onDelete={deleteEntry} /></section>)}</div> : <p className="border-y border-[rgba(200,121,147,0.22)] py-[1.4rem] text-center afterroll-meta text-[0.8rem] text-[var(--ledger-muted)]">조건에 맞는 도토리가 없어요.</p>}

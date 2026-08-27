@@ -2190,6 +2190,20 @@ body.after-roll-theme::after {
   line-height: 1.45;
 }
 
+.atr-sidebar-auth {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.atr-sidebar-auth > div,
+.atr-sidebar-auth > button {
+  max-width: 100%;
+}
+
+.atr-sidebar-auth button {
+  justify-content: center;
+}
+
 .atr-file-window {
   min-width: 0;
   min-height: 100vh;

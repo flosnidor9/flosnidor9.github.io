@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo, useCallback, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
-import AdminLoginButton from '@/components/log/AdminLoginButton';
 import {
   subscribeToPlays,
   subscribeToPlaysOptions,
@@ -519,7 +518,6 @@ export default function PlaysSection() {
               + 플레이 추가
             </button>
           )}
-          <AdminLoginButton />
         </div>
       </div>
 

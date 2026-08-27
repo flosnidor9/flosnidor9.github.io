@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type ReactNode, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import AdminLoginButton from '@/components/log/AdminLoginButton';
 
 const NAV_ITEMS = [
   { label: '성향표', href: '/afterTheRoll', exact: true, icon: 'folder' },
@@ -78,9 +79,9 @@ export default function AfterTheRollShell({ children }: { children: ReactNode })
           })}
         </nav>
 
-        <div className="atr-sidebar-section">
-          <p>아카이브</p>
-          <span>세션 기록 보관함</span>
+        <div className="atr-sidebar-section atr-sidebar-auth">
+          <p>관리</p>
+          <AdminLoginButton />
         </div>
       </aside>
 

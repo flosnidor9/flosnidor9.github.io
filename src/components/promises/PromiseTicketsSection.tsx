@@ -3,7 +3,6 @@
 import { AnimatePresence, motion, type Transition } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import AdminLoginButton from '@/components/log/AdminLoginButton';
 import { subscribeToPlays, subscribeToPlaysOptions, updatePlaysOptions, type PlayEntry, type PlaysOptions } from '@/lib/data/firebasePlays';
 import {
   addPromiseTicket,
@@ -304,7 +303,6 @@ export default function PromiseTicketsSection() {
       </div>
       <div className="flex flex-wrap items-center justify-end gap-[0.45rem]">
         {isAdmin && !authLoading && <button onClick={() => setEditing(null)} className="rounded-[0.45rem] border border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.16)] px-[0.8rem] py-[0.42rem] afterroll-meta text-[0.78rem] text-[var(--ledger-accent)]">+ 공수표 추가</button>}
-        <AdminLoginButton />
       </div>
     </div>
     {authLoading || loading ? <p className="afterroll-meta text-[0.82rem] text-[var(--ledger-muted)]">티켓을 불러오는 중...</p> : ordered.length ? <div className="grid justify-start gap-[0.8rem] [grid-template-columns:repeat(auto-fit,minmax(min(100%,10rem),11.5rem))]">{ordered.map((ticket) => <Ticket key={`${ticket.isPrivate}-${ticket.id}`} ticket={ticket} canEdit={isAdmin} onEdit={() => setEditing(ticket)} onDelete={() => { if (window.confirm('이 공수표를 삭제할까요?')) void deletePromiseTicket(ticket); }} />)}</div> : <div className="rounded-[0.9rem] border border-dashed border-[rgba(172,151,110,0.38)] p-[2rem] text-center afterroll-meta text-[0.84rem] text-[var(--ledger-muted)]">{nicknameQuery.trim() ? '해당 닉네임의 공수표가 없습니다.' : '아직 발행된 공수표가 없습니다.'}</div>}
