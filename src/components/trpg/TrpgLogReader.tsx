@@ -22,6 +22,7 @@ type LogEntry = {
   contentHtml: string;
   isAside: boolean;
   isWhisper: boolean;
+  isNarrator?: boolean;
   kind: 'chat' | 'media';
 };
 
@@ -74,6 +75,7 @@ function parseCcaEntries(html: string, avatarMap: Record<string, string>): LogEn
         contentHtml,
         isAside,
         isWhisper: false,
+        isNarrator: true,
         kind: 'media',
       });
       continue;
@@ -165,6 +167,23 @@ function parseCcfoliaEntries(html: string, avatarMap: Record<string, string>, ma
       isAside: !mainChannels.includes(channel),
       isWhisper: false,
       kind: 'chat',
+    });
+  }
+
+  const ccaNarrators = Array.from(doc.querySelectorAll('article.row.narrator .narrator-text'));
+  for (let i = 0; i < ccaNarrators.length; i++) {
+    const contentHtml = sanitizeHtml(ccaNarrators[i].innerHTML.trim());
+    if (!contentHtml) continue;
+
+    parsed.push({
+      id: `cca-narrator-${i}`,
+      speaker: '',
+      avatarSrc: null,
+      contentHtml,
+      isAside: false,
+      isWhisper: false,
+      isNarrator: true,
+      kind: 'media',
     });
   }
 
@@ -535,7 +554,7 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
             {entry.kind === 'media' ? (
               <div className="relative z-[1] px-[0.05rem] py-[0.05rem] md:px-[0.08rem] md:py-[0.08rem]">
                 <div
-                  className="trpg-media-bubble overflow-hidden"
+                  className={`trpg-media-bubble overflow-hidden ${entry.isNarrator ? 'trpg-cca-narrator' : ''}`}
                   dangerouslySetInnerHTML={{ __html: entry.contentHtml }}
                 />
               </div>
@@ -651,6 +670,12 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
         .trpg-log-reader .trpg-media-bubble a {
           display: block;
           width: 100%;
+        }
+
+        .trpg-log-reader .trpg-cca-narrator,
+        .trpg-log-reader .trpg-cca-narrator * {
+          background: transparent !important;
+          box-shadow: none !important;
         }
 
         .trpg-log-reader img {
