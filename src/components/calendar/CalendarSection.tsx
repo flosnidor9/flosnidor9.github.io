@@ -64,6 +64,24 @@ function getStartDate(event: GoogleCalendarEvent) {
   return (event.start.date ?? event.start.dateTime ?? '').slice(0, 10);
 }
 function isAllDay(event: GoogleCalendarEvent) { return !!event.start.date; }
+function getEventDateKeys(event: GoogleCalendarEvent): string[] {
+  const startDate = getStartDate(event);
+  if (!startDate || !isAllDay(event)) return startDate ? [startDate] : [];
+
+  // Google Calendar's all-day `end.date` is exclusive. Expand the event so a
+  // multi-day event is visible on every day it covers, not only its start day.
+  const endDate = event.end.date;
+  if (!endDate || endDate <= startDate) return [startDate];
+
+  const dateKeys: string[] = [];
+  const cursor = new Date(`${startDate}T00:00:00Z`);
+  const end = new Date(`${endDate}T00:00:00Z`);
+  while (cursor < end) {
+    dateKeys.push(cursor.toISOString().slice(0, 10));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return dateKeys;
+}
 function toMinutes(dt: string) {
   const d = new Date(dt);
   return d.getHours() * 60 + d.getMinutes();
@@ -560,9 +578,11 @@ export default function CalendarSection() {
       ? new Date(year, month + 1, nextOvf, 23, 59, 59)
       : new Date(year, month + 1, 0, 23, 59, 59)
     ).toISOString();
+    const cacheBust = Date.now();
     try {
       const res = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events?key=${apiKey}&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime&maxResults=200`,
+        `https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events?key=${apiKey}&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime&maxResults=200&cacheBust=${cacheBust}`,
+        { cache: 'no-store' },
       );
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: { message?: string } };
@@ -587,6 +607,7 @@ export default function CalendarSection() {
 
     const timeMin = new Date(year, 0, 1).toISOString();
     const timeMax = new Date(year + 1, 0, 1).toISOString();
+    const cacheBust = Date.now();
     const allEvents: GoogleCalendarEvent[] = [];
     let pageToken: string | undefined;
 
@@ -594,7 +615,8 @@ export default function CalendarSection() {
       do {
         const tokenParam = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '';
         const res = await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events?key=${apiKey}&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime&maxResults=2500${tokenParam}`,
+          `https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events?key=${apiKey}&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime&maxResults=2500&cacheBust=${cacheBust}${tokenParam}`,
+          { cache: 'no-store' },
         );
         if (!res.ok) {
           const body = await res.json().catch(() => ({})) as { error?: { message?: string } };
@@ -628,26 +650,30 @@ export default function CalendarSection() {
       ? new Date(year, month + 1, nextOvf, 23, 59, 59)
       : new Date(year, month + 1, 0, 23, 59, 59)
     ).toISOString();
+    const cacheBust = Date.now();
     const dateMap = new Map<string, ExternalEventSlot[]>();
     await Promise.all(EXTERNAL_CALENDAR_IDS.map(async (calId) => {
       try {
         const encodedId = encodeURIComponent(calId);
         const res = await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/${encodedId}/events?key=${apiKey}&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&maxResults=200`,
+          `https://www.googleapis.com/calendar/v3/calendars/${encodedId}/events?key=${apiKey}&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&maxResults=200&cacheBust=${cacheBust}`,
+          { cache: 'no-store' },
         );
         if (!res.ok) return;
         const data = await res.json() as { items?: GoogleCalendarEvent[] };
         for (const event of data.items ?? []) {
-          const dateKey = getStartDate(event);
-          if (!dateKey) continue;
+          const dateKeys = getEventDateKeys(event);
+          if (dateKeys.length === 0) continue;
           const slot: ExternalEventSlot = {
             allDay: !!event.start.date,
             startDateTime: event.start.dateTime,
             endDateTime: event.end.dateTime,
           };
-          const existing = dateMap.get(dateKey) ?? [];
-          existing.push(slot);
-          dateMap.set(dateKey, existing);
+          for (const dateKey of dateKeys) {
+            const existing = dateMap.get(dateKey) ?? [];
+            existing.push(slot);
+            dateMap.set(dateKey, existing);
+          }
         }
       } catch {}
     }));
@@ -675,19 +701,19 @@ export default function CalendarSection() {
 
   const eventsByDate = new Map<string, GoogleCalendarEvent[]>();
   for (const event of events) {
-    const dateKey = getStartDate(event);
-    if (!dateKey) continue;
-    const bucket = eventsByDate.get(dateKey) ?? [];
-    bucket.push(event);
-    eventsByDate.set(dateKey, bucket);
+    for (const dateKey of getEventDateKeys(event)) {
+      const bucket = eventsByDate.get(dateKey) ?? [];
+      bucket.push(event);
+      eventsByDate.set(dateKey, bucket);
+    }
   }
 
   const annualCountsByDate = useMemo(() => {
     const counts = new Map<string, number>();
     for (const event of annualEvents) {
-      const dateKey = getStartDate(event);
-      if (!dateKey) continue;
-      counts.set(dateKey, (counts.get(dateKey) ?? 0) + 1);
+      for (const dateKey of getEventDateKeys(event)) {
+        counts.set(dateKey, (counts.get(dateKey) ?? 0) + 1);
+      }
     }
     return counts;
   }, [annualEvents]);
