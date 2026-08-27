@@ -1237,7 +1237,9 @@ body.after-roll-theme .trpg-log-reader .trpg-entry-aside * {
 
 body.after-roll-theme .trpg-log-reader .trpg-entry-whisper,
 body.after-roll-theme .trpg-log-reader .trpg-entry-whisper * {
-  color: rgba(237, 210, 255, 0.86) !important;
+  color: #6c2449 !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
 }
 
 body.after-roll-theme .trpg-log-reader img {
@@ -2463,7 +2465,7 @@ body.after-roll-theme a::after {
 
 .atr-file-content .trpg-log-reader .trpg-entry-whisper,
 .atr-file-content .trpg-log-reader .trpg-entry-whisper * {
-  color: var(--atr-warn) !important;
+  color: #6c2449 !important;
 }
 
 @media (max-width: 48rem) {

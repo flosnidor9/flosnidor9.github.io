@@ -18,6 +18,8 @@ type Props = {
 type LogEntry = {
   id: string;
   speaker: string;
+  whisperFrom?: string;
+  whisperTo?: string;
   avatarSrc: string | null;
   contentHtml: string;
   isAside: boolean;
@@ -211,6 +213,17 @@ function normalizeSpeaker(raw: string | null | undefined): string {
   return (raw ?? '').replace(/:\s*$/, '').trim();
 }
 
+function getWhisperParticipants(node: Element, fallbackFrom: string): { from: string; to: string } {
+  const from = normalizeSpeaker(node.querySelector('.from')?.textContent) || fallbackFrom;
+  const to = normalizeSpeaker(node.querySelector('.to')?.textContent);
+
+  if (to) return { from, to };
+
+  const byText = normalizeSpeaker(node.querySelector('.by')?.textContent);
+  const match = byText.match(/^(.+?)\s*(?:to|→|->)\s*(.+)$/i);
+  return match ? { from: normalizeSpeaker(match[1]), to: normalizeSpeaker(match[2]) } : { from, to: '' };
+}
+
 function isAsideMessage(node: Element): boolean {
   return Boolean(
     node.querySelector(
@@ -231,7 +244,9 @@ function parseEntries(html: string): LogEntry[] {
     .map((node, index) => {
       const isMedia = node.classList.contains('desc');
       const isWhisper = node.classList.contains('private') || node.classList.contains('whisper');
-      const speaker = normalizeSpeaker(node.querySelector('.by')?.textContent);
+      const originalSpeaker = normalizeSpeaker(node.querySelector('.by')?.textContent);
+      const whisperParticipants = isWhisper ? getWhisperParticipants(node, originalSpeaker) : null;
+      const speaker = whisperParticipants?.from || originalSpeaker;
       const avatarSrc = node.querySelector('.avatar img')?.getAttribute('src') ?? null;
       const clone = node.cloneNode(true) as HTMLElement;
       const isAside = isAsideMessage(node);
@@ -250,6 +265,8 @@ function parseEntries(html: string): LogEntry[] {
         contentHtml,
         isAside,
         isWhisper,
+        whisperFrom: whisperParticipants?.from,
+        whisperTo: whisperParticipants?.to,
         kind: isMedia ? 'media' : 'chat',
       };
     })
@@ -268,7 +285,9 @@ function parseEntries(html: string): LogEntry[] {
        entry.kind === 'chat' &&
        ((!entry.speaker && !keepsEmptySpeaker) || lastEntry.speaker === resolvedSpeaker) &&
        lastEntry.isAside === entry.isAside &&
-       lastEntry.isWhisper === entry.isWhisper;
+       lastEntry.isWhisper === entry.isWhisper &&
+       lastEntry.whisperFrom === entry.whisperFrom &&
+       lastEntry.whisperTo === entry.whisperTo;
     const canMergeMedia =
       Boolean(lastEntry) &&
       lastEntry.kind === 'media' &&
@@ -548,7 +567,7 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
                 ? 'trpg-log-row trpg-log-media-row px-[0.25rem] py-[0.5rem] text-center md:px-[0.35rem] md:py-[0.6rem]'
                 : `trpg-log-row grid grid-cols-[3.75rem_minmax(0,1fr)] gap-[0.65rem] px-[0.25rem] py-[0.5rem] md:grid-cols-[4.1rem_minmax(0,1fr)] md:px-[0.35rem] md:py-[0.6rem] ${
                     entry.isAside ? 'trpg-log-row-aside' : ''
-                  }`
+                  } ${entry.isWhisper ? 'trpg-log-row-whisper' : ''}`
             }
           >
             {entry.kind === 'media' ? (
@@ -596,8 +615,8 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
                     }`}
                   >
                     {entry.isWhisper ? (
-                      <p className="afterroll-meta mb-[0.34rem] text-[0.68rem] uppercase tracking-[0.14em] text-[rgba(116,103,140,0.76)]">
-                        Whisper
+                      <p className="afterroll-meta mb-[0.34rem] text-[0.68rem] uppercase tracking-[0.1em] text-[var(--atr-text)]">
+                        TO {entry.whisperTo || 'UNKNOWN'}
                       </p>
                     ) : null}
                     <div className="trpg-entry-content min-w-0" dangerouslySetInnerHTML={{ __html: entry.contentHtml }} />
@@ -660,6 +679,12 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
         .trpg-log-reader .trpg-log-row-aside {
           border-left: 0.16rem solid rgba(104, 116, 128, 0.24);
           background: rgba(104, 116, 128, 0.035) !important;
+          padding-left: 0.55rem;
+        }
+
+        .trpg-log-reader .trpg-log-row-whisper {
+          border-left: 0.16rem solid rgba(157, 79, 118, 0.42);
+          background: rgba(227, 190, 210, 0.14) !important;
           padding-left: 0.55rem;
         }
 
