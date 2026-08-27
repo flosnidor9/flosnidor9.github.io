@@ -2,6 +2,18 @@ export const TRPG_UPLOAD_REPOSITORY = 'flosnidor9/Trpg-Logs';
 const TRPG_SITE_REPOSITORY = 'flosnidor9/flosnidor9.github.io';
 const TRPG_UPLOAD_ROOT = 'public/images/afterTheRoll';
 
+export type TrpgUploadCastEntry = {
+  plName: string;
+  pcName: string;
+  iconSrc: string;
+};
+
+type UploadFile = {
+  path: string;
+  content: string;
+  isBase64?: boolean;
+};
+
 export type TrpgUploadDraft = {
   title: string;
   scenarioTitle: string;
@@ -13,6 +25,7 @@ export type TrpgUploadDraft = {
   mainChannels: string[];
   sourceFileName: string;
   sourceHtml: string;
+  cast: TrpgUploadCastEntry[];
 };
 
 function yamlValue(value: string) {
@@ -28,12 +41,34 @@ function slugFromFileName(fileName: string, fallback: string) {
   return safeSegment(fileName.replace(/\.[^/.]+$/, ''), fallback);
 }
 
+function dataImageFile(value: string, index: number, folderPath: string): UploadFile | null {
+  const match = value.match(/^data:image\/(png|jpe?g|gif|webp);base64,([\s\S]+)$/i);
+  if (!match) return null;
+
+  const extension = match[1].toLowerCase() === 'jpeg' ? 'jpg' : match[1].toLowerCase();
+  const fileName = `cast-${String(index + 1).padStart(2, '0')}.${extension}`;
+  return {
+    path: `${folderPath}/media/${fileName}`,
+    content: match[2],
+    isBase64: true,
+  };
+}
+
 export function buildTrpgUploadFiles(draft: TrpgUploadDraft) {
   const year = draft.date.slice(0, 4);
   const scenario = safeSegment(draft.scenarioTitle, 'untitled-scenario');
   const postSlug = slugFromFileName(draft.sourceFileName, safeSegment(draft.title, 'untitled-log'));
   const folderPath = `${TRPG_UPLOAD_ROOT}/${year}/${scenario}`;
   const htmlFileName = `${postSlug}.source.html`;
+  const castImageFiles: UploadFile[] = [];
+  const cast = draft.cast.map((entry, index) => {
+    const imageFile = dataImageFile(entry.iconSrc, index, folderPath);
+    if (imageFile) castImageFiles.push(imageFile);
+    return {
+      ...entry,
+      iconSrc: imageFile ? `/${imageFile.path.replace(/^public\//, '')}` : entry.iconSrc,
+    };
+  });
   const markdown = [
     '---',
     `title: ${yamlValue(draft.title)}`,
@@ -43,6 +78,13 @@ export function buildTrpgUploadFiles(draft: TrpgUploadDraft) {
     ...draft.tags.map((tag) => `  - ${yamlValue(tag)}`),
     `htmlPath: ${yamlValue(htmlFileName)}`,
     `sourceFormat: ${yamlValue(draft.format)}`,
+    ...(cast.length > 0
+      ? ['cast:', ...cast.flatMap((entry) => [
+        `  - plName: ${yamlValue(entry.plName)}`,
+        `    pcName: ${yamlValue(entry.pcName)}`,
+        `    iconSrc: ${yamlValue(entry.iconSrc)}`,
+      ])]
+      : []),
     ...(draft.mainChannels.length > 0 ? ['mainChannels:', ...draft.mainChannels.map((channel) => `  - ${yamlValue(channel)}`)] : []),
     ...(draft.locked ? ['locked: true'] : []),
     '---',
@@ -55,6 +97,7 @@ export function buildTrpgUploadFiles(draft: TrpgUploadDraft) {
     files: [
       { path: `${folderPath}/${htmlFileName}`, content: draft.sourceHtml },
       { path: `${folderPath}/${postSlug}.md`, content: markdown },
+      ...castImageFiles,
     ],
   };
 }
@@ -177,7 +220,7 @@ export async function commitTrpgUpload(token: string, draft: TrpgUploadDraft) {
         },
         body: JSON.stringify({
           message: `Add TRPG log: ${draft.title}`,
-          content: encodeUtf8Base64(file.content),
+      content: file.isBase64 ? file.content.replace(/\s/g, '') : encodeUtf8Base64(file.content),
         }),
       });
       if (!response.ok) {

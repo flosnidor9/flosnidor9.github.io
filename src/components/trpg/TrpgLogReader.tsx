@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { TrpgCastEntry } from '@/lib/data/trpg';
+import { expandCcaArchive } from '@/lib/ccaArchive';
 
 type Props = {
   htmlUrl?: string;
@@ -49,8 +50,9 @@ function sanitizeHtml(html: string): string {
   return DOMPurify.sanitize(html);
 }
 
-function detectFormat(html: string): 'roll20' | 'ccfolia' | 'cca' {
-  if (/class="cca-wrap"/.test(html)) return 'cca';
+function detectFormat(html: string): 'icecandy-roll20' | 'roll20' | 'ccfolia' | 'cca' {
+  if (/class=["'][^"']*icecandy-export/.test(html) && /data-skin=["']roll20/.test(html)) return 'icecandy-roll20';
+  if (/class="cca-wrap"/.test(html) || (/class=["'][^"']*\br\s+row\b/.test(html) && /class=["'][^"']*\bc\b/.test(html))) return 'cca';
   if (/class="message\s/i.test(html)) return 'roll20';
   return 'ccfolia';
 }
@@ -58,6 +60,48 @@ function detectFormat(html: string): 'roll20' | 'ccfolia' | 'cca' {
 function parseCcaEntries(html: string, avatarMap: Record<string, string>): LogEntry[] {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<html><body>${html}</body></html>`, 'text/html');
+  const compressedRows = Array.from(doc.querySelectorAll<HTMLElement>('div.r.row'));
+  if (compressedRows.length > 0) {
+    return compressedRows
+      .map((row, index): LogEntry | null => {
+        const copy = row.querySelector<HTMLElement>('.c');
+        const narratorText = row.querySelector<HTMLElement>('.nt');
+        if (!copy && !narratorText) return null;
+
+        if (narratorText) {
+          const contentHtml = sanitizeHtml(narratorText.innerHTML.trim());
+          if (!contentHtml) return null;
+          return {
+            id: `cca-archive-${index}`,
+            speaker: '',
+            avatarSrc: null,
+            contentHtml,
+            isAside: false,
+            isWhisper: false,
+            isNarrator: true,
+            kind: 'media',
+          };
+        }
+
+        const speaker = copy?.querySelector('header b')?.textContent?.trim() ?? '';
+        const content = copy?.cloneNode(true) as HTMLElement | undefined;
+        content?.querySelector('header')?.remove();
+        const contentHtml = sanitizeHtml(content?.innerHTML.trim() ?? '');
+        if (!contentHtml) return null;
+
+        return {
+          id: `cca-archive-${index}`,
+          speaker,
+          avatarSrc: row.querySelector('img')?.getAttribute('src') ?? avatarMap[speaker] ?? null,
+          contentHtml,
+          isAside: row.closest('details') !== null,
+          isWhisper: false,
+          kind: 'chat',
+        };
+      })
+      .filter((entry): entry is LogEntry => Boolean(entry));
+  }
+
   const articles = Array.from(doc.querySelectorAll('article.row'));
   const entries: LogEntry[] = [];
 
@@ -236,6 +280,67 @@ function isStandaloneUnnamedAvatar(avatarSrc: string | null): boolean {
   return avatarSrc?.includes(STANDALONE_UNNAMED_AVATAR_NAME) ?? false;
 }
 
+function getIcecandyImageSources(html: string) {
+  const sources = new Map<string, string>();
+  const pattern = /\.([\w-]+)\s*\{[^}]*?background-image\s*:\s*url\(["']?(data:image\/[^"')]+)["']?\)/gi;
+
+  for (const match of html.matchAll(pattern)) {
+    const className = match[1];
+    const source = match[2];
+    if (className && source) sources.set(className, source);
+  }
+
+  return sources;
+}
+
+function replaceIcecandyBackgroundImages(node: HTMLElement, imageSources: Map<string, string>) {
+  for (const element of Array.from(node.querySelectorAll<HTMLElement>('span'))) {
+    const source = Array.from(element.classList)
+      .map((className) => imageSources.get(className))
+      .find((value): value is string => Boolean(value));
+    if (!source) continue;
+
+    const image = element.ownerDocument.createElement('img');
+    image.src = source;
+    image.alt = element.getAttribute('aria-label') || 'Log image';
+    if (element.style.width) image.style.width = element.style.width;
+    image.style.maxWidth = '100%';
+    image.style.height = 'auto';
+    element.replaceWith(image);
+  }
+}
+
+function parseIcecandyRoll20Entries(html: string): LogEntry[] {
+  const parser = new DOMParser();
+  const document = parser.parseFromString(html, 'text/html');
+  const imageSources = getIcecandyImageSources(html);
+
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-entry-id]'))
+    .map((node, index): LogEntry | null => {
+      const clone = node.cloneNode(true) as HTMLElement;
+      const containsImage = Array.from(clone.querySelectorAll<HTMLElement>('span')).some((element) =>
+        Array.from(element.classList).some((className) => imageSources.has(className)),
+      );
+      replaceIcecandyBackgroundImages(clone, imageSources);
+
+      const speaker = node.querySelector('[class~="float-left"] > span.text-foreground')?.textContent?.trim() ?? '';
+      clone.querySelectorAll('[class~="float-left"]').forEach((element) => element.remove());
+      const contentHtml = sanitizeHtml(clone.innerHTML.trim());
+      if (!contentHtml) return null;
+
+      return {
+        id: `icecandy-${index}`,
+        speaker,
+        avatarSrc: null,
+        contentHtml,
+        isAside: false,
+        isWhisper: false,
+        kind: containsImage ? 'media' : 'chat',
+      };
+    })
+    .filter((entry): entry is LogEntry => Boolean(entry));
+}
+
 function parseEntries(html: string): LogEntry[] {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<body>${html}</body>`, 'text/html');
@@ -406,6 +511,7 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
 
     fetch(htmlUrl, { signal: controller.signal })
       .then((response) => response.text())
+      .then((text) => expandCcaArchive(text))
       .then((text) => {
         setHtml(text);
       })
@@ -419,6 +525,7 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
   const entries = useMemo(() => {
     if (!html) return [];
     const format = detectFormat(html);
+    if (format === 'icecandy-roll20') return parseIcecandyRoll20Entries(html);
     if (format === 'cca') return parseCcaEntries(html, avatarMap);
     if (format === 'ccfolia') return parseCcfoliaEntries(html, avatarMap, mainChannels);
     return parseEntries(html);

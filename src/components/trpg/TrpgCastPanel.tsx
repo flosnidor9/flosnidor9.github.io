@@ -42,7 +42,7 @@ function buildCards(gmName: string, gmIconSrc: string, cast: TrpgCastEntry[]): C
     cards.push({
       id: `${entry.plName}-${entry.pcName}`,
       primaryLabel: entry.plName,
-      secondaryLabel: entry.pcName,
+      secondaryLabel: entry.pcName || 'PL',
       iconSrc: entry.iconSrc,
       tone: 'cast',
     });
