@@ -73,13 +73,13 @@ export default async function TrpgReadPage({ params }: Props) {
       <article className="afterroll-read-paper ledger-paper-sheet mx-auto max-w-[72rem] overflow-hidden rounded-[0.45rem]">
         <div className="afterroll-read-header border-b border-[var(--atr-line)] px-[1.2rem] py-[1.1rem] md:px-[1.5rem]">
           <Link
-            href="/afterTheRoll"
+            href="/afterTheRoll/logs"
             className="ledger-note-card afterroll-note mb-[1rem] inline-flex items-center gap-[0.4rem] rounded-[0.25rem] px-[0.8rem] py-[0.45rem] text-[0.78rem] uppercase text-[var(--ledger-muted)] transition-colors hover:text-[var(--atr-accent)]"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="15 18 9 12 15 6" />
             </svg>
-            <span>Back to Bin</span>
+            <span>돌아가기</span>
           </Link>
 
           <p className="afterroll-meta mb-[0.5rem] text-[0.72rem] uppercase tracking-[0.18em] text-[var(--atr-accent)]">
