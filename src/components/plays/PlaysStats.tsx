@@ -97,10 +97,10 @@ function TrendChart({
         role="img"
         aria-label="Play count trend chart"
       >
-        {gridValues.map((value) => {
+        {gridValues.map((value, index) => {
           const y = getY(value);
           return (
-            <g key={value}>
+            <g key={`grid-line-${index}-${value}`}>
               <line
                 x1={CHART_PAD_X}
                 y1={y}
