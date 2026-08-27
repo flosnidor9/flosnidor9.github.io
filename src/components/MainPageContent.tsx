@@ -156,7 +156,7 @@ export default function MainPageContent({ imagePaths }: MainPageContentProps) {
           </Link>
           <Link href="/afterTheRoll" className="w-full">
             <motion.button
-              className="w-full rounded-[0.5rem] border border-[rgba(215,188,145,0.45)] bg-[rgba(24,17,12,0.72)] px-[2rem] py-[1rem] font-sans text-[1rem] font-medium text-[rgba(244,231,208,0.92)] transition-colors duration-300 hover:bg-[rgba(40,28,18,0.85)] md:text-[1.1rem]"
+              className="w-full rounded-[0.5rem] border border-[rgba(255,235,241,0.72)] bg-[rgba(216,132,159,0.9)] px-[2rem] py-[1rem] font-sans text-[1rem] font-medium text-[rgba(255,250,252,0.98)] shadow-[0_0.5rem_1.5rem_rgba(125,55,79,0.22)] transition-colors duration-300 hover:bg-[rgba(198,108,140,0.96)] md:text-[1.1rem]"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
