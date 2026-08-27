@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -39,6 +39,7 @@ const MONTH_LABELS = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8
 const GRAPH_CELL_REM = 0.72;
 const GRAPH_GAP_REM = 0.18;
 const HOUR_REM = 3.8;
+const PORTRAIT_MEDIA_QUERY = '(orientation: portrait)';
 
 const PALETTE = [
   '#c85f7f',
@@ -236,17 +237,20 @@ function EventDetailPanel({
 // ── 연간 플레이 히트맵 ─────────────────────────────────────────
 function AnnualPlayGraph({
   year,
+  selectedMonth,
   countsByDate,
   onSelectDate,
   onPrevYear,
   onNextYear,
 }: {
   year: number;
+  selectedMonth: number;
   countsByDate: Map<string, number>;
   onSelectDate: (date: Date) => void;
   onPrevYear: () => void;
   onNextYear: () => void;
 }) {
+  const activeMonthRef = useRef<HTMLSpanElement>(null);
   const weeks = useMemo(() => buildYearWeeks(year), [year]);
   const monthLabels = useMemo(() => {
     const labels: { month: number; weekIndex: number }[] = [];
@@ -257,6 +261,26 @@ function AnnualPlayGraph({
     }
     return labels;
   }, [weeks, year]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(PORTRAIT_MEDIA_QUERY);
+    let frameId: number | null = null;
+    const scrollToActiveMonth = () => {
+      frameId = window.requestAnimationFrame(() => {
+        activeMonthRef.current?.scrollIntoView({ block: 'nearest', inline: 'center' });
+      });
+    };
+    const handleOrientationChange = (event: MediaQueryListEvent) => {
+      if (event.matches) scrollToActiveMonth();
+    };
+
+    if (mediaQuery.matches) scrollToActiveMonth();
+    mediaQuery.addEventListener('change', handleOrientationChange);
+    return () => {
+      mediaQuery.removeEventListener('change', handleOrientationChange);
+      if (frameId !== null) window.cancelAnimationFrame(frameId);
+    };
+  }, [year, selectedMonth]);
 
   return (
     <section className="ledger-paper-sheet paper-memo relative mb-[1.1rem] overflow-hidden rounded-[1.2rem] px-[1.1rem] py-[1rem] md:px-[1.6rem] md:py-[1.35rem]">
@@ -300,7 +324,11 @@ function AnnualPlayGraph({
             }}
           >
             {monthLabels.map(({ month, weekIndex }) => (
-              <span key={month} style={{ gridColumn: `${weekIndex + 1} / span 4` }}>
+              <span
+                key={month}
+                ref={month === selectedMonth ? activeMonthRef : null}
+                style={{ gridColumn: `${weekIndex + 1} / span 4` }}
+              >
                 {MONTH_LABELS[month]}
               </span>
             ))}
@@ -747,6 +775,7 @@ export default function CalendarSection() {
         </header>
         <AnnualPlayGraph
           year={year}
+          selectedMonth={month}
           countsByDate={annualCountsByDate}
           onSelectDate={selectGraphDate}
           onPrevYear={prevYear}
@@ -825,8 +854,8 @@ export default function CalendarSection() {
                         {day}
                       </span>
 
-                      {/* 데스크톱: 이벤트 칩 (흐릿하게) */}
-                      <div className="mt-[0.25rem] hidden flex-col gap-[0.18rem] opacity-40 md:flex">
+                      {/* 이벤트 칩 (흐릿하게) */}
+                      <div className="mt-[0.25rem] flex flex-col gap-[0.18rem] opacity-40">
                         {ovfItems.slice(0, 3).map((item, i) => {
                           if (item.kind === 'mine') {
                             const color = resolveColor(item.event.summary, eventColorMap);
@@ -834,7 +863,7 @@ export default function CalendarSection() {
                             return (
                               <div key={item.event.id} className="flex min-w-0 items-center gap-[0.22rem] overflow-hidden rounded-[0.25rem] px-[0.3rem] py-[0.1rem]"
                                 style={{ background: color.bg, borderLeft: `0.18rem solid ${color.base}` }}>
-                                {timeStr && <span className="afterroll-meta shrink-0 text-[0.58rem] leading-none" style={{ color: color.base }}>{timeStr}</span>}
+                                {timeStr && <span className="calendar-event-time afterroll-meta shrink-0 text-[0.58rem] leading-none" style={{ color: color.base }}>{timeStr}</span>}
                                 <span className="afterroll-meta truncate text-[0.65rem] leading-[1.3] text-[var(--ledger-ink)]">{item.event.summary}</span>
                               </div>
                             );
@@ -843,7 +872,7 @@ export default function CalendarSection() {
                           return (
                             <div key={`ext-${i}`} className="flex min-w-0 items-center gap-[0.22rem] overflow-hidden rounded-[0.25rem] px-[0.3rem] py-[0.1rem]"
                               style={{ background: 'rgba(87,67,48,0.04)', borderLeft: '0.18rem dashed rgba(87,67,48,0.2)' }}>
-                              {timeStr && <span className="afterroll-meta shrink-0 text-[0.58rem] leading-none text-[rgba(87,67,48,0.4)]">{timeStr}</span>}
+                              {timeStr && <span className="calendar-event-time afterroll-meta shrink-0 text-[0.58rem] leading-none text-[rgba(87,67,48,0.4)]">{timeStr}</span>}
                               <span className="afterroll-meta truncate text-[0.65rem] leading-[1.3] text-[var(--ledger-soft)]">일정있음</span>
                             </div>
                           );
@@ -853,18 +882,6 @@ export default function CalendarSection() {
                         )}
                       </div>
 
-                      {/* 모바일: 컬러 도트 (흐릿하게) */}
-                      {ovfItems.length > 0 && (
-                        <div className="mt-[0.2rem] flex gap-[0.18rem] opacity-40 md:hidden">
-                          {ovfItems.slice(0, 5).map((item, i) => {
-                            if (item.kind === 'mine') {
-                              const color = resolveColor(item.event.summary, eventColorMap);
-                              return <span key={item.event.id} className="h-[0.32rem] w-[0.32rem] rounded-full" style={{ background: color.base }} />;
-                            }
-                            return <span key={`ext-${i}`} className="h-[0.32rem] w-[0.32rem] rounded-full bg-[rgba(87,67,48,0.35)]" />;
-                          })}
-                        </div>
-                      )}
                     </div>
                   );
                 }
@@ -896,8 +913,8 @@ export default function CalendarSection() {
                       {day}
                     </span>
 
-                    {/* 데스크톱: 이벤트 칩 */}
-                    <div className="mt-[0.25rem] hidden flex-col gap-[0.18rem] md:flex">
+                    {/* 이벤트 칩 */}
+                    <div className="mt-[0.25rem] flex flex-col gap-[0.18rem]">
                       {dayItems.slice(0, 3).map((item, i) => {
                         if (item.kind === 'mine') {
                           const color = resolveColor(item.event.summary, eventColorMap);
@@ -907,7 +924,7 @@ export default function CalendarSection() {
                               onClick={e => { e.stopPropagation(); openDetail(item.event, e.clientX, e.clientY); }}
                               className="flex min-w-0 cursor-pointer items-center gap-[0.22rem] overflow-hidden rounded-[0.25rem] px-[0.3rem] py-[0.1rem] text-left transition-opacity hover:opacity-75"
                               style={{ background: color.bg, borderLeft: `0.18rem solid ${color.base}` }}>
-                              {timeStr && <span className="afterroll-meta shrink-0 text-[0.58rem] leading-none" style={{ color: color.base }}>{timeStr}</span>}
+                              {timeStr && <span className="calendar-event-time afterroll-meta shrink-0 text-[0.58rem] leading-none" style={{ color: color.base }}>{timeStr}</span>}
                               <span className="afterroll-meta truncate text-[0.65rem] leading-[1.3] text-[var(--ledger-ink)]">{item.event.summary}</span>
                             </button>
                           );
@@ -916,7 +933,7 @@ export default function CalendarSection() {
                         return (
                           <div key={`ext-${i}`} className="flex min-w-0 items-center gap-[0.22rem] overflow-hidden rounded-[0.25rem] px-[0.3rem] py-[0.1rem]"
                             style={{ background: 'rgba(87,67,48,0.05)', borderLeft: '0.18rem dashed rgba(87,67,48,0.22)' }}>
-                            {timeStr && <span className="afterroll-meta shrink-0 text-[0.58rem] leading-none text-[rgba(87,67,48,0.4)]">{timeStr}</span>}
+                            {timeStr && <span className="calendar-event-time afterroll-meta shrink-0 text-[0.58rem] leading-none text-[rgba(87,67,48,0.4)]">{timeStr}</span>}
                             <span className="afterroll-meta truncate text-[0.65rem] leading-[1.3] text-[var(--ledger-soft)]">일정있음</span>
                           </div>
                         );
@@ -926,18 +943,6 @@ export default function CalendarSection() {
                       )}
                     </div>
 
-                    {/* 모바일: 컬러 도트 */}
-                    {dayItems.length > 0 && (
-                      <div className="mt-[0.2rem] flex gap-[0.18rem] md:hidden">
-                        {dayItems.slice(0, 5).map((item, i) => {
-                          if (item.kind === 'mine') {
-                            const color = resolveColor(item.event.summary, eventColorMap);
-                            return <span key={item.event.id} className="h-[0.32rem] w-[0.32rem] rounded-full" style={{ background: color.base }} />;
-                          }
-                          return <span key={`ext-${i}`} className="h-[0.32rem] w-[0.32rem] rounded-full bg-[rgba(87,67,48,0.3)]" />;
-                        })}
-                      </div>
-                    )}
                   </div>
                 );
               })}

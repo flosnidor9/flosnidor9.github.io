@@ -2662,3 +2662,9 @@ body.after-roll-theme a::after {
   -webkit-mask-image: none !important;
   mask-image: none !important;
 }
+
+@media (orientation: portrait) {
+  .calendar-event-time {
+    display: none;
+  }
+}
