@@ -241,7 +241,7 @@ function parseEntries(html: string): LogEntry[] {
   const doc = parser.parseFromString(`<body>${html}</body>`, 'text/html');
   const nodes = Array.from(doc.querySelectorAll('.message.general, .message.desc, .message.private'));
   const parsed = nodes
-    .map((node, index) => {
+    .map((node, index): LogEntry | null => {
       const isMedia = node.classList.contains('desc');
       const isWhisper = node.classList.contains('private') || node.classList.contains('whisper');
       const originalSpeaker = normalizeSpeaker(node.querySelector('.by')?.textContent);
