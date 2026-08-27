@@ -4,7 +4,7 @@ import GNB from '@/components/layout/GNB';
 import PersistentHeroBackground from '@/components/hero/PersistentHeroBackground';
 import { getFavoriteImagePaths } from '@/lib/data/images';
 import Providers from '@/components/providers/Providers';
-import { DEFAULT_OG_IMAGE_URL, SITE_ORIGIN } from '@/lib/config/site';
+import { OG_IMAGE_URLS, SITE_ORIGIN } from '@/lib/config/site';
 
 export const metadata: Metadata = {
   metadataBase: SITE_ORIGIN,
@@ -14,7 +14,11 @@ export const metadata: Metadata = {
     title: 'Bubble Home | Personal Archive',
     description: 'A soft archive of favorite images, folders, and remembered scenes.',
     type: 'website',
-    images: [DEFAULT_OG_IMAGE_URL],
+    images: [OG_IMAGE_URLS.bubble],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: [OG_IMAGE_URLS.bubble],
   },
 };
 

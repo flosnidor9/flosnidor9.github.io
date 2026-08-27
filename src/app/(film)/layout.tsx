@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import '../globals.css';
 import Providers from '@/components/providers/Providers';
-import { DEFAULT_OG_IMAGE_URL, SITE_ORIGIN } from '@/lib/config/site';
+import { OG_IMAGE_URLS, SITE_ORIGIN } from '@/lib/config/site';
 
 export const metadata: Metadata = {
   metadataBase: SITE_ORIGIN,
@@ -11,7 +11,11 @@ export const metadata: Metadata = {
     title: 'Film Home | Personal Archive',
     description: 'A film-like archive for scenes, logs, and images that drift over time.',
     type: 'website',
-    images: [DEFAULT_OG_IMAGE_URL],
+    images: [OG_IMAGE_URLS.film],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: [OG_IMAGE_URLS.film],
   },
 };
 

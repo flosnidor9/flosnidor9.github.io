@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import '../globals.css';
 import Providers from '@/components/providers/Providers';
-import { DEFAULT_OG_IMAGE_URL, SITE_ORIGIN } from '@/lib/config/site';
+import { OG_IMAGE_URLS, SITE_ORIGIN } from '@/lib/config/site';
 
 const ongleipKonkon = localFont({
   variable: '--font-hand',
@@ -18,7 +18,11 @@ export const metadata: Metadata = {
     title: 'After the Roll | Personal Archive',
     description: 'A quieter archive for TRPG notes, logs, and after-session records.',
     type: 'website',
-    images: [DEFAULT_OG_IMAGE_URL],
+    images: [OG_IMAGE_URLS.afterTheRoll],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: [OG_IMAGE_URLS.afterTheRoll],
   },
 };
 

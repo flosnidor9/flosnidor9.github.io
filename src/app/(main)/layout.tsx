@@ -3,7 +3,7 @@ import '../globals.css';
 import PersistentHeroBackground from '@/components/hero/PersistentHeroBackground';
 import { getMainHomeImagePaths } from '@/lib/data/images';
 import Providers from '@/components/providers/Providers';
-import { DEFAULT_OG_IMAGE_URL, SITE_ORIGIN } from '@/lib/config/site';
+import { OG_IMAGE_URLS, SITE_ORIGIN } from '@/lib/config/site';
 
 export const metadata: Metadata = {
   metadataBase: SITE_ORIGIN,
@@ -13,13 +13,13 @@ export const metadata: Metadata = {
     title: 'Personal Archive',
     description: 'A personal archive for keeping, revisiting, and dwelling with collected work.',
     type: 'website',
-    images: [DEFAULT_OG_IMAGE_URL],
+    images: [OG_IMAGE_URLS.main],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Personal Archive',
     description: 'A personal archive for keeping, revisiting, and dwelling with collected work.',
-    images: [DEFAULT_OG_IMAGE_URL],
+    images: [OG_IMAGE_URLS.main],
   },
 };
 
