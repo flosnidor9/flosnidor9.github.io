@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'passwords.enc.json'
   repository_dispatch:
     types:
       - trpg-logs-updated
