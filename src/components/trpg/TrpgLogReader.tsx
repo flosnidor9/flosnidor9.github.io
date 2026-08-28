@@ -1,7 +1,6 @@
 ﻿'use client';
 
 import DOMPurify from 'dompurify';
-import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { TrpgCastEntry } from '@/lib/data/trpg';
@@ -40,7 +39,6 @@ type LogFontValue = (typeof LOG_FONT_OPTIONS)[number]['value'];
 
 const MAX_PAGE_ENTRIES = 80;
 const MAX_PAGE_WEIGHT = 120000;
-const STANDALONE_UNNAMED_AVATAR_NAME = 'files-d20-io-images-455987480-ALgG0ivc0aW7C7whBPcVnQ-max.png';
 const RELOAD_STORAGE_KEY = 'trpg-log-reader-reload';
 const PORTRAIT_CROP_RATIO = 1.15;
 const EMPTY_LOG_ENTRIES: LogEntry[] = [];
@@ -233,24 +231,7 @@ function parseCcfoliaEntries(html: string, avatarMap: Record<string, string>, ma
     });
   }
 
-  const merged: LogEntry[] = [];
-  for (const entry of parsed) {
-    const last = merged[merged.length - 1];
-    const canMerge =
-      Boolean(last) &&
-      last.speaker === entry.speaker &&
-      last.isAside === entry.isAside;
-
-    if (canMerge) {
-      last.contentHtml = `${last.contentHtml}<div class="trpg-log-continuation">${entry.contentHtml}</div>`;
-      if (!last.avatarSrc && entry.avatarSrc) last.avatarSrc = entry.avatarSrc;
-      continue;
-    }
-
-    merged.push({ ...entry });
-  }
-
-  return merged;
+  return parsed;
 }
 
 function normalizeSpeaker(raw: string | null | undefined): string {
@@ -276,8 +257,15 @@ function isAsideMessage(node: Element): boolean {
   );
 }
 
-function isStandaloneUnnamedAvatar(avatarSrc: string | null): boolean {
-  return avatarSrc?.includes(STANDALONE_UNNAMED_AVATAR_NAME) ?? false;
+function getBackgroundImageSource(element: Element | null): string | null {
+  const style = element?.getAttribute('style') ?? '';
+  const match = style.match(/background-image\s*:\s*url\(\s*["']?([^"')]+)["']?\s*\)/i);
+  return match?.[1] ?? null;
+}
+
+function getAvatarSource(node: Element): string | null {
+  const avatar = node.querySelector('.avatar');
+  return avatar?.querySelector('img')?.getAttribute('src') ?? getBackgroundImageSource(avatar);
 }
 
 function getIcecandyImageSources(html: string) {
@@ -352,7 +340,7 @@ function parseEntries(html: string): LogEntry[] {
       const originalSpeaker = normalizeSpeaker(node.querySelector('.by')?.textContent);
       const whisperParticipants = isWhisper ? getWhisperParticipants(node, originalSpeaker) : null;
       const speaker = whisperParticipants?.from || originalSpeaker;
-      const avatarSrc = node.querySelector('.avatar img')?.getAttribute('src') ?? null;
+      const avatarSrc = getAvatarSource(node);
       const clone = node.cloneNode(true) as HTMLElement;
       const isAside = isAsideMessage(node);
 
@@ -377,43 +365,9 @@ function parseEntries(html: string): LogEntry[] {
     })
     .filter((entry): entry is LogEntry => Boolean(entry));
 
-  const merged: LogEntry[] = [];
-
-  for (const entry of parsed) {
-    const lastEntry = merged[merged.length - 1];
-    const keepsEmptySpeaker = !entry.speaker && isStandaloneUnnamedAvatar(entry.avatarSrc);
-    const resolvedSpeaker = keepsEmptySpeaker ? '' : entry.speaker || lastEntry?.speaker || '';
-    const resolvedAvatar = entry.avatarSrc || lastEntry?.avatarSrc || null;
-    const canMerge =
-      Boolean(lastEntry) &&
-      lastEntry.kind === 'chat' &&
-       entry.kind === 'chat' &&
-       ((!entry.speaker && !keepsEmptySpeaker) || lastEntry.speaker === resolvedSpeaker) &&
-       lastEntry.isAside === entry.isAside &&
-       lastEntry.isWhisper === entry.isWhisper &&
-       lastEntry.whisperFrom === entry.whisperFrom &&
-       lastEntry.whisperTo === entry.whisperTo;
-    const canMergeMedia =
-      Boolean(lastEntry) &&
-      lastEntry.kind === 'media' &&
-      entry.kind === 'media';
-
-    if (canMerge || canMergeMedia) {
-      lastEntry.contentHtml = `${lastEntry.contentHtml}<div class="trpg-log-continuation">${entry.contentHtml}</div>`;
-      if (!lastEntry.avatarSrc && resolvedAvatar) {
-        lastEntry.avatarSrc = resolvedAvatar;
-      }
-      continue;
-    }
-
-    merged.push({
-      ...entry,
-      speaker: resolvedSpeaker,
-      avatarSrc: resolvedAvatar,
-    });
-  }
-
-  return merged;
+  // Keep each source message as an entry. Merging consecutive messages makes
+  // the page limit apply to speaker groups rather than to actual dialogue lines.
+  return parsed;
 }
 
 function paginateEntries(entries: LogEntry[]): LogEntry[][] {
@@ -689,11 +643,11 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
                 <div className="relative z-[1] flex flex-col items-center justify-start pt-[0.1rem]">
                   {entry.avatarSrc || fallbackAvatarSrc ? (
                     <div className="h-[3.75rem] w-[3.75rem] overflow-hidden rounded-[0.2rem] border border-[rgba(87,67,48,0.18)] p-[0.12rem] md:h-[4.1rem] md:w-[4.1rem]">
-                      <Image
+                      {/* Roll20 avatar URLs are runtime external sources, so Next Image cannot optimize them safely. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
                         src={entry.avatarSrc || fallbackAvatarSrc || ''}
                         alt={entry.speaker || 'Narration'}
-                        width={66}
-                        height={66}
                         className="h-full w-full scale-[1.08] rounded-[0.12rem] object-cover"
                       />
                     </div>
