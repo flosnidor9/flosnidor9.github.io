@@ -13,8 +13,8 @@ const CALENDAR_ID = '848efa2587af083c615b7c3581e818075a6489d1d0ce70c4ac3ef60880d
 const CALENDAR_TIME_MIN = '2000-01-01T00:00:00+09:00';
 const FORMAT_OPTIONS = [
   { value: 'roll20', label: 'Roll20' },
-  { value: 'ccfolia', label: 'CCFOLIA' },
-  { value: 'cca', label: 'CCA' },
+  { value: 'ccfolia', label: '코코포리아' },
+  { value: 'cca', label: '코코포리아 (CCA)' },
 ] as const;
 
 type CastSelection = {
@@ -49,7 +49,7 @@ function calendarEventDate(event: CalendarEvent) {
 }
 
 function buildLogTags(rule: string, playerCount: string, type: string, format: TrpgUploadDraft['format']) {
-  const platform = FORMAT_OPTIONS.find((option) => option.value === format)?.label ?? format;
+  const platform = format === 'roll20' ? 'Roll20' : '코코포리아';
   return [
     ...(rule ? [`룰: ${rule}`] : []),
     ...(playerCount ? [`인원수: ${playerCount}`] : []),
@@ -362,7 +362,7 @@ export default function TrpgUploadButton() {
                 <TagChipField label="유형" options={playTypes} value={playType} onChange={setPlayType} />
                 <Field label="플랫폼">
                   <span className="afterroll-meta inline-flex rounded-full border border-[var(--atr-accent)] bg-[rgba(88,125,163,0.14)] px-[0.55rem] py-[0.2rem] text-[0.72rem] text-[var(--atr-accent)]">
-                    {FORMAT_OPTIONS.find((option) => option.value === format)?.label}
+                    {format === 'roll20' ? 'Roll20' : '코코포리아'}
                   </span>
                 </Field>
               </div>

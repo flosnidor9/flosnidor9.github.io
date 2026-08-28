@@ -53,9 +53,12 @@ export default function TrpgArchiveClient({ posts, title, backHref, backLabel }:
   }, [filteredPosts]);
 
   function toggleTag(tag: string) {
-    setActiveTags((current) =>
-      current.includes(tag) ? current.filter((value) => value !== tag) : [...current, tag],
-    );
+    const group = TAG_FILTER_GROUPS.find(({ prefix }) => tag.startsWith(prefix));
+    setActiveTags((current) => {
+      if (current.includes(tag)) return current.filter((value) => value !== tag);
+      if (!group) return [...current, tag];
+      return [...current.filter((value) => !value.startsWith(group.prefix)), tag];
+    });
   }
 
   return (
