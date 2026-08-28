@@ -7,7 +7,6 @@ import { subscribeToPlays, type PlayEntry } from '@/lib/data/firebasePlays';
 import { buildTrpgUploadFiles, commitTrpgUploadAtomically, encryptTrpgLogContent, resolveTrpgUploadTitle, saveTrpgPassword, triggerTrpgDeployment, type TrpgUploadDraft } from '@/lib/trpgUpload';
 import { expandCcaArchive, isCompressedCcaArchive } from '@/lib/ccaArchive';
 
-const TOKEN_STORAGE_KEY = 'after-the-roll-github-token';
 const LEGACY_MASTER_KEY_STORAGE_KEY = 'after-the-roll-master-key';
 const CALENDAR_ID = '848efa2587af083c615b7c3581e818075a6489d1d0ce70c4ac3ef60880d0fbae%40group.calendar.google.com';
 const CALENDAR_TIME_MIN = '2000-01-01T00:00:00+09:00';
@@ -148,7 +147,6 @@ export default function TrpgUploadButton() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [token, setToken] = useState('');
-  const [rememberToken, setRememberToken] = useState(false);
   const [source, setSource] = useState<{ name: string; html: string } | null>(null);
   const [speakers, setSpeakers] = useState<string[]>([]);
   const [imageSources, setImageSources] = useState<string[]>([]);
@@ -177,9 +175,8 @@ export default function TrpgUploadButton() {
   const generatedDescriptionRef = useRef('');
 
   useEffect(() => {
-    const savedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
+    window.localStorage.removeItem('after-the-roll-github-token');
     window.localStorage.removeItem(LEGACY_MASTER_KEY_STORAGE_KEY);
-    if (savedToken) setToken(savedToken);
   }, []);
 
   useEffect(() => subscribeToPlays(setPlays), []);
@@ -319,7 +316,7 @@ export default function TrpgUploadButton() {
       setStatus('비공개 로그의 비밀번호, 비밀번호 확인, 마스터키를 확인해 주세요.');
       return;
     }
-    const accessToken = token.trim() || window.localStorage.getItem(TOKEN_STORAGE_KEY) || '';
+    const accessToken = token.trim();
     if (!accessToken) {
       setStatus('GitHub fine-grained access token을 입력해 주세요.');
       return;
@@ -338,11 +335,6 @@ export default function TrpgUploadButton() {
     setSubmitting(true);
     setStatus('로그 파일과 메타데이터를 저장하는 중…');
     try {
-      if (rememberToken) {
-        window.localStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
-      } else {
-        window.localStorage.removeItem(TOKEN_STORAGE_KEY);
-      }
       const resolvedDraft = await resolveTrpgUploadTitle(accessToken, draft);
       const folder = await commitTrpgUploadAtomically(accessToken, resolvedDraft);
       if (locked) {
@@ -490,7 +482,7 @@ export default function TrpgUploadButton() {
               <p className="afterroll-meta mt-[0.8rem] text-[0.72rem] text-[var(--ledger-soft)]">발화자 후보를 찾지 못했습니다. 이 파일은 CAST 없이 저장됩니다.</p>
             ) : null}
             <Field label="설명"><textarea value={description} onChange={(event) => { const nextDescription = event.target.value; setDescription(nextDescription); setIsDescriptionManual(nextDescription !== generatedDescriptionRef.current); }} rows={3} /></Field>
-            <div className="mt-[0.8rem] border-t border-[var(--atr-line)] pt-[0.8rem]"><Field label="GitHub access token"><input type="password" value={token} onChange={(event) => setToken(event.target.value)} placeholder="fine-grained token (Contents: Read and write)" autoComplete="current-password" /><label className="mt-[0.5rem] flex items-center gap-[0.45rem] text-[0.8rem] text-[var(--ledger-muted)]"><input type="checkbox" checked={rememberToken} onChange={(event) => setRememberToken(event.target.checked)} className="!h-[0.95rem] !w-[0.95rem] shrink-0" /> 이 기기에 토큰과 마스터키 저장</label><p className="mt-[0.3rem] text-[0.72rem] text-[var(--ledger-soft)]">개인 기기에서만 사용하세요. 비공개 로그를 올릴 때는 `Trpg-Logs`와 `flosnidor9.github.io` 두 저장소의 Contents 읽기·쓰기 권한이 필요합니다.</p></Field></div>
+            <div className="mt-[0.8rem] border-t border-[var(--atr-line)] pt-[0.8rem]"><Field label="GitHub access token"><input type="password" value={token} onChange={(event) => setToken(event.target.value)} placeholder="fine-grained token (Contents: Read and write)" autoComplete="off" /><p className="mt-[0.3rem] text-[0.72rem] text-[var(--ledger-soft)]">토큰과 마스터키는 저장하지 않습니다. 배포를 위해 두 저장소의 Contents 읽기·쓰기 권한이 필요합니다.</p></Field></div>
             {previewPath ? <p className="afterroll-meta mt-[0.8rem] text-[0.72rem] text-[var(--ledger-soft)]">저장 위치: {previewPath}</p> : null}
             {status ? <p className="mt-[0.8rem] whitespace-pre-wrap break-words text-[0.86rem] text-[var(--ledger-muted)]" role="status">{status}</p> : null}
             {hoveredImageSource ? (

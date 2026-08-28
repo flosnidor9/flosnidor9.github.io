@@ -177,6 +177,12 @@ function githubHeaders(token: string) {
   return { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}` };
 }
 
+async function githubFailureMessage(response: Response, fallback: string) {
+  const detail = (await response.json().catch(() => null)) as { message?: string; errors?: unknown } | null;
+  const reason = detail?.message?.trim();
+  return reason ? `${fallback} (GitHub HTTP ${response.status}: ${reason})` : `${fallback} (GitHub HTTP ${response.status})`;
+}
+
 async function getExistingFileSha(token: string, path: string) {
   const response = await fetch(githubContentsUrl(TRPG_UPLOAD_REPOSITORY, path), {
     headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}` },
@@ -287,7 +293,9 @@ async function createAtomicUploadCommit(token: string, files: UploadFile[], mess
       body: JSON.stringify({ content: file.isBase64 ? file.content.replace(/\s/g, '') : encodeUtf8Base64(file.content), encoding: 'base64' }),
     });
     const blob = (await blobResponse.json().catch(() => null)) as { sha?: string } | null;
-    if (!blobResponse.ok || !blob?.sha) throw new Error('로그 파일을 만들지 못했습니다. 파일 크기를 확인해 주세요.');
+    if (!blobResponse.ok || !blob?.sha) {
+      throw new Error(await githubFailureMessage(blobResponse, '로그 파일을 만들지 못했습니다. 토큰의 Trpg-Logs 저장소 Contents 쓰기 권한을 확인해 주세요.'));
+    }
     return { path: file.path, mode: '100644', type: 'blob', sha: blob.sha };
   }));
 
