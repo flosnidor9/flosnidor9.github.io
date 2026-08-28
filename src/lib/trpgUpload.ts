@@ -8,6 +8,11 @@ export type TrpgUploadCastEntry = {
   iconSrc: string;
 };
 
+export type TrpgUploadMediaFile = {
+  name: string;
+  content: string;
+};
+
 type UploadFile = {
   path: string;
   content: string;
@@ -25,6 +30,7 @@ export type TrpgUploadDraft = {
   mainChannels: string[];
   sourceFileName: string;
   sourceHtml: string;
+  mediaFiles?: TrpgUploadMediaFile[];
   cast: TrpgUploadCastEntry[];
 };
 
@@ -72,12 +78,23 @@ export function buildTrpgUploadFiles(draft: TrpgUploadDraft) {
       },
     ];
   const castImageFiles: UploadFile[] = [];
+  const logMediaFiles: UploadFile[] = (draft.mediaFiles ?? []).map((file) => ({
+    path: `${folderPath}/media/${file.name}`,
+    content: file.content,
+    isBase64: true,
+  }));
+  const logMediaNames = new Set((draft.mediaFiles ?? []).map((file) => file.name));
   const cast = draft.cast.map((entry, index) => {
     const imageFile = dataImageFile(entry.iconSrc, index, folderPath);
     if (imageFile) castImageFiles.push(imageFile);
+    const mediaFileName = entry.iconSrc.replace(/^media\//, '');
     return {
       ...entry,
-      iconSrc: imageFile ? `/${imageFile.path.replace(/^public\//, '')}` : entry.iconSrc,
+      iconSrc: imageFile
+        ? `/${imageFile.path.replace(/^public\//, '')}`
+        : logMediaNames.has(mediaFileName)
+          ? `/${folderPath.replace(/^public\//, '')}/media/${mediaFileName}`
+          : entry.iconSrc,
     };
   });
   const markdown = [
@@ -110,6 +127,7 @@ export function buildTrpgUploadFiles(draft: TrpgUploadDraft) {
     files: [
       ...sourceFiles,
       { path: `${folderPath}/${postSlug}.md`, content: markdown },
+      ...logMediaFiles,
       ...castImageFiles,
     ],
   };

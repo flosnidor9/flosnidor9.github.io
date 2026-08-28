@@ -4,7 +4,7 @@ import { ChangeEvent, type ReactNode, useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { subscribeToPlays, type PlayEntry } from '@/lib/data/firebasePlays';
-import { buildTrpgUploadFiles, commitTrpgUploadAtomically, encryptTrpgLogContent, resolveTrpgUploadTitle, saveTrpgPassword, type TrpgUploadDraft } from '@/lib/trpgUpload';
+import { buildTrpgUploadFiles, commitTrpgUploadAtomically, encryptTrpgLogContent, resolveTrpgUploadTitle, saveTrpgPassword, type TrpgUploadDraft, type TrpgUploadMediaFile } from '@/lib/trpgUpload';
 import { expandCcaArchive, isCompressedCcaArchive } from '@/lib/ccaArchive';
 
 const LEGACY_MASTER_KEY_STORAGE_KEY = 'after-the-roll-master-key';
@@ -50,6 +50,100 @@ type CalendarEvent = {
 };
 
 type CalendarMatch = { title: string; startDate: string; endDate: string };
+
+type PreparedRoll20Source = {
+  html: string;
+  mediaFiles: TrpgUploadMediaFile[];
+  missingAssets: string[];
+  mediaUrls: Record<string, string>;
+};
+
+const ROLL20_MEDIA_DIRECTORY = 'media';
+const ROLL20_CONTENT_SELECTOR = '.content';
+const ROLL20_LOCAL_URL_PATTERN = /^(?:\.\/)?[^:/?#]+(?:\/[^?#]+)?(?:[?#].*)?$/;
+
+function fileNameFromUrl(value: string) {
+  const withoutQuery = value.split(/[?#]/, 1)[0] ?? '';
+  const segment = withoutQuery.split('/').at(-1) ?? '';
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
+function roll20MediaName(file: File, index: number) {
+  const extension = file.name.includes('.') ? `.${file.name.split('.').at(-1)}` : '';
+  const baseName = file.name.slice(0, file.name.length - extension.length)
+    .normalize('NFC')
+    .replace(/[^\p{L}\p{N}._-]+/gu, '-')
+    .replace(/^-+|-+$/g, '') || `asset-${index + 1}`;
+  return `${baseName}-${String(index + 1).padStart(3, '0')}${extension.toLowerCase()}`;
+}
+
+function readFileAsBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error(`Could not read ${file.name}.`));
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      resolve(result.slice(result.indexOf(',') + 1));
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function prepareRoll20Source(html: string, files: File[]): Promise<PreparedRoll20Source> {
+  const document = new DOMParser().parseFromString(html, 'text/html');
+  const content = document.querySelector<HTMLElement>(ROLL20_CONTENT_SELECTOR) ?? document.body;
+  const assetFiles = files;
+  const assetsByName = new Map(assetFiles.map((file) => [file.name, file]));
+  const uploadedByFileName = new Map<string, string>();
+  const mediaFiles: TrpgUploadMediaFile[] = [];
+  const missingAssets = new Set<string>();
+  const mediaUrls: Record<string, string> = {};
+
+  const replaceUrl = (value: string) => {
+    if (!ROLL20_LOCAL_URL_PATTERN.test(value)) return value;
+    const originalName = fileNameFromUrl(value);
+    const asset = assetsByName.get(originalName);
+    if (!asset) {
+      missingAssets.add(originalName);
+      return value;
+    }
+    let uploadedName = uploadedByFileName.get(asset.name);
+    if (!uploadedName) {
+      uploadedName = roll20MediaName(asset, mediaFiles.length);
+      uploadedByFileName.set(asset.name, uploadedName);
+      mediaFiles.push({ name: uploadedName, content: '' });
+    }
+    const mediaUrl = `${ROLL20_MEDIA_DIRECTORY}/${uploadedName}`;
+    mediaUrls[value] = mediaUrl;
+    return mediaUrl;
+  };
+
+  content.querySelectorAll('script, style, link').forEach((node) => node.remove());
+  content.querySelectorAll<HTMLElement>('[src], [href]').forEach((element) => {
+    for (const attribute of ['src', 'href']) {
+      const value = element.getAttribute(attribute);
+      if (value) element.setAttribute(attribute, replaceUrl(value));
+    }
+  });
+
+  for (const element of Array.from(content.querySelectorAll<HTMLElement>('[style*="url("]'))) {
+    const style = element.getAttribute('style');
+    if (!style) continue;
+    element.setAttribute('style', style.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gi, (_, quote: string, url: string) => `url(${quote}${replaceUrl(url)}${quote})`));
+  }
+
+  await Promise.all(mediaFiles.map(async (mediaFile) => {
+    const asset = [...uploadedByFileName.entries()].find(([, uploadedName]) => uploadedName === mediaFile.name)?.[0];
+    const file = asset ? assetsByName.get(asset) : undefined;
+    if (file) mediaFile.content = await readFileAsBase64(file);
+  }));
+
+  return { html: content.innerHTML, mediaFiles, missingAssets: [...missingAssets], mediaUrls };
+}
 
 function dateToday() {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date()).replaceAll('-', '.');
@@ -145,9 +239,11 @@ function formatCastDescription(gmName: string, cast: CastSelection[]) {
 export default function TrpgUploadButton() {
   const { isAdmin, loading } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const roll20AssetInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [token, setToken] = useState('');
   const [source, setSource] = useState<{ name: string; html: string } | null>(null);
+  const [roll20AssetFiles, setRoll20AssetFiles] = useState<File[]>([]);
   const [speakers, setSpeakers] = useState<string[]>([]);
   const [imageSources, setImageSources] = useState<string[]>([]);
   const [castSelections, setCastSelections] = useState<CastSelection[]>([]);
@@ -273,6 +369,11 @@ export default function TrpgUploadButton() {
     if (!title) setTitle(file.name.replace(/\.(source\.)?html?$/i, ''));
   };
 
+  const readRoll20Assets = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    setRoll20AssetFiles(files);
+  };
+
   const closeDialog = () => {
     setMasterKey('');
     setPassword('');
@@ -282,6 +383,7 @@ export default function TrpgUploadButton() {
 
   const resetForm = () => {
     setSource(null);
+    setRoll20AssetFiles([]);
     setSpeakers([]);
     setImageSources([]);
     setCastSelections([]);
@@ -305,6 +407,7 @@ export default function TrpgUploadButton() {
     setStatus(null);
     generatedDescriptionRef.current = '';
     if (fileInputRef.current) fileInputRef.current.value = '';
+    if (roll20AssetInputRef.current) roll20AssetInputRef.current.value = '';
   };
 
   const submit = async () => {
@@ -322,14 +425,21 @@ export default function TrpgUploadButton() {
       return;
     }
 
+    const roll20Source = format === 'roll20' ? await prepareRoll20Source(source.html, roll20AssetFiles) : null;
+    if (roll20Source && roll20Source.missingAssets.length > 0) {
+      setStatus(`Roll20 HTML이 참조하는 이미지 ${roll20Source.missingAssets.slice(0, 3).join(', ')}${roll20Source.missingAssets.length > 3 ? ' 등' : ''}를 찾지 못했습니다. HTML 옆의 _files 폴더를 함께 선택해 주세요.`);
+      return;
+    }
+    const sourceHtml = roll20Source?.html ?? source.html;
     const draft: TrpgUploadDraft = {
       title: title.trim(), gmName: gmName.trim(), description: description.trim(), date,
       tags: buildLogTags(rule, playerCount, playType, format), format, locked, mainChannels: format === 'roll20' ? [] : tagsFromInput(mainChannels),
-      sourceFileName: source.name, sourceHtml: locked ? await encryptTrpgLogContent(source.html, password) : source.html,
+      sourceFileName: source.name, sourceHtml: locked ? await encryptTrpgLogContent(sourceHtml, password) : sourceHtml,
+      mediaFiles: roll20Source?.mediaFiles,
       cast: castSelections.map(({ plName, pcName, imageIndex }) => ({
         plName,
         pcName,
-        iconSrc: imageIndex === null ? '' : imageSources[imageIndex] ?? '',
+        iconSrc: imageIndex === null ? '' : roll20Source?.mediaUrls[imageSources[imageIndex] ?? ''] ?? imageSources[imageIndex] ?? '',
       })),
     };
     setSubmitting(true);
@@ -376,6 +486,16 @@ export default function TrpgUploadButton() {
                   <span className="min-w-0 truncate text-[0.78rem] text-[var(--ledger-soft)]">{source?.name ?? '선택된 파일 없음'}</span>
                 </div>
               </Field>
+              {format === 'roll20' ? (
+                <Field label="Roll20 _files 폴더">
+                  <div className="flex items-center gap-[0.6rem]">
+                    <input ref={roll20AssetInputRef} type="file" multiple onChange={readRoll20Assets} className="sr-only" {...{ webkitdirectory: '' }} />
+                    <button type="button" onClick={() => roll20AssetInputRef.current?.click()} className="ledger-index-tab shrink-0 rounded-[0.16rem] px-[0.65rem] py-[0.42rem] text-[0.78rem]">폴더 선택</button>
+                    <span className="min-w-0 truncate text-[0.78rem] text-[var(--ledger-soft)]">{roll20AssetFiles.length > 0 ? `${roll20AssetFiles.length}개 파일 선택됨` : 'HTML과 함께 내려받은 _files 폴더'}</span>
+                  </div>
+                  <p className="mt-[0.35rem] text-[0.72rem] text-[var(--ledger-soft)]">Roll20에서 받은 HTML의 이미지와 아바타를 기존 로그처럼 표시하려면 반드시 함께 선택해 주세요.</p>
+                </Field>
+              ) : null}
               <Field label="형식"><select value={format} onChange={(event) => setFormat(event.target.value as TrpgUploadDraft['format'])}>{FORMAT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></Field>
               <Field label="제목">
                 <input value={title} onChange={(event) => setTitle(event.target.value)} autoComplete="off" />

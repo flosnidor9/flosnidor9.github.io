@@ -332,10 +332,10 @@ function parseIcecandyRoll20Entries(html: string): LogEntry[] {
 function parseEntries(html: string): LogEntry[] {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<body>${html}</body>`, 'text/html');
-  const nodes = Array.from(doc.querySelectorAll('.message.general, .message.desc, .message.private'));
+  const nodes = Array.from(doc.querySelectorAll('.message.general, .message.desc, .message.private, .message.emote'));
   const parsed = nodes
     .map((node, index): LogEntry | null => {
-      const isMedia = node.classList.contains('desc');
+      const isMedia = node.classList.contains('desc') || node.classList.contains('emote');
       const isWhisper = node.classList.contains('private') || node.classList.contains('whisper');
       const originalSpeaker = normalizeSpeaker(node.querySelector('.by')?.textContent);
       const whisperParticipants = isWhisper ? getWhisperParticipants(node, originalSpeaker) : null;
