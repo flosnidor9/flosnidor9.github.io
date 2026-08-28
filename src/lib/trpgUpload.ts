@@ -228,8 +228,9 @@ export async function commitTrpgUpload(token: string, draft: TrpgUploadDraft) {
     throw new Error('같은 이름의 로그가 이미 있습니다. 원본 파일명 또는 제목을 바꿔 다시 올려 주세요.');
   }
 
-  await Promise.all(
-    upload.files.map(async (file) => {
+  // The Contents API creates a commit for every PUT. These must be serialized:
+  // concurrent PUTs can start from the same branch SHA and cause a conflict.
+  for (const file of upload.files) {
       const response = await fetch(`https://api.github.com/repos/${TRPG_UPLOAD_REPOSITORY}/contents/${encodeURIComponent(file.path).replace(/%2F/g, '/')}`, {
         method: 'PUT',
         headers: {
@@ -246,8 +247,7 @@ export async function commitTrpgUpload(token: string, draft: TrpgUploadDraft) {
         const detail = (await response.json().catch(() => null)) as { message?: string } | null;
         throw new Error(detail?.message || 'GitHub에 로그를 저장하지 못했습니다.');
       }
-    }),
-  );
+  }
 
   return upload.folderPath;
 }

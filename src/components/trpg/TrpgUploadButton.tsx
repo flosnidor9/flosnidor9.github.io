@@ -17,6 +17,28 @@ const FORMAT_OPTIONS = [
   { value: 'cca', label: '코코포리아 (CCA)' },
 ] as const;
 
+async function copyErrorMessage(message: string) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(message);
+      return true;
+    }
+
+    const textArea = document.createElement('textarea');
+    textArea.value = message;
+    textArea.setAttribute('readonly', '');
+    textArea.style.position = 'fixed';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.select();
+    const copied = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    return copied;
+  } catch {
+    return false;
+  }
+}
+
 type CastSelection = {
   plName: string;
   pcName: string;
@@ -121,6 +143,7 @@ export default function TrpgUploadButton() {
   const [calendarSearchState, setCalendarSearchState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [gmName, setGmName] = useState('');
   const [description, setDescription] = useState('');
+  const [isDescriptionManual, setIsDescriptionManual] = useState(false);
   const [date, setDate] = useState(dateToday);
   const [plays, setPlays] = useState<PlayEntry[]>([]);
   const [rule, setRule] = useState('');
@@ -201,13 +224,15 @@ export default function TrpgUploadButton() {
     };
   }, [open, title]);
 
-  if (loading || !isAdmin) return null;
+  useEffect(() => {
+    if (isDescriptionManual) return;
 
-  const updateDescriptionFromCast = (nextGmName = gmName, nextCastSelections = castSelections) => {
-    const generatedDescription = formatCastDescription(nextGmName, nextCastSelections);
-    setDescription((current) => (current === '' || current === generatedDescriptionRef.current ? generatedDescription : current));
+    const generatedDescription = formatCastDescription(gmName, castSelections);
     generatedDescriptionRef.current = generatedDescription;
-  };
+    setDescription(generatedDescription);
+  }, [castSelections, gmName, isDescriptionManual]);
+
+  if (loading || !isAdmin) return null;
 
   const rules = Array.from(new Set(plays.map((play) => play.rule.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ko'));
   const playerCounts = Array.from(new Set(plays.map((play) => play.playerCount.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ko'));
@@ -246,6 +271,7 @@ export default function TrpgUploadButton() {
     setCalendarSearchState('idle');
     setGmName('');
     setDescription('');
+    setIsDescriptionManual(false);
     setDate(dateToday());
     setRule('');
     setPlayerCount('');
@@ -304,6 +330,8 @@ export default function TrpgUploadButton() {
       const folder = await commitTrpgUpload(accessToken, resolvedDraft);
       setStatus(`${folder}에 저장했습니다. 저장소 동기화 배포 후 로그 목록에 표시됩니다.`);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Upload failed with an unknown error.';
+      await copyErrorMessage(errorMessage);
       setStatus(error instanceof Error ? error.message : '업로드 중 오류가 발생했습니다.');
     } finally {
       setSubmitting(false);
@@ -379,7 +407,7 @@ export default function TrpgUploadButton() {
               </Field>
               </div>
             </div>
-            <Field label="CAST · GM 이름"><input value={gmName} onChange={(event) => setGmName(event.target.value)} onBlur={(event) => updateDescriptionFromCast(event.currentTarget.value)} placeholder="GM 이름" /></Field>
+            <Field label="CAST · GM 이름"><input value={gmName} onChange={(event) => setGmName(event.target.value)} placeholder="GM 이름" /></Field>
             {speakers.length > 0 ? (
               <Field label="발화자 미리보기 — CAST 연결">
                 <p className="mb-[0.5rem] text-[0.78rem] text-[var(--ledger-soft)]">PC를 선택한 뒤 PL 이름과 HTML 안의 아이콘을 연결하세요. 선택한 항목만 MD에 기록됩니다.</p>
@@ -402,7 +430,6 @@ export default function TrpgUploadButton() {
                             <input
                               value={selection.plName}
                               onChange={(event) => setCastSelections((current) => current.map((entry) => entry.pcName === speaker ? { ...entry, plName: event.target.value } : entry))}
-                              onBlur={(event) => updateDescriptionFromCast(gmName, castSelections.map((entry) => entry.pcName === speaker ? { ...entry, plName: event.currentTarget.value } : entry))}
                               placeholder="PL 이름"
                               aria-label={`${speaker} PL 이름`}
                             />
@@ -439,10 +466,10 @@ export default function TrpgUploadButton() {
             ) : source ? (
               <p className="afterroll-meta mt-[0.8rem] text-[0.72rem] text-[var(--ledger-soft)]">발화자 후보를 찾지 못했습니다. 이 파일은 CAST 없이 저장됩니다.</p>
             ) : null}
-            <Field label="설명"><textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} /></Field>
+            <Field label="설명"><textarea value={description} onChange={(event) => { const nextDescription = event.target.value; setDescription(nextDescription); setIsDescriptionManual(nextDescription !== generatedDescriptionRef.current); }} rows={3} /></Field>
             <div className="mt-[0.8rem] border-t border-[var(--atr-line)] pt-[0.8rem]"><Field label="GitHub access token"><input type="password" value={token} onChange={(event) => setToken(event.target.value)} placeholder="fine-grained token (Contents: Read and write)" autoComplete="current-password" /><label className="mt-[0.5rem] flex items-center gap-[0.45rem] text-[0.8rem] text-[var(--ledger-muted)]"><input type="checkbox" checked={rememberToken} onChange={(event) => setRememberToken(event.target.checked)} className="!h-[0.95rem] !w-[0.95rem] shrink-0" /> 이 기기에 토큰과 마스터키 저장</label><p className="mt-[0.3rem] text-[0.72rem] text-[var(--ledger-soft)]">개인 기기에서만 사용하세요. 비공개 로그를 올릴 때는 `Trpg-Logs`와 `flosnidor9.github.io` 두 저장소의 Contents 읽기·쓰기 권한이 필요합니다.</p></Field></div>
             {previewPath ? <p className="afterroll-meta mt-[0.8rem] text-[0.72rem] text-[var(--ledger-soft)]">저장 위치: {previewPath}</p> : null}
-            {status ? <p className="mt-[0.8rem] text-[0.86rem] text-[var(--ledger-muted)]" role="status">{status}</p> : null}
+            {status ? <p className="mt-[0.8rem] whitespace-pre-wrap break-words text-[0.86rem] text-[var(--ledger-muted)]" role="status">{status}</p> : null}
             {hoveredImageSource ? (
               <div className="pointer-events-none fixed bottom-[1rem] right-[1rem] z-[110] w-[min(20rem,60vw)] rounded-[0.3rem] border border-[var(--atr-line)] bg-[rgba(251,252,253,0.98)] p-[0.3rem] shadow-[0_0.7rem_2rem_rgba(32,28,25,0.28)]">
                 <div role="img" aria-label="아이콘 확대 미리보기" className="aspect-square w-full rounded-[0.16rem] bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url("${hoveredImageSource}")` }} />
