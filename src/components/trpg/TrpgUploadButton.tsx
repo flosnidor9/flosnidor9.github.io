@@ -4,7 +4,7 @@ import { ChangeEvent, type ReactNode, useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { subscribeToPlays, type PlayEntry } from '@/lib/data/firebasePlays';
-import { buildTrpgUploadFiles, commitTrpgUploadAtomically, encryptTrpgLogContent, resolveTrpgUploadTitle, saveTrpgPassword, triggerTrpgDeployment, type TrpgUploadDraft } from '@/lib/trpgUpload';
+import { buildTrpgUploadFiles, commitTrpgUploadAtomically, encryptTrpgLogContent, resolveTrpgUploadTitle, saveTrpgPassword, type TrpgUploadDraft } from '@/lib/trpgUpload';
 import { expandCcaArchive, isCompressedCcaArchive } from '@/lib/ccaArchive';
 
 const LEGACY_MASTER_KEY_STORAGE_KEY = 'after-the-roll-master-key';
@@ -342,8 +342,7 @@ export default function TrpgUploadButton() {
         const { passwordKey } = buildTrpgUploadFiles(resolvedDraft);
         await saveTrpgPassword(accessToken, masterKey, passwordKey, password);
       }
-      await triggerTrpgDeployment(accessToken);
-      setStatus(`${folder}에 저장했습니다. 저장소 동기화 배포 후 로그 목록에 표시됩니다.`);
+      setStatus(`${folder} 업로드를 접수했습니다. 원본 로그를 정리한 뒤 사이트 배포가 자동으로 시작됩니다.`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Upload failed with an unknown error.';
       await copyErrorMessage(errorMessage);

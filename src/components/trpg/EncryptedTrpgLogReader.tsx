@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import TrpgLogReader from './TrpgLogReader';
 import type { TrpgCastEntry } from '@/lib/data/trpg';
 import { expandCcaArchive } from '@/lib/ccaArchive';
-import { fetchTrpgSource } from '@/lib/trpgSource';
 
 type EncryptedData = {
   salt: string;
@@ -70,7 +69,9 @@ export default function EncryptedTrpgLogReader({ encryptedUrl, fallbackAvatarSrc
     setError(false);
 
     try {
-      const data = JSON.parse(await fetchTrpgSource(encryptedUrl)) as EncryptedData;
+      const res = await fetch(encryptedUrl);
+      if (!res.ok) throw new Error('not found');
+      const data: EncryptedData = await res.json();
       const decrypted = await decryptContent(data, password);
       setHtmlContent(await expandCcaArchive(decrypted));
     } catch {

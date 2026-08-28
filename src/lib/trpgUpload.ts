@@ -55,16 +55,10 @@ export function buildTrpgUploadFiles(draft: TrpgUploadDraft) {
   const scenario = safeSegment(draft.title, 'untitled-log');
   const postSlug = scenario;
   const folderPath = `${TRPG_UPLOAD_ROOT}/${year}/${scenario}`;
-  const htmlFileName = `${postSlug}.source.html`;
-  const htmlParts = Array.from(
-    { length: Math.ceil(draft.sourceHtml.length / UPLOAD_TEXT_CHUNK_CHARACTERS) },
-    (_, index) => draft.sourceHtml.slice(index * UPLOAD_TEXT_CHUNK_CHARACTERS, (index + 1) * UPLOAD_TEXT_CHUNK_CHARACTERS),
-  );
-  const usesSourceManifest = htmlParts.length > 1;
+  const htmlParts = splitTextByUtf8Bytes(draft.sourceHtml, UPLOAD_PART_MAX_BYTES);
   const htmlManifestFileName = `${postSlug}.source.parts.json`;
-  const htmlPath = usesSourceManifest ? htmlManifestFileName : htmlFileName;
-  const sourceFiles: UploadFile[] = usesSourceManifest
-    ? [
+  const htmlPath = htmlManifestFileName;
+  const sourceFiles: UploadFile[] = [
       ...htmlParts.map((content, index) => ({
         path: `${folderPath}/${postSlug}.source.part-${String(index + 1).padStart(3, '0')}.html`,
         content,
@@ -76,8 +70,7 @@ export function buildTrpgUploadFiles(draft: TrpgUploadDraft) {
           parts: htmlParts.map((_, index) => `${postSlug}.source.part-${String(index + 1).padStart(3, '0')}.html`),
         }),
       },
-    ]
-    : [{ path: `${folderPath}/${htmlFileName}`, content: draft.sourceHtml }];
+    ];
   const castImageFiles: UploadFile[] = [];
   const cast = draft.cast.map((entry, index) => {
     const imageFile = dataImageFile(entry.iconSrc, index, folderPath);
@@ -124,10 +117,33 @@ export function buildTrpgUploadFiles(draft: TrpgUploadDraft) {
 
 const GITHUB_API_ROOT = 'https://api.github.com';
 const DEFAULT_BRANCH = 'main';
+const INCOMING_BRANCH = 'incoming';
 const UPLOAD_COMMIT_RETRIES = 3;
-// Keeps the UTF-8 JSON body far below GitHub's REST request-size ceiling,
-// including text with multi-byte characters.
-const UPLOAD_TEXT_CHUNK_CHARACTERS = 128 * 1024;
+const UPLOAD_PART_MAX_BYTES = 4 * 1024 * 1024;
+
+function splitTextByUtf8Bytes(value: string, maximumBytes: number) {
+  const parts: string[] = [];
+  let start = 0;
+  let bytes = 0;
+
+  for (let index = 0; index < value.length;) {
+    const codePoint = value.codePointAt(index) ?? 0;
+    const characterLength = codePoint > 0xFFFF ? 2 : 1;
+    const characterBytes = codePoint <= 0x7F ? 1 : codePoint <= 0x7FF ? 2 : codePoint <= 0xFFFF ? 3 : 4;
+
+    if (bytes > 0 && bytes + characterBytes > maximumBytes) {
+      parts.push(value.slice(start, index));
+      start = index;
+      bytes = 0;
+    }
+
+    bytes += characterBytes;
+    index += characterLength;
+  }
+
+  if (start < value.length) parts.push(value.slice(start));
+  return parts;
+}
 
 function encodeUtf8Base64(value: string) {
   const bytes = new TextEncoder().encode(value);
@@ -202,6 +218,35 @@ function githubHeaders(token: string) {
   return { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}` };
 }
 
+async function getBranchSha(token: string, branch: string) {
+  const response = await fetch(githubApiUrl(TRPG_UPLOAD_REPOSITORY, `/git/ref/heads/${branch}`), {
+    headers: githubHeaders(token),
+  });
+  if (response.status === 404) return null;
+  const ref = (await response.json().catch(() => null)) as { object?: { sha?: string } } | null;
+  return response.ok && ref?.object?.sha ? ref.object.sha : null;
+}
+
+async function getOrCreateIncomingBranch(token: string) {
+  const existingSha = await getBranchSha(token, INCOMING_BRANCH);
+  if (existingSha) return existingSha;
+
+  const mainSha = await getBranchSha(token, DEFAULT_BRANCH);
+  if (!mainSha) throw new Error('업로드 저장소의 기본 브랜치를 읽지 못했습니다.');
+
+  const response = await fetch(githubApiUrl(TRPG_UPLOAD_REPOSITORY, '/git/refs'), {
+    method: 'POST',
+    headers: { ...githubHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ref: `refs/heads/${INCOMING_BRANCH}`, sha: mainSha }),
+  });
+  if (response.ok) return mainSha;
+
+  // Another upload can create the work branch first. Re-read it before failing.
+  const concurrentSha = await getBranchSha(token, INCOMING_BRANCH);
+  if (concurrentSha) return concurrentSha;
+  throw new Error(await githubFailureMessage(response, '업로드 작업 브랜치를 만들지 못했습니다.'));
+}
+
 async function githubFailureMessage(response: Response, fallback: string) {
   const detail = (await response.json().catch(() => null)) as { message?: string; errors?: unknown } | null;
   const reason = detail?.message?.trim();
@@ -265,37 +310,6 @@ export async function saveTrpgPassword(token: string, masterKey: string, passwor
   if (!saveResponse.ok) throw new Error('암호화된 비밀번호 목록을 저장하지 못했습니다.');
 }
 
-export async function commitTrpgUpload(token: string, draft: TrpgUploadDraft) {
-  const upload = buildTrpgUploadFiles(draft);
-  const existing = await Promise.all(upload.files.map((file) => getExistingFileSha(token, file.path)));
-  if (existing.some(Boolean)) {
-    throw new Error('같은 이름의 로그가 이미 있습니다. 원본 파일명 또는 제목을 바꿔 다시 올려 주세요.');
-  }
-
-  // The Contents API creates a commit for every PUT. These must be serialized:
-  // concurrent PUTs can start from the same branch SHA and cause a conflict.
-  for (const file of upload.files) {
-      const response = await fetch(`https://api.github.com/repos/${TRPG_UPLOAD_REPOSITORY}/contents/${encodeURIComponent(file.path).replace(/%2F/g, '/')}`, {
-        method: 'PUT',
-        headers: {
-          Accept: 'application/vnd.github+json',
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: `Add TRPG log: ${draft.title}`,
-      content: file.isBase64 ? file.content.replace(/\s/g, '') : encodeUtf8Base64(file.content),
-        }),
-      });
-      if (!response.ok) {
-        const detail = (await response.json().catch(() => null)) as { message?: string } | null;
-        throw new Error(detail?.message || 'GitHub에 로그를 저장하지 못했습니다.');
-      }
-  }
-
-  return upload.folderPath;
-}
-
 async function ensureAtomicUploadPathsAreAvailable(token: string, files: UploadFile[]) {
   const existing = await Promise.all(files.map((file) => getExistingFileSha(token, file.path)));
   if (existing.some(Boolean)) throw new Error('같은 이름의 로그가 이미 있습니다. 제목을 바꿔 다시 올려 주세요.');
@@ -303,10 +317,7 @@ async function ensureAtomicUploadPathsAreAvailable(token: string, files: UploadF
 
 async function createAtomicUploadCommit(token: string, files: UploadFile[], message: string) {
   const headers = { ...githubHeaders(token), 'Content-Type': 'application/json' };
-  const refResponse = await fetch(githubApiUrl(TRPG_UPLOAD_REPOSITORY, `/git/ref/heads/${DEFAULT_BRANCH}`), { headers });
-  const ref = (await refResponse.json().catch(() => null)) as { object?: { sha?: string } } | null;
-  const parentSha = ref?.object?.sha;
-  if (!refResponse.ok || !parentSha) throw new Error('업로드 저장소의 기본 브랜치를 읽지 못했습니다. 토큰 권한을 확인해 주세요.');
+  const parentSha = await getOrCreateIncomingBranch(token);
 
   const parentResponse = await fetch(githubApiUrl(TRPG_UPLOAD_REPOSITORY, `/git/commits/${parentSha}`), { headers });
   const parent = (await parentResponse.json().catch(() => null)) as { tree?: { sha?: string } } | null;
@@ -345,7 +356,7 @@ async function createAtomicUploadCommit(token: string, files: UploadFile[], mess
   const commit = (await commitResponse.json().catch(() => null)) as { sha?: string } | null;
   if (!commitResponse.ok || !commit?.sha) throw new Error('로그 커밋을 만들지 못했습니다.');
 
-  const updateResponse = await fetch(githubApiUrl(TRPG_UPLOAD_REPOSITORY, `/git/refs/heads/${DEFAULT_BRANCH}`), {
+  const updateResponse = await fetch(githubApiUrl(TRPG_UPLOAD_REPOSITORY, `/git/refs/heads/${INCOMING_BRANCH}`), {
     method: 'PATCH', headers, body: JSON.stringify({ sha: commit.sha, force: false }),
   });
   if (updateResponse.status === 422) return false;
@@ -360,13 +371,4 @@ export async function commitTrpgUploadAtomically(token: string, draft: TrpgUploa
     if (await createAtomicUploadCommit(token, upload.files, `Add TRPG log: ${draft.title}`)) return upload.folderPath;
   }
   throw new Error('다른 업로드와 충돌했습니다. 잠시 후 다시 시도해 주세요.');
-}
-
-export async function triggerTrpgDeployment(token: string) {
-  const response = await fetch(githubApiUrl(TRPG_SITE_REPOSITORY, '/dispatches'), {
-    method: 'POST',
-    headers: { ...githubHeaders(token), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ event_type: 'trpg-logs-updated' }),
-  });
-  if (!response.ok) throw new Error('로그는 저장됐지만 배포를 시작하지 못했습니다. 메인 저장소 권한을 확인해 주세요.');
 }
