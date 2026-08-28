@@ -8,6 +8,8 @@ import { expandCcaArchive, isCompressedCcaArchive } from '@/lib/ccaArchive';
 
 const TOKEN_STORAGE_KEY = 'after-the-roll-github-token';
 const MASTER_KEY_STORAGE_KEY = 'after-the-roll-master-key';
+const CALENDAR_ID = '848efa2587af083c615b7c3581e818075a6489d1d0ce70c4ac3ef60880d0fbae%40group.calendar.google.com';
+const CALENDAR_TIME_MIN = '2000-01-01T00:00:00+09:00';
 const FORMAT_OPTIONS = [
   { value: 'roll20', label: 'Roll20' },
   { value: 'ccfolia', label: 'CCFOLIA' },
@@ -20,12 +22,29 @@ type CastSelection = {
   imageIndex: number | null;
 };
 
+type CalendarEvent = {
+  summary?: string;
+  start?: { date?: string; dateTime?: string };
+};
+
+type CalendarMatch = { title: string; latestDate: string };
+
 function dateToday() {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date()).replaceAll('-', '.');
 }
 
 function tagsFromInput(value: string) {
   return Array.from(new Set(value.split(',').map((tag) => tag.trim()).filter(Boolean)));
+}
+
+function normalizeTitle(value: string) {
+  return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase('ko-KR');
+}
+
+function calendarEventDate(event: CalendarEvent) {
+  const value = event.start?.date ?? event.start?.dateTime;
+  const match = value?.match(/^\d{4}-\d{2}-\d{2}/);
+  return match ? match[0].replaceAll('-', '.') : null;
 }
 
 function detectUploadFormat(html: string): TrpgUploadDraft['format'] {
@@ -86,6 +105,9 @@ export default function TrpgUploadButton() {
   const [castSelections, setCastSelections] = useState<CastSelection[]>([]);
   const [hoveredImageSource, setHoveredImageSource] = useState<string | null>(null);
   const [title, setTitle] = useState('');
+  const [recommendedDate, setRecommendedDate] = useState<string | null>(null);
+  const [calendarMatches, setCalendarMatches] = useState<CalendarMatch[]>([]);
+  const [calendarSearchState, setCalendarSearchState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [gmName, setGmName] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(dateToday);
@@ -106,6 +128,62 @@ export default function TrpgUploadButton() {
     if (savedToken) setToken(savedToken);
     if (savedMasterKey) setMasterKey(savedMasterKey);
   }, []);
+
+  useEffect(() => {
+    const normalizedTitle = normalizeTitle(title);
+    if (!open || !normalizedTitle) {
+      setRecommendedDate(null);
+      setCalendarMatches([]);
+      setCalendarSearchState('idle');
+      return;
+    }
+
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_API_KEY;
+    if (!apiKey) {
+      setRecommendedDate(null);
+      setCalendarMatches([]);
+      setCalendarSearchState('error');
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      setCalendarSearchState('loading');
+      try {
+        const params = new URLSearchParams({ key: apiKey, timeMin: CALENDAR_TIME_MIN, timeMax: new Date().toISOString(), singleEvents: 'true', orderBy: 'startTime', maxResults: '2500' });
+        const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events?${params}`);
+        if (!response.ok) throw new Error('Calendar request failed');
+        const data = await response.json() as { items?: CalendarEvent[] };
+        const matchesByTitle = new Map<string, CalendarMatch>();
+        for (const event of data.items ?? []) {
+          const eventTitle = event.summary?.trim() ?? '';
+          const eventDate = calendarEventDate(event);
+          if (!eventTitle || !eventDate || !normalizeTitle(eventTitle).includes(normalizedTitle)) continue;
+          const current = matchesByTitle.get(eventTitle);
+          if (!current || eventDate > current.latestDate) matchesByTitle.set(eventTitle, { title: eventTitle, latestDate: eventDate });
+        }
+        const matches = [...matchesByTitle.values()]
+          .sort((a, b) => b.latestDate.localeCompare(a.latestDate) || a.title.localeCompare(b.title, 'ko'))
+          .slice(0, 6);
+        const latestDate = matches.find((match) => normalizeTitle(match.title) === normalizedTitle)?.latestDate ?? null;
+        if (!cancelled) {
+          setRecommendedDate(latestDate);
+          setCalendarMatches(matches);
+          setCalendarSearchState('idle');
+        }
+      } catch {
+        if (!cancelled) {
+          setRecommendedDate(null);
+          setCalendarMatches([]);
+          setCalendarSearchState('error');
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, title]);
 
   if (loading || !isAdmin) return null;
 
@@ -143,6 +221,9 @@ export default function TrpgUploadButton() {
     setCastSelections([]);
     setHoveredImageSource(null);
     setTitle('');
+    setRecommendedDate(null);
+    setCalendarMatches([]);
+    setCalendarSearchState('idle');
     setGmName('');
     setDescription('');
     setDate(dateToday());
@@ -232,7 +313,26 @@ export default function TrpgUploadButton() {
                 </div>
               </Field>
               <Field label="형식"><select value={format} onChange={(event) => setFormat(event.target.value as TrpgUploadDraft['format'])}>{FORMAT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></Field>
-              <Field label="제목"><input value={title} onChange={(event) => setTitle(event.target.value)} /></Field>
+              <Field label="제목">
+                <input value={title} onChange={(event) => setTitle(event.target.value)} autoComplete="off" />
+                {calendarSearchState === 'loading' ? <p className="afterroll-meta mt-[0.35rem] text-[0.68rem] text-[var(--ledger-soft)]">캘린더 검색 중…</p> : null}
+                {calendarMatches.length > 0 ? (
+                  <div className="mt-[0.35rem] overflow-hidden rounded-[0.16rem] border border-[var(--atr-line)]">
+                    {calendarMatches.map((match) => (
+                      <button
+                        key={match.title}
+                        type="button"
+                        onClick={() => { setTitle(match.title); setDate(match.latestDate); }}
+                        className="flex w-full items-center justify-between gap-[0.5rem] border-b border-[var(--atr-line)] px-[0.42rem] py-[0.3rem] text-left last:border-b-0 hover:bg-[rgba(88,125,163,0.1)]"
+                      >
+                        <span className="min-w-0 truncate text-[0.75rem] text-[var(--ledger-ink)]">{match.title}</span>
+                        <span className="afterroll-meta shrink-0 text-[0.66rem] text-[var(--ledger-soft)]">최근 {match.latestDate}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                {recommendedDate ? <p className="afterroll-meta mt-[0.35rem] text-[0.68rem] text-[var(--atr-accent)]">같은 이름의 최근 일정: {recommendedDate}</p> : null}
+              </Field>
               <Field label="날짜 (YYYY.MM.DD)"><input value={date} onChange={(event) => setDate(event.target.value)} placeholder="2026.08.28" /></Field>
               <Field label="태그 (쉼표로 구분)"><input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="시노비가미, PL, 4인" /></Field>
               {format !== 'roll20' ? <Field label="메인 채널 (쉼표로 구분)"><input value={mainChannels} onChange={(event) => setMainChannels(event.target.value)} placeholder="main" /></Field> : null}
