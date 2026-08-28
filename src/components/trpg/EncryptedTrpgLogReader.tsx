@@ -84,6 +84,7 @@ export default function EncryptedTrpgLogReader({ encryptedUrl, fallbackAvatarSrc
   if (htmlContent !== null) {
     return (
       <TrpgLogReader
+        htmlUrl={encryptedUrl}
         htmlContent={htmlContent}
         fallbackAvatarSrc={fallbackAvatarSrc}
         gmName={gmName}

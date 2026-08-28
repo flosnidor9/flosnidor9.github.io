@@ -329,7 +329,19 @@ function parseIcecandyRoll20Entries(html: string): LogEntry[] {
     .filter((entry): entry is LogEntry => Boolean(entry));
 }
 
-function parseEntries(html: string): LogEntry[] {
+function resolveSourceAssetUrls(node: HTMLElement, htmlUrl: string | undefined) {
+  if (!htmlUrl) return;
+  const baseUrl = new URL(htmlUrl, window.location.origin);
+  for (const element of Array.from(node.querySelectorAll<HTMLElement>('[src], [href]'))) {
+    for (const attribute of ['src', 'href']) {
+      const value = element.getAttribute(attribute);
+      if (!value || /^(?:[a-z][a-z\d+.-]*:|\/|#)/i.test(value)) continue;
+      element.setAttribute(attribute, new URL(value, baseUrl).toString());
+    }
+  }
+}
+
+function parseEntries(html: string, htmlUrl?: string): LogEntry[] {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<body>${html}</body>`, 'text/html');
   const nodes = Array.from(doc.querySelectorAll('.message.general, .message.desc, .message.private, .message.emote'));
@@ -343,6 +355,8 @@ function parseEntries(html: string): LogEntry[] {
       const avatarSrc = getAvatarSource(node);
       const clone = node.cloneNode(true) as HTMLElement;
       const isAside = isAsideMessage(node);
+
+      resolveSourceAssetUrls(clone, htmlUrl);
 
       clone.querySelectorAll('.avatar, .by, .spacer, br.Apple-interchange-newline').forEach((element) => {
         element.remove();
@@ -482,8 +496,8 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
     if (format === 'icecandy-roll20') return parseIcecandyRoll20Entries(html);
     if (format === 'cca') return parseCcaEntries(html, avatarMap);
     if (format === 'ccfolia') return parseCcfoliaEntries(html, avatarMap, mainChannels);
-    return parseEntries(html);
-  }, [html, avatarMap, mainChannels]);
+    return parseEntries(html, htmlUrl);
+  }, [html, avatarMap, mainChannels, htmlUrl]);
   const visibleEntries = useMemo(
     () => (showAside ? entries : entries.filter((entry) => !entry.isAside)),
     [entries, showAside],
