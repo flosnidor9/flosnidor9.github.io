@@ -288,9 +288,14 @@ async function createAtomicUploadCommit(token: string, files: UploadFile[], mess
   if (!parentResponse.ok || !parent?.tree?.sha) throw new Error('업로드 저장소의 기존 트리를 읽지 못했습니다.');
 
   const tree = await Promise.all(files.map(async (file) => {
+    // GitHub's blob endpoint accepts UTF-8 text directly. Sending an HTML log
+    // as base64 expands it by about a third, which makes otherwise supported
+    // logs exceed the API request-size limit. Keep binary data images base64.
+    const blobContent = file.isBase64 ? file.content.replace(/\s/g, '') : file.content;
+    const blobEncoding = file.isBase64 ? 'base64' : 'utf-8';
     const blobResponse = await fetch(githubApiUrl(TRPG_UPLOAD_REPOSITORY, '/git/blobs'), {
       method: 'POST', headers,
-      body: JSON.stringify({ content: file.isBase64 ? file.content.replace(/\s/g, '') : encodeUtf8Base64(file.content), encoding: 'base64' }),
+      body: JSON.stringify({ content: blobContent, encoding: blobEncoding }),
     });
     const failureResponse = blobResponse.clone();
     const blob = (await blobResponse.json().catch(() => null)) as { sha?: string } | null;
