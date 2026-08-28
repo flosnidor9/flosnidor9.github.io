@@ -93,6 +93,18 @@ function readFileAsBase64(file: File) {
   });
 }
 
+function createLocalImagePreviews(sources: string[], files: File[]) {
+  const filesByName = new Map(files.map((file) => [file.name, file]));
+  return Object.fromEntries(sources.flatMap((source) => {
+    const file = filesByName.get(fileNameFromUrl(source));
+    return file ? [[source, URL.createObjectURL(file)]] : [];
+  }));
+}
+
+function hasSelectedLocalAsset(source: string, files: File[]) {
+  return !ROLL20_LOCAL_URL_PATTERN.test(source) || files.some((file) => file.name === fileNameFromUrl(source));
+}
+
 async function prepareRoll20Source(html: string, files: File[]): Promise<PreparedRoll20Source> {
   const document = new DOMParser().parseFromString(html, 'text/html');
   const content = document.querySelector<HTMLElement>(ROLL20_CONTENT_SELECTOR) ?? document.body;
@@ -126,7 +138,13 @@ async function prepareRoll20Source(html: string, files: File[]): Promise<Prepare
   content.querySelectorAll<HTMLElement>('[src], [href]').forEach((element) => {
     for (const attribute of ['src', 'href']) {
       const value = element.getAttribute(attribute);
-      if (value) element.setAttribute(attribute, replaceUrl(value));
+      if (!value) continue;
+      if (attribute === 'src' && ROLL20_LOCAL_URL_PATTERN.test(value) && !assetsByName.has(fileNameFromUrl(value))) {
+        missingAssets.add(fileNameFromUrl(value));
+        element.removeAttribute(attribute);
+        continue;
+      }
+      element.setAttribute(attribute, replaceUrl(value));
     }
   });
 
@@ -246,6 +264,7 @@ export default function TrpgUploadButton() {
   const [roll20AssetFiles, setRoll20AssetFiles] = useState<File[]>([]);
   const [speakers, setSpeakers] = useState<string[]>([]);
   const [imageSources, setImageSources] = useState<string[]>([]);
+  const [localImagePreviews, setLocalImagePreviews] = useState<Record<string, string>>({});
   const [castSelections, setCastSelections] = useState<CastSelection[]>([]);
   const [hoveredImageSource, setHoveredImageSource] = useState<string | null>(null);
   const [title, setTitle] = useState('');
@@ -276,6 +295,10 @@ export default function TrpgUploadButton() {
   }, []);
 
   useEffect(() => subscribeToPlays(setPlays), []);
+
+  useEffect(() => () => {
+    Object.values(localImagePreviews).forEach((url) => URL.revokeObjectURL(url));
+  }, [localImagePreviews]);
 
   useEffect(() => {
     const normalizedTitle = normalizeTitle(title);
@@ -363,7 +386,9 @@ export default function TrpgUploadButton() {
     setSource({ name: file.name, html });
     setFormat(detectUploadFormat(html));
     setSpeakers(extractSpeakers(previewHtml));
-    setImageSources(extractImageSources(previewHtml));
+    const nextImageSources = extractImageSources(previewHtml);
+    setImageSources(nextImageSources);
+    setLocalImagePreviews(createLocalImagePreviews(nextImageSources, roll20AssetFiles));
     setCastSelections([]);
     setHoveredImageSource(null);
     if (!title) setTitle(file.name.replace(/\.(source\.)?html?$/i, ''));
@@ -372,6 +397,11 @@ export default function TrpgUploadButton() {
   const readRoll20Assets = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
     setRoll20AssetFiles(files);
+    const availableImageSources = imageSources.filter((source) => hasSelectedLocalAsset(source, files));
+    setImageSources(availableImageSources);
+    setLocalImagePreviews(createLocalImagePreviews(availableImageSources, files));
+    setCastSelections([]);
+    setHoveredImageSource(null);
   };
 
   const closeDialog = () => {
@@ -386,6 +416,7 @@ export default function TrpgUploadButton() {
     setRoll20AssetFiles([]);
     setSpeakers([]);
     setImageSources([]);
+    setLocalImagePreviews({});
     setCastSelections([]);
     setHoveredImageSource(null);
     setTitle('');
@@ -426,10 +457,6 @@ export default function TrpgUploadButton() {
     }
 
     const roll20Source = format === 'roll20' ? await prepareRoll20Source(source.html, roll20AssetFiles) : null;
-    if (roll20Source && roll20Source.missingAssets.length > 0) {
-      setStatus(`Roll20 HTML이 참조하는 이미지 ${roll20Source.missingAssets.slice(0, 3).join(', ')}${roll20Source.missingAssets.length > 3 ? ' 등' : ''}를 찾지 못했습니다. HTML 옆의 _files 폴더를 함께 선택해 주세요.`);
-      return;
-    }
     const sourceHtml = roll20Source?.html ?? source.html;
     const draft: TrpgUploadDraft = {
       title: title.trim(), gmName: gmName.trim(), description: description.trim(), date,
@@ -452,7 +479,10 @@ export default function TrpgUploadButton() {
         const { passwordKey } = buildTrpgUploadFiles(resolvedDraft);
         await saveTrpgPassword(accessToken, masterKey, passwordKey, password);
       }
-      setStatus(`${folder} 업로드를 접수했습니다. 원본 로그를 정리한 뒤 사이트 배포가 자동으로 시작됩니다.`);
+      const missingMediaNote = roll20Source?.missingAssets.length
+        ? ` Roll20 내보내기에 들어 있지 않은 이미지 ${roll20Source.missingAssets.slice(0, 3).join(', ')}${roll20Source.missingAssets.length > 3 ? ' 등' : ''}은 제외했습니다.`
+        : '';
+      setStatus(`${folder} 업로드를 접수했습니다. 원본 로그를 정리한 뒤 사이트 배포가 자동으로 시작됩니다.${missingMediaNote}`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Upload failed with an unknown error.';
       await copyErrorMessage(errorMessage);
@@ -583,9 +613,9 @@ export default function TrpgUploadButton() {
                                   onClick={() => selection.imageIndex === imageIndex && setCastSelections((current) => current.map((entry) => entry.pcName === speaker ? { ...entry, imageIndex: null } : entry))}
                                   onDoubleClick={() => setCastSelections((current) => current.map((entry) => entry.pcName === speaker ? { ...entry, imageIndex } : entry))}
                                   className={`aspect-square rounded-[0.14rem] border bg-cover bg-top bg-no-repeat ${selection.imageIndex === imageIndex ? 'border-[var(--atr-accent)] ring-1 ring-[var(--atr-accent)]' : 'border-[var(--atr-line)]'}`}
-                                  style={{ backgroundImage: `url("${source}")` }}
+                                  style={{ backgroundImage: `url("${localImagePreviews[source] ?? source}")` }}
                                   aria-label={`${speaker} 아이콘으로 HTML 이미지 ${imageIndex + 1} 선택`}
-                                  onMouseEnter={() => setHoveredImageSource(source)}
+                                  onMouseEnter={() => setHoveredImageSource(localImagePreviews[source] ?? source)}
                                   onMouseLeave={() => setHoveredImageSource(null)}
                                 />
                               ))}
