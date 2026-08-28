@@ -13,6 +13,7 @@ type Props = {
   gmName?: string;
   cast?: TrpgCastEntry[];
   mainChannels?: string[];
+  whisperChannels?: string[];
 };
 
 type LogEntry = {
@@ -55,7 +56,15 @@ function detectFormat(html: string): 'icecandy-roll20' | 'roll20' | 'ccfolia' | 
   return 'ccfolia';
 }
 
-function parseCcaEntries(html: string, avatarMap: Record<string, string>): LogEntry[] {
+function normalizeChannel(value: string | null | undefined): string {
+  return (value ?? '').trim().toLocaleLowerCase();
+}
+
+function getCcaTabName(node: Element): string {
+  return normalizeChannel(node.closest('details.fold')?.querySelector('summary')?.textContent);
+}
+
+function parseCcaEntries(html: string, avatarMap: Record<string, string>, whisperChannels: string[]): LogEntry[] {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<html><body>${html}</body></html>`, 'text/html');
   const compressedRows = Array.from(doc.querySelectorAll<HTMLElement>('div.r.row'));
@@ -64,6 +73,8 @@ function parseCcaEntries(html: string, avatarMap: Record<string, string>): LogEn
       .map((row, index): LogEntry | null => {
         const copy = row.querySelector<HTMLElement>('.c');
         const narratorText = row.querySelector<HTMLElement>('.nt');
+        const tabName = getCcaTabName(row);
+        const isWhisper = whisperChannels.includes(tabName);
         if (!copy && !narratorText) return null;
 
         if (narratorText) {
@@ -75,7 +86,8 @@ function parseCcaEntries(html: string, avatarMap: Record<string, string>): LogEn
             avatarSrc: null,
             contentHtml,
             isAside: false,
-            isWhisper: false,
+            isWhisper,
+            whisperTo: tabName || undefined,
             isNarrator: true,
             kind: 'media',
           };
@@ -93,7 +105,8 @@ function parseCcaEntries(html: string, avatarMap: Record<string, string>): LogEn
           avatarSrc: row.querySelector('img')?.getAttribute('src') ?? avatarMap[speaker] ?? null,
           contentHtml,
           isAside: row.closest('details') !== null,
-          isWhisper: false,
+          isWhisper,
+          whisperTo: tabName || undefined,
           kind: 'chat',
         };
       })
@@ -106,6 +119,8 @@ function parseCcaEntries(html: string, avatarMap: Record<string, string>): LogEn
   for (let i = 0; i < articles.length; i++) {
     const article = articles[i];
     const isAside = article.closest('details.fold') !== null;
+    const tabName = getCcaTabName(article);
+    const isWhisper = whisperChannels.includes(tabName);
 
     if (article.classList.contains('narrator')) {
       const narratorText = article.querySelector('.narrator-text');
@@ -118,7 +133,8 @@ function parseCcaEntries(html: string, avatarMap: Record<string, string>): LogEn
         avatarSrc: null,
         contentHtml,
         isAside,
-        isWhisper: false,
+        isWhisper,
+        whisperTo: tabName || undefined,
         isNarrator: true,
         kind: 'media',
       });
@@ -135,7 +151,8 @@ function parseCcaEntries(html: string, avatarMap: Record<string, string>): LogEn
         avatarSrc: avatarMap[speaker] ?? null,
         contentHtml: sanitizeHtml(diceBox.outerHTML),
         isAside,
-        isWhisper: false,
+        isWhisper,
+        whisperTo: tabName || undefined,
         kind: 'chat',
       });
       continue;
@@ -154,7 +171,8 @@ function parseCcaEntries(html: string, avatarMap: Record<string, string>): LogEn
       avatarSrc,
       contentHtml,
       isAside,
-      isWhisper: false,
+      isWhisper,
+      whisperTo: tabName || undefined,
       kind: 'chat',
     });
   }
@@ -180,7 +198,7 @@ function buildAvatarMap(
   return map;
 }
 
-function parseCcfoliaEntries(html: string, avatarMap: Record<string, string>, mainChannels: string[]): LogEntry[] {
+function parseCcfoliaEntries(html: string, avatarMap: Record<string, string>, mainChannels: string[], whisperChannels: string[]): LogEntry[] {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<html><body>${html}</body></html>`, 'text/html');
   const paragraphs = Array.from(doc.querySelectorAll('body > p[style]'));
@@ -194,7 +212,8 @@ function parseCcfoliaEntries(html: string, avatarMap: Record<string, string>, ma
 
     const channelText = spans[0]?.textContent?.trim() ?? '';
     const channelMatch = channelText.match(/^\[\s*(.*?)\s*\]$/);
-    const channel = channelMatch?.[1]?.toLowerCase() ?? '';
+    const channel = normalizeChannel(channelMatch?.[1]);
+    const isWhisper = whisperChannels.includes(channel);
 
     const speaker = spans[1]?.textContent?.trim() ?? '';
     const contentSpan = spans[2];
@@ -209,7 +228,8 @@ function parseCcfoliaEntries(html: string, avatarMap: Record<string, string>, ma
       avatarSrc: avatarMap[speaker] ?? null,
       contentHtml,
       isAside: !mainChannels.includes(channel),
-      isWhisper: false,
+      isWhisper,
+      whisperTo: isWhisper ? channel : undefined,
       kind: 'chat',
     });
   }
@@ -420,7 +440,7 @@ function wrapPortraitLogImage(img: HTMLImageElement) {
   frame.appendChild(img);
 }
 
-export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc, gmName, cast, mainChannels = ['main'] }: Props) {
+export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc, gmName, cast, mainChannels = ['main'], whisperChannels = [] }: Props) {
   const [html, setHtml] = useState<string | null>(htmlContent ?? null);
   const [pageIndex, setPageIndex] = useState(0);
   const [showAside, setShowAside] = useState(true);
@@ -494,10 +514,12 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
     if (!html) return [];
     const format = detectFormat(html);
     if (format === 'icecandy-roll20') return parseIcecandyRoll20Entries(html);
-    if (format === 'cca') return parseCcaEntries(html, avatarMap);
-    if (format === 'ccfolia') return parseCcfoliaEntries(html, avatarMap, mainChannels);
+    const normalizedMainChannels = mainChannels.map(normalizeChannel);
+    const normalizedWhisperChannels = whisperChannels.map(normalizeChannel);
+    if (format === 'cca') return parseCcaEntries(html, avatarMap, normalizedWhisperChannels);
+    if (format === 'ccfolia') return parseCcfoliaEntries(html, avatarMap, normalizedMainChannels, normalizedWhisperChannels);
     return parseEntries(html, htmlUrl);
-  }, [html, avatarMap, mainChannels, htmlUrl]);
+  }, [html, avatarMap, mainChannels, whisperChannels, htmlUrl]);
   const visibleEntries = useMemo(
     () => (showAside ? entries : entries.filter((entry) => !entry.isAside)),
     [entries, showAside],

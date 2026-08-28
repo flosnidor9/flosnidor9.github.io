@@ -284,6 +284,7 @@ export default function TrpgUploadButton() {
   const [playType, setPlayType] = useState('');
   const [format, setFormat] = useState<TrpgUploadDraft['format']>('roll20');
   const [mainChannels, setMainChannels] = useState('main');
+  const [whisperChannels, setWhisperChannels] = useState('');
   const [locked, setLocked] = useState(false);
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
@@ -435,6 +436,7 @@ export default function TrpgUploadButton() {
     setPlayType('');
     setFormat('roll20');
     setMainChannels('main');
+    setWhisperChannels('');
     setLocked(false);
     setPassword('');
     setPasswordConfirm('');
@@ -463,7 +465,9 @@ export default function TrpgUploadButton() {
     const sourceHtml = roll20Source?.html ?? source.html;
     const draft: TrpgUploadDraft = {
       title: title.trim(), gmName: gmName.trim(), description: description.trim(), date,
-      tags: buildLogTags(rule, playerCount, playType, format), format, locked, mainChannels: format === 'roll20' ? [] : tagsFromInput(mainChannels),
+      tags: buildLogTags(rule, playerCount, playType, format), format, locked,
+      mainChannels: format === 'roll20' ? [] : tagsFromInput(mainChannels),
+      whisperChannels: format === 'roll20' ? [] : tagsFromInput(whisperChannels),
       sourceFileName: source.name, sourceHtml: locked ? await encryptTrpgLogContent(sourceHtml, password) : sourceHtml,
       mediaFiles: roll20Source?.mediaFiles,
       cast: castSelections.map(({ plName, pcName, imageIndex }) => ({
@@ -496,7 +500,7 @@ export default function TrpgUploadButton() {
   };
 
   const previewPath = source && title && date.match(/^\d{4}/)
-    ? buildTrpgUploadFiles({ title, gmName, description, date, tags: buildLogTags(rule, playerCount, playType, format), format, locked, mainChannels: format === 'roll20' ? [] : tagsFromInput(mainChannels), sourceFileName: source.name, sourceHtml: source.html, cast: castSelections.map(({ plName, pcName, imageIndex }) => ({ plName, pcName, iconSrc: imageIndex === null ? '' : imageSources[imageIndex] ?? '' })) }).folderPath
+    ? buildTrpgUploadFiles({ title, gmName, description, date, tags: buildLogTags(rule, playerCount, playType, format), format, locked, mainChannels: format === 'roll20' ? [] : tagsFromInput(mainChannels), whisperChannels: format === 'roll20' ? [] : tagsFromInput(whisperChannels), sourceFileName: source.name, sourceHtml: source.html, cast: castSelections.map(({ plName, pcName, imageIndex }) => ({ plName, pcName, iconSrc: imageIndex === null ? '' : imageSources[imageIndex] ?? '' })) }).folderPath
     : null;
 
   return (
@@ -561,7 +565,10 @@ export default function TrpgUploadButton() {
                   </span>
                 </Field>
               </div>
-              {format !== 'roll20' ? <Field label="메인 채널 (쉼표로 구분)"><input value={mainChannels} onChange={(event) => setMainChannels(event.target.value)} placeholder="main" /></Field> : null}
+              {format !== 'roll20' ? <>
+                <Field label="메인 채널 (쉼표로 구분)"><input value={mainChannels} onChange={(event) => setMainChannels(event.target.value)} placeholder="main" /></Field>
+                <Field label="귓말 채널 (쉼표로 구분)"><input value={whisperChannels} onChange={(event) => setWhisperChannels(event.target.value)} placeholder="비밀 탭, GM 귓말" /></Field>
+              </> : null}
               <div className="md:col-span-2">
               <Field label="공개 설정">
                 <div className="flex flex-wrap items-center gap-[0.5rem] md:flex-nowrap">

@@ -126,6 +126,7 @@ export default async function TrpgReadPage({ params }: Props) {
               gmName={post.gmName}
               cast={post.cast}
               mainChannels={post.mainChannels}
+              whisperChannels={post.whisperChannels}
             />
           ) : (
             <TrpgLogReader
@@ -134,6 +135,7 @@ export default async function TrpgReadPage({ params }: Props) {
               gmName={post.gmName}
               cast={post.cast}
               mainChannels={post.mainChannels}
+              whisperChannels={post.whisperChannels}
             />
           )}
         </div>

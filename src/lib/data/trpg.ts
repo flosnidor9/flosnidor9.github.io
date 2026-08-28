@@ -26,6 +26,7 @@ export type TrpgPostMeta = {
   sourceFormat: 'roll20' | 'ccfolia' | 'cca' | '';
   encrypted?: boolean;
   mainChannels?: string[];
+  whisperChannels?: string[];
 };
 
 export type TrpgArchivePostMeta = TrpgPostMeta & {
@@ -104,6 +105,7 @@ function parsePostMeta(folderSlug: string, fileName: string): TrpgPostMeta | nul
     sourceFormat: (['roll20', 'ccfolia', 'cca'].includes(ensureString(data.sourceFormat)) ? data.sourceFormat : '') as TrpgPostMeta['sourceFormat'],
     encrypted: !!data.locked,
     mainChannels: ensureArray(data.mainChannels).length > 0 ? ensureArray(data.mainChannels) : undefined,
+    whisperChannels: ensureArray(data.whisperChannels).length > 0 ? ensureArray(data.whisperChannels) : undefined,
   };
 }
 

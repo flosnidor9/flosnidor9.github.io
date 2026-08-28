@@ -28,6 +28,7 @@ export type TrpgUploadDraft = {
   format: 'roll20' | 'ccfolia' | 'cca';
   locked: boolean;
   mainChannels: string[];
+  whisperChannels: string[];
   sourceFileName: string;
   sourceHtml: string;
   mediaFiles?: TrpgUploadMediaFile[];
@@ -115,6 +116,7 @@ export function buildTrpgUploadFiles(draft: TrpgUploadDraft) {
       ])]
       : []),
     ...(draft.mainChannels.length > 0 ? ['mainChannels:', ...draft.mainChannels.map((channel) => `  - ${yamlValue(channel)}`)] : []),
+    ...(draft.whisperChannels.length > 0 ? ['whisperChannels:', ...draft.whisperChannels.map((channel) => `  - ${yamlValue(channel)}`)] : []),
     ...(draft.locked ? ['locked: true'] : []),
     '---',
     '',

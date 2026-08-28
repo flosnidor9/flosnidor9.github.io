@@ -19,6 +19,7 @@ type Props = {
   gmName?: string;
   cast?: TrpgCastEntry[];
   mainChannels?: string[];
+  whisperChannels?: string[];
 };
 
 function hexToBuffer(hex: string): Uint8Array<ArrayBuffer> {
@@ -54,7 +55,7 @@ async function decryptContent(data: EncryptedData, password: string): Promise<st
   return new TextDecoder().decode(decrypted);
 }
 
-export default function EncryptedTrpgLogReader({ encryptedUrl, fallbackAvatarSrc, gmName, cast, mainChannels }: Props) {
+export default function EncryptedTrpgLogReader({ encryptedUrl, fallbackAvatarSrc, gmName, cast, mainChannels, whisperChannels }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isEmpty, setIsEmpty] = useState(true);
   const [htmlContent, setHtmlContent] = useState<string | null>(null);
@@ -90,6 +91,7 @@ export default function EncryptedTrpgLogReader({ encryptedUrl, fallbackAvatarSrc
         gmName={gmName}
         cast={cast}
         mainChannels={mainChannels}
+        whisperChannels={whisperChannels}
       />
     );
   }
