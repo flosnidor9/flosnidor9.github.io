@@ -56,6 +56,28 @@ export function buildTrpgUploadFiles(draft: TrpgUploadDraft) {
   const postSlug = scenario;
   const folderPath = `${TRPG_UPLOAD_ROOT}/${year}/${scenario}`;
   const htmlFileName = `${postSlug}.source.html`;
+  const htmlParts = Array.from(
+    { length: Math.ceil(draft.sourceHtml.length / UPLOAD_TEXT_CHUNK_CHARACTERS) },
+    (_, index) => draft.sourceHtml.slice(index * UPLOAD_TEXT_CHUNK_CHARACTERS, (index + 1) * UPLOAD_TEXT_CHUNK_CHARACTERS),
+  );
+  const usesSourceManifest = htmlParts.length > 1;
+  const htmlManifestFileName = `${postSlug}.source.parts.json`;
+  const htmlPath = usesSourceManifest ? htmlManifestFileName : htmlFileName;
+  const sourceFiles: UploadFile[] = usesSourceManifest
+    ? [
+      ...htmlParts.map((content, index) => ({
+        path: `${folderPath}/${postSlug}.source.part-${String(index + 1).padStart(3, '0')}.html`,
+        content,
+      })),
+      {
+        path: `${folderPath}/${htmlManifestFileName}`,
+        content: JSON.stringify({
+          version: 1,
+          parts: htmlParts.map((_, index) => `${postSlug}.source.part-${String(index + 1).padStart(3, '0')}.html`),
+        }),
+      },
+    ]
+    : [{ path: `${folderPath}/${htmlFileName}`, content: draft.sourceHtml }];
   const castImageFiles: UploadFile[] = [];
   const cast = draft.cast.map((entry, index) => {
     const imageFile = dataImageFile(entry.iconSrc, index, folderPath);
@@ -73,7 +95,7 @@ export function buildTrpgUploadFiles(draft: TrpgUploadDraft) {
     ...(draft.gmName ? [`gmName: ${yamlValue(draft.gmName)}`] : []),
     'tags:',
     ...draft.tags.map((tag) => `  - ${yamlValue(tag)}`),
-    `htmlPath: ${yamlValue(htmlFileName)}`,
+    `htmlPath: ${yamlValue(htmlPath)}`,
     `sourceFormat: ${yamlValue(draft.format)}`,
     ...(cast.length > 0
       ? ['cast:', ...cast.flatMap((entry) => [
@@ -93,7 +115,7 @@ export function buildTrpgUploadFiles(draft: TrpgUploadDraft) {
     postSlug,
     passwordKey: `${year}/${scenario}/${postSlug}`,
     files: [
-      { path: `${folderPath}/${htmlFileName}`, content: draft.sourceHtml },
+      ...sourceFiles,
       { path: `${folderPath}/${postSlug}.md`, content: markdown },
       ...castImageFiles,
     ],
@@ -103,6 +125,9 @@ export function buildTrpgUploadFiles(draft: TrpgUploadDraft) {
 const GITHUB_API_ROOT = 'https://api.github.com';
 const DEFAULT_BRANCH = 'main';
 const UPLOAD_COMMIT_RETRIES = 3;
+// Keeps the UTF-8 JSON body far below GitHub's REST request-size ceiling,
+// including text with multi-byte characters.
+const UPLOAD_TEXT_CHUNK_CHARACTERS = 128 * 1024;
 
 function encodeUtf8Base64(value: string) {
   const bytes = new TextEncoder().encode(value);
@@ -287,7 +312,10 @@ async function createAtomicUploadCommit(token: string, files: UploadFile[], mess
   const parent = (await parentResponse.json().catch(() => null)) as { tree?: { sha?: string } } | null;
   if (!parentResponse.ok || !parent?.tree?.sha) throw new Error('업로드 저장소의 기존 트리를 읽지 못했습니다.');
 
-  const tree = await Promise.all(files.map(async (file) => {
+  const tree: Array<{ path: string; mode: string; type: string; sha: string }> = [];
+  // A large log has many small parts. Keep these requests serial so GitHub
+  // never treats the upload as a burst of concurrent API traffic.
+  for (const file of files) {
     // GitHub's blob endpoint accepts UTF-8 text directly. Sending an HTML log
     // as base64 expands it by about a third, which makes otherwise supported
     // logs exceed the API request-size limit. Keep binary data images base64.
@@ -302,8 +330,8 @@ async function createAtomicUploadCommit(token: string, files: UploadFile[], mess
     if (!blobResponse.ok || !blob?.sha) {
       throw new Error(await githubFailureMessage(failureResponse, '로그 파일을 만들지 못했습니다. 토큰의 Trpg-Logs 저장소 Contents 쓰기 권한을 확인해 주세요.'));
     }
-    return { path: file.path, mode: '100644', type: 'blob', sha: blob.sha };
-  }));
+    tree.push({ path: file.path, mode: '100644', type: 'blob', sha: blob.sha });
+  }
 
   const treeResponse = await fetch(githubApiUrl(TRPG_UPLOAD_REPOSITORY, '/git/trees'), {
     method: 'POST', headers, body: JSON.stringify({ base_tree: parent.tree.sha, tree }),

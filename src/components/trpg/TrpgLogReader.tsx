@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { TrpgCastEntry } from '@/lib/data/trpg';
 import { expandCcaArchive } from '@/lib/ccaArchive';
+import { fetchTrpgSource } from '@/lib/trpgSource';
 
 type Props = {
   htmlUrl?: string;
@@ -509,8 +510,7 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
 
     const controller = new AbortController();
 
-    fetch(htmlUrl, { signal: controller.signal })
-      .then((response) => response.text())
+    fetchTrpgSource(htmlUrl, controller.signal)
       .then((text) => expandCcaArchive(text))
       .then((text) => {
         setHtml(text);
