@@ -4,11 +4,11 @@ import { ChangeEvent, type ReactNode, useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { subscribeToPlays, type PlayEntry } from '@/lib/data/firebasePlays';
-import { buildTrpgUploadFiles, commitTrpgUpload, encryptTrpgLogContent, resolveTrpgUploadTitle, saveTrpgPassword, type TrpgUploadDraft } from '@/lib/trpgUpload';
+import { buildTrpgUploadFiles, commitTrpgUploadAtomically, encryptTrpgLogContent, resolveTrpgUploadTitle, saveTrpgPassword, triggerTrpgDeployment, type TrpgUploadDraft } from '@/lib/trpgUpload';
 import { expandCcaArchive, isCompressedCcaArchive } from '@/lib/ccaArchive';
 
 const TOKEN_STORAGE_KEY = 'after-the-roll-github-token';
-const MASTER_KEY_STORAGE_KEY = 'after-the-roll-master-key';
+const LEGACY_MASTER_KEY_STORAGE_KEY = 'after-the-roll-master-key';
 const CALENDAR_ID = '848efa2587af083c615b7c3581e818075a6489d1d0ce70c4ac3ef60880d0fbae%40group.calendar.google.com';
 const CALENDAR_TIME_MIN = '2000-01-01T00:00:00+09:00';
 const FORMAT_OPTIONS = [
@@ -68,6 +68,19 @@ function calendarEventDate(event: CalendarEvent) {
   const value = event.start?.date ?? event.start?.dateTime;
   const match = value?.match(/^\d{4}-\d{2}-\d{2}/);
   return match ? match[0].replaceAll('-', '.') : null;
+}
+
+const DATE_OR_RANGE_PATTERN = /^\d{4}\.\d{2}\.\d{2}(\s*~\s*\d{4}\.\d{2}\.\d{2})?$/;
+
+function isValidDateOrRange(value: string) {
+  if (!DATE_OR_RANGE_PATTERN.test(value)) return false;
+  const dates = value.split('~').map((date) => date.trim());
+  const isValidDate = (date: string) => {
+    const [year, month, day] = date.split('.').map(Number);
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+    return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
+  };
+  return dates.every(isValidDate) && (dates.length === 1 || dates[0] <= dates[1]);
 }
 
 function formatDateRange(startDate: string, endDate: string) {
@@ -135,7 +148,7 @@ export default function TrpgUploadButton() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [token, setToken] = useState('');
-  const [rememberToken, setRememberToken] = useState(true);
+  const [rememberToken, setRememberToken] = useState(false);
   const [source, setSource] = useState<{ name: string; html: string } | null>(null);
   const [speakers, setSpeakers] = useState<string[]>([]);
   const [imageSources, setImageSources] = useState<string[]>([]);
@@ -165,9 +178,8 @@ export default function TrpgUploadButton() {
 
   useEffect(() => {
     const savedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
-    const savedMasterKey = window.localStorage.getItem(MASTER_KEY_STORAGE_KEY);
+    window.localStorage.removeItem(LEGACY_MASTER_KEY_STORAGE_KEY);
     if (savedToken) setToken(savedToken);
-    if (savedMasterKey) setMasterKey(savedMasterKey);
   }, []);
 
   useEffect(() => subscribeToPlays(setPlays), []);
@@ -265,7 +277,7 @@ export default function TrpgUploadButton() {
   };
 
   const closeDialog = () => {
-    setMasterKey(window.localStorage.getItem(MASTER_KEY_STORAGE_KEY) ?? '');
+    setMasterKey('');
     setPassword('');
     setPasswordConfirm('');
     setOpen(false);
@@ -299,7 +311,7 @@ export default function TrpgUploadButton() {
   };
 
   const submit = async () => {
-    if (!source || !title.trim() || !date.match(/^\d{4}\.\d{2}\.\d{2}$/)) {
+    if (!source || !title.trim() || !isValidDateOrRange(date)) {
       setStatus('원본 HTML, 제목, 날짜를 확인해 주세요.');
       return;
     }
@@ -328,18 +340,17 @@ export default function TrpgUploadButton() {
     try {
       if (rememberToken) {
         window.localStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
-        if (locked) window.localStorage.setItem(MASTER_KEY_STORAGE_KEY, masterKey);
       } else {
         window.localStorage.removeItem(TOKEN_STORAGE_KEY);
-        window.localStorage.removeItem(MASTER_KEY_STORAGE_KEY);
       }
       const resolvedDraft = await resolveTrpgUploadTitle(accessToken, draft);
-      const folder = await commitTrpgUpload(accessToken, resolvedDraft);
+      const folder = await commitTrpgUploadAtomically(accessToken, resolvedDraft);
       if (locked) {
         setStatus('비밀번호 목록을 안전하게 갱신하는 중…');
-        const { postSlug } = buildTrpgUploadFiles(resolvedDraft);
-        await saveTrpgPassword(accessToken, masterKey, postSlug, password);
+        const { passwordKey } = buildTrpgUploadFiles(resolvedDraft);
+        await saveTrpgPassword(accessToken, masterKey, passwordKey, password);
       }
+      await triggerTrpgDeployment(accessToken);
       setStatus(`${folder}에 저장했습니다. 저장소 동기화 배포 후 로그 목록에 표시됩니다.`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Upload failed with an unknown error.';

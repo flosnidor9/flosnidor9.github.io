@@ -91,6 +91,7 @@ export function buildTrpgUploadFiles(draft: TrpgUploadDraft) {
   return {
     folderPath,
     postSlug,
+    passwordKey: `${year}/${scenario}/${postSlug}`,
     files: [
       { path: `${folderPath}/${htmlFileName}`, content: draft.sourceHtml },
       { path: `${folderPath}/${postSlug}.md`, content: markdown },
@@ -98,6 +99,10 @@ export function buildTrpgUploadFiles(draft: TrpgUploadDraft) {
     ],
   };
 }
+
+const GITHUB_API_ROOT = 'https://api.github.com';
+const DEFAULT_BRANCH = 'main';
+const UPLOAD_COMMIT_RETRIES = 3;
 
 function encodeUtf8Base64(value: string) {
   const bytes = new TextEncoder().encode(value);
@@ -161,7 +166,15 @@ export async function encryptTrpgLogContent(content: string, password: string) {
 }
 
 function githubContentsUrl(repository: string, path: string) {
-  return `https://api.github.com/repos/${repository}/contents/${encodeURIComponent(path).replace(/%2F/g, '/')}`;
+  return `${GITHUB_API_ROOT}/repos/${repository}/contents/${encodeURIComponent(path).replace(/%2F/g, '/')}`;
+}
+
+function githubApiUrl(repository: string, path: string) {
+  return `${GITHUB_API_ROOT}/repos/${repository}${path}`;
+}
+
+function githubHeaders(token: string) {
+  return { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}` };
 }
 
 async function getExistingFileSha(token: string, path: string) {
@@ -196,7 +209,7 @@ export async function resolveTrpgUploadTitle(token: string, draft: TrpgUploadDra
   }
 }
 
-export async function saveTrpgPassword(token: string, masterKey: string, postSlug: string, password: string) {
+export async function saveTrpgPassword(token: string, masterKey: string, passwordKey: string, password: string) {
   const response = await fetch(githubContentsUrl(TRPG_SITE_REPOSITORY, 'passwords.enc.json'), {
     headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}` },
   });
@@ -211,12 +224,12 @@ export async function saveTrpgPassword(token: string, masterKey: string, postSlu
   } catch {
     throw new Error('마스터키가 올바르지 않습니다.');
   }
-  passwords[postSlug] = password;
+  passwords[passwordKey] = password;
   const content = JSON.stringify(await encryptWithMasterKey(JSON.stringify(passwords, null, 2), masterKey), null, 2);
   const saveResponse = await fetch(githubContentsUrl(TRPG_SITE_REPOSITORY, 'passwords.enc.json'), {
     method: 'PUT',
     headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: `Add password for TRPG log: ${postSlug}`, content: encodeUtf8Base64(content), sha: file.sha }),
+    body: JSON.stringify({ message: `Add password for TRPG log: ${passwordKey}`, content: encodeUtf8Base64(content), sha: file.sha }),
   });
   if (!saveResponse.ok) throw new Error('암호화된 비밀번호 목록을 저장하지 못했습니다.');
 }
@@ -250,4 +263,68 @@ export async function commitTrpgUpload(token: string, draft: TrpgUploadDraft) {
   }
 
   return upload.folderPath;
+}
+
+async function ensureAtomicUploadPathsAreAvailable(token: string, files: UploadFile[]) {
+  const existing = await Promise.all(files.map((file) => getExistingFileSha(token, file.path)));
+  if (existing.some(Boolean)) throw new Error('같은 이름의 로그가 이미 있습니다. 제목을 바꿔 다시 올려 주세요.');
+}
+
+async function createAtomicUploadCommit(token: string, files: UploadFile[], message: string) {
+  const headers = { ...githubHeaders(token), 'Content-Type': 'application/json' };
+  const refResponse = await fetch(githubApiUrl(TRPG_UPLOAD_REPOSITORY, `/git/ref/heads/${DEFAULT_BRANCH}`), { headers });
+  const ref = (await refResponse.json().catch(() => null)) as { object?: { sha?: string } } | null;
+  const parentSha = ref?.object?.sha;
+  if (!refResponse.ok || !parentSha) throw new Error('업로드 저장소의 기본 브랜치를 읽지 못했습니다. 토큰 권한을 확인해 주세요.');
+
+  const parentResponse = await fetch(githubApiUrl(TRPG_UPLOAD_REPOSITORY, `/git/commits/${parentSha}`), { headers });
+  const parent = (await parentResponse.json().catch(() => null)) as { tree?: { sha?: string } } | null;
+  if (!parentResponse.ok || !parent?.tree?.sha) throw new Error('업로드 저장소의 기존 트리를 읽지 못했습니다.');
+
+  const tree = await Promise.all(files.map(async (file) => {
+    const blobResponse = await fetch(githubApiUrl(TRPG_UPLOAD_REPOSITORY, '/git/blobs'), {
+      method: 'POST', headers,
+      body: JSON.stringify({ content: file.isBase64 ? file.content.replace(/\s/g, '') : encodeUtf8Base64(file.content), encoding: 'base64' }),
+    });
+    const blob = (await blobResponse.json().catch(() => null)) as { sha?: string } | null;
+    if (!blobResponse.ok || !blob?.sha) throw new Error('로그 파일을 만들지 못했습니다. 파일 크기를 확인해 주세요.');
+    return { path: file.path, mode: '100644', type: 'blob', sha: blob.sha };
+  }));
+
+  const treeResponse = await fetch(githubApiUrl(TRPG_UPLOAD_REPOSITORY, '/git/trees'), {
+    method: 'POST', headers, body: JSON.stringify({ base_tree: parent.tree.sha, tree }),
+  });
+  const nextTree = (await treeResponse.json().catch(() => null)) as { sha?: string } | null;
+  if (!treeResponse.ok || !nextTree?.sha) throw new Error('로그 파일 트리를 만들지 못했습니다.');
+
+  const commitResponse = await fetch(githubApiUrl(TRPG_UPLOAD_REPOSITORY, '/git/commits'), {
+    method: 'POST', headers, body: JSON.stringify({ message, tree: nextTree.sha, parents: [parentSha] }),
+  });
+  const commit = (await commitResponse.json().catch(() => null)) as { sha?: string } | null;
+  if (!commitResponse.ok || !commit?.sha) throw new Error('로그 커밋을 만들지 못했습니다.');
+
+  const updateResponse = await fetch(githubApiUrl(TRPG_UPLOAD_REPOSITORY, `/git/refs/heads/${DEFAULT_BRANCH}`), {
+    method: 'PATCH', headers, body: JSON.stringify({ sha: commit.sha, force: false }),
+  });
+  if (updateResponse.status === 422) return false;
+  if (!updateResponse.ok) throw new Error('로그 커밋을 기본 브랜치에 반영하지 못했습니다.');
+  return true;
+}
+
+export async function commitTrpgUploadAtomically(token: string, draft: TrpgUploadDraft) {
+  const upload = buildTrpgUploadFiles(draft);
+  for (let attempt = 0; attempt < UPLOAD_COMMIT_RETRIES; attempt += 1) {
+    await ensureAtomicUploadPathsAreAvailable(token, upload.files);
+    if (await createAtomicUploadCommit(token, upload.files, `Add TRPG log: ${draft.title}`)) return upload.folderPath;
+  }
+  throw new Error('다른 업로드와 충돌했습니다. 잠시 후 다시 시도해 주세요.');
+}
+
+export async function triggerTrpgDeployment(token: string) {
+  const response = await fetch(githubApiUrl(TRPG_SITE_REPOSITORY, '/dispatches'), {
+    method: 'POST',
+    headers: { ...githubHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event_type: 'trpg-logs-updated' }),
+  });
+  if (!response.ok) throw new Error('로그는 저장됐지만 배포를 시작하지 못했습니다. 메인 저장소 권한을 확인해 주세요.');
 }

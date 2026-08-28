@@ -95,7 +95,8 @@ walkDir(TRPG_SRC, (filePath) => {
     return;
   }
 
-  const password = passwords[postSlug];
+  const passwordKey = `${folderRel.replace(/\\/g, '/')}/${postSlug}`;
+  const password = passwords[passwordKey] ?? passwords[postSlug];
   if (!password) {
     console.warn(`⚠  passwords.json 에 "${postSlug}" 없음 — 건너뜀`);
     errorCount++;
