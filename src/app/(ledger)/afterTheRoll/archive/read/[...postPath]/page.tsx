@@ -12,6 +12,7 @@ import TrpgCastPanel from '@/components/trpg/TrpgCastPanel';
 import { SITE_ORIGIN } from '@/lib/config/site';
 
 const EMPTY_EXPORT_POST_PATH = ['__empty__', '__empty__'];
+const TAG_PREFIX = /^[^:]+:\s*/;
 
 type Props = {
   params: Promise<{ postPath: string[] }>;
@@ -105,13 +106,13 @@ export default async function TrpgReadPage({ params }: Props) {
             <TrpgCastPanel gmName={post.gmName} gmIconSrc={post.gmIconSrc} cast={post.cast} />
           ) : null}
 
-          <div className="mt-[1rem] flex flex-wrap gap-[0.5rem]">
+          <div className="mt-[1rem] flex flex-wrap items-start gap-[0.5rem]">
             {post.tags.map((tag) => (
               <span
                 key={tag}
-                className="afterroll-meta rounded-[0.2rem] border border-[var(--atr-line)] bg-[rgba(88, 125, 163,0.055)] px-[0.7rem] py-[0.24rem] text-[0.78rem] text-[var(--ledger-muted)]"
+                className="afterroll-meta rounded-full border border-[var(--atr-line)] bg-[rgba(88, 125, 163,0.055)] px-[0.7rem] py-[0.14rem] text-[0.78rem] text-[var(--ledger-muted)]"
               >
-                {tag}
+                {tag.replace(TAG_PREFIX, '')}
               </span>
             ))}
           </div>

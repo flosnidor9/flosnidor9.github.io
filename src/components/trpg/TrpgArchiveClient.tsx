@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { LockClosedIcon } from '@heroicons/react/24/solid';
 import type { TrpgArchivePostMeta } from '@/lib/data/trpg';
 import { toGalleryPath } from '@/lib/galleryPath';
 import TrpgUploadButton from '@/components/trpg/TrpgUploadButton';
@@ -20,6 +21,12 @@ const TAG_FILTER_GROUPS = [
   { label: '유형', prefix: '유형: ' },
   { label: '플랫폼', prefix: '플랫폼: ' },
 ] as const;
+
+function tagLabel(tag: string) {
+  return TAG_FILTER_GROUPS.find(({ prefix }) => tag.startsWith(prefix))
+    ? tag.replace(/^[^:]+:\s*/, '')
+    : tag;
+}
 
 export default function TrpgArchiveClient({ posts, title, backHref, backLabel }: Props) {
   const [activeTags, setActiveTags] = useState<string[]>([]);
@@ -156,7 +163,9 @@ export default function TrpgArchiveClient({ posts, title, backHref, backLabel }:
                               <p className="afterroll-title text-[1.34rem] leading-[1.1] text-[var(--ledger-ink)] md:text-[1.55rem]">
                                 {post.title}
                                 {post.encrypted && (
-                                  <span className="ml-[0.4rem] align-middle text-[0.72rem] opacity-50" aria-label="비공개">비공개</span>
+                                  <span className="ml-[0.4rem] inline-flex align-middle text-[0.82rem] text-[var(--ledger-soft)]" aria-label="비공개 로그" title="비공개 로그">
+                                    <LockClosedIcon aria-hidden="true" className="size-[0.82rem]" />
+                                  </span>
                                 )}
                               </p>
                               {post.date ? (
@@ -171,19 +180,16 @@ export default function TrpgArchiveClient({ posts, title, backHref, backLabel }:
                             ) : null}
                           </div>
 
-                          <span className="ledger-stamp afterroll-meta shrink-0 self-start rounded-[0.12rem] px-[0.78rem] py-[0.34rem] text-[0.78rem] uppercase tracking-[0.08em]">
-                            {post.scenarioTitle}
-                          </span>
                         </div>
 
                         {post.tags.length > 0 ? (
-                          <div className="relative z-[1] mt-[0.9rem] flex flex-wrap gap-[0.45rem]">
+                          <div className="relative z-[1] mt-[0.9rem] flex flex-wrap items-start gap-[0.45rem]">
                             {post.tags.map((tag) => (
                               <span
                                 key={`${post.fullSlug}-${tag}`}
-                                className="afterroll-meta bg-[rgba(255,250,239,0.78)] px-[0.55rem] py-[0.18rem] text-[0.8rem] uppercase tracking-[0.08em] text-[var(--ledger-muted)]"
+                                className="afterroll-meta rounded-full border border-[var(--atr-line)] bg-[rgba(255,250,239,0.78)] px-[0.68rem] py-[0.14rem] text-[0.8rem] text-[var(--ledger-muted)]"
                               >
-                                {tag}
+                                {tagLabel(tag)}
                               </span>
                             ))}
                           </div>

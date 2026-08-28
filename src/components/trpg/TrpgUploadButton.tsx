@@ -50,7 +50,7 @@ type CalendarEvent = {
   start?: { date?: string; dateTime?: string };
 };
 
-type CalendarMatch = { title: string; latestDate: string };
+type CalendarMatch = { title: string; startDate: string; endDate: string };
 
 function dateToday() {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date()).replaceAll('-', '.');
@@ -68,6 +68,10 @@ function calendarEventDate(event: CalendarEvent) {
   const value = event.start?.date ?? event.start?.dateTime;
   const match = value?.match(/^\d{4}-\d{2}-\d{2}/);
   return match ? match[0].replaceAll('-', '.') : null;
+}
+
+function formatDateRange(startDate: string, endDate: string) {
+  return startDate === endDate ? startDate : `${startDate} ~ ${endDate}`;
 }
 
 function buildLogTags(rule: string, playerCount: string, type: string, format: TrpgUploadDraft['format']) {
@@ -138,7 +142,7 @@ export default function TrpgUploadButton() {
   const [castSelections, setCastSelections] = useState<CastSelection[]>([]);
   const [hoveredImageSource, setHoveredImageSource] = useState<string | null>(null);
   const [title, setTitle] = useState('');
-  const [recommendedDate, setRecommendedDate] = useState<string | null>(null);
+  const [recommendedDateRange, setRecommendedDateRange] = useState<string | null>(null);
   const [calendarMatches, setCalendarMatches] = useState<CalendarMatch[]>([]);
   const [calendarSearchState, setCalendarSearchState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [gmName, setGmName] = useState('');
@@ -171,7 +175,7 @@ export default function TrpgUploadButton() {
   useEffect(() => {
     const normalizedTitle = normalizeTitle(title);
     if (!open || !normalizedTitle) {
-      setRecommendedDate(null);
+      setRecommendedDateRange(null);
       setCalendarMatches([]);
       setCalendarSearchState('idle');
       return;
@@ -179,7 +183,7 @@ export default function TrpgUploadButton() {
 
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_API_KEY;
     if (!apiKey) {
-      setRecommendedDate(null);
+      setRecommendedDateRange(null);
       setCalendarMatches([]);
       setCalendarSearchState('error');
       return;
@@ -199,20 +203,28 @@ export default function TrpgUploadButton() {
           const eventDate = calendarEventDate(event);
           if (!eventTitle || !eventDate || !normalizeTitle(eventTitle).includes(normalizedTitle)) continue;
           const current = matchesByTitle.get(eventTitle);
-          if (!current || eventDate > current.latestDate) matchesByTitle.set(eventTitle, { title: eventTitle, latestDate: eventDate });
+          if (!current) {
+            matchesByTitle.set(eventTitle, { title: eventTitle, startDate: eventDate, endDate: eventDate });
+          } else {
+            matchesByTitle.set(eventTitle, {
+              ...current,
+              startDate: eventDate < current.startDate ? eventDate : current.startDate,
+              endDate: eventDate > current.endDate ? eventDate : current.endDate,
+            });
+          }
         }
         const matches = [...matchesByTitle.values()]
-          .sort((a, b) => b.latestDate.localeCompare(a.latestDate) || a.title.localeCompare(b.title, 'ko'))
+          .sort((a, b) => b.endDate.localeCompare(a.endDate) || a.title.localeCompare(b.title, 'ko'))
           .slice(0, 6);
-        const latestDate = matches.find((match) => normalizeTitle(match.title) === normalizedTitle)?.latestDate ?? null;
+        const exactMatch = matches.find((match) => normalizeTitle(match.title) === normalizedTitle);
         if (!cancelled) {
-          setRecommendedDate(latestDate);
+          setRecommendedDateRange(exactMatch ? formatDateRange(exactMatch.startDate, exactMatch.endDate) : null);
           setCalendarMatches(matches);
           setCalendarSearchState('idle');
         }
       } catch {
         if (!cancelled) {
-          setRecommendedDate(null);
+          setRecommendedDateRange(null);
           setCalendarMatches([]);
           setCalendarSearchState('error');
         }
@@ -266,7 +278,7 @@ export default function TrpgUploadButton() {
     setCastSelections([]);
     setHoveredImageSource(null);
     setTitle('');
-    setRecommendedDate(null);
+    setRecommendedDateRange(null);
     setCalendarMatches([]);
     setCalendarSearchState('idle');
     setGmName('');
@@ -372,18 +384,18 @@ export default function TrpgUploadButton() {
                       <button
                         key={match.title}
                         type="button"
-                        onClick={() => { setTitle(match.title); setDate(match.latestDate); }}
+                        onClick={() => { setTitle(match.title); setDate(formatDateRange(match.startDate, match.endDate)); }}
                         className="flex w-full items-center justify-between gap-[0.5rem] border-b border-[var(--atr-line)] px-[0.42rem] py-[0.3rem] text-left last:border-b-0 hover:bg-[rgba(88,125,163,0.1)]"
                       >
                         <span className="min-w-0 truncate text-[0.75rem] text-[var(--ledger-ink)]">{match.title}</span>
-                        <span className="afterroll-meta shrink-0 text-[0.66rem] text-[var(--ledger-soft)]">최근 {match.latestDate}</span>
+                        <span className="afterroll-meta shrink-0 text-[0.66rem] text-[var(--ledger-soft)]">{formatDateRange(match.startDate, match.endDate)}</span>
                       </button>
                     ))}
                   </div>
                 ) : null}
-                {recommendedDate ? <p className="afterroll-meta mt-[0.35rem] text-[0.68rem] text-[var(--atr-accent)]">같은 이름의 최근 일정: {recommendedDate}</p> : null}
+                {recommendedDateRange ? <p className="afterroll-meta mt-[0.35rem] text-[0.68rem] text-[var(--atr-accent)]">같은 이름의 일정: {recommendedDateRange}</p> : null}
               </Field>
-              <Field label="날짜 (YYYY.MM.DD)"><input value={date} onChange={(event) => setDate(event.target.value)} placeholder="2026.08.28" /></Field>
+              <Field label="날짜 (YYYY.MM.DD ~ YYYY.MM.DD)"><input value={date} onChange={(event) => setDate(event.target.value)} placeholder="2026.08.28 ~ 2026.08.30" /></Field>
               <div className="md:col-span-2 grid gap-[0.65rem] md:grid-cols-2">
                 <TagChipField label="룰" options={rules} value={rule} onChange={setRule} />
                 <TagChipField label="인원수" options={playerCounts} value={playerCount} onChange={setPlayerCount} />
