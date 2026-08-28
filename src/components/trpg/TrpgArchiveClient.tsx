@@ -14,6 +14,13 @@ type Props = {
   backLabel?: string;
 };
 
+const TAG_FILTER_GROUPS = [
+  { label: '룰', prefix: '룰: ' },
+  { label: '인원수', prefix: '인원수: ' },
+  { label: '유형', prefix: '유형: ' },
+  { label: '플랫폼', prefix: '플랫폼: ' },
+] as const;
+
 export default function TrpgArchiveClient({ posts, title, backHref, backLabel }: Props) {
   const [activeTags, setActiveTags] = useState<string[]>([]);
 
@@ -28,7 +35,7 @@ export default function TrpgArchiveClient({ posts, title, backHref, backLabel }:
   const filteredPosts =
     activeTags.length === 0
       ? posts
-      : posts.filter((post) => activeTags.some((tag) => post.tags.includes(tag)));
+      : posts.filter((post) => activeTags.every((tag) => post.tags.includes(tag)));
   const groupedPosts = useMemo(() => {
     const groups = new Map<string, TrpgArchivePostMeta[]>();
 
@@ -88,21 +95,31 @@ export default function TrpgArchiveClient({ posts, title, backHref, backLabel }:
               >
                 전체
               </motion.button>
-              {tags.map((tag) => {
-                const isActive = activeTags.includes(tag);
-
+              {TAG_FILTER_GROUPS.map((group) => {
+                const groupTags = tags.filter((tag) => tag.startsWith(group.prefix));
+                if (groupTags.length === 0) return null;
                 return (
-                  <motion.button
-                    key={tag}
-                    type="button"
-                    onClick={() => toggleTag(tag)}
-                    whileTap={{ scale: 0.98 }}
-                    className={`afterroll-meta rounded-[0.08rem] px-[0.65rem] py-[0.42rem] text-left text-[0.78rem] transition-colors ${
-                      isActive ? 'ledger-index-tab-active' : 'ledger-index-tab'
-                    }`}
-                  >
-                    {tag}
-                  </motion.button>
+                  <div key={group.prefix} className="mt-[0.45rem]">
+                    <p className="afterroll-meta mb-[0.25rem] text-[0.66rem] tracking-[0.08em] text-[var(--ledger-soft)]">{group.label}</p>
+                    <div className="flex flex-wrap gap-[0.3rem] md:flex-col">
+                      {groupTags.map((tag) => {
+                        const isActive = activeTags.includes(tag);
+                        return (
+                          <motion.button
+                            key={tag}
+                            type="button"
+                            onClick={() => toggleTag(tag)}
+                            whileTap={{ scale: 0.98 }}
+                            className={`afterroll-meta rounded-[0.08rem] px-[0.65rem] py-[0.42rem] text-left text-[0.78rem] transition-colors ${
+                              isActive ? 'ledger-index-tab-active' : 'ledger-index-tab'
+                            }`}
+                          >
+                            {tag.slice(group.prefix.length)}
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
             </div>

@@ -3,6 +3,7 @@
 import { ChangeEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
+import { subscribeToPlays, type PlayEntry } from '@/lib/data/firebasePlays';
 import { buildTrpgUploadFiles, commitTrpgUpload, encryptTrpgLogContent, resolveTrpgUploadTitle, saveTrpgPassword, type TrpgUploadDraft } from '@/lib/trpgUpload';
 import { expandCcaArchive, isCompressedCcaArchive } from '@/lib/ccaArchive';
 
@@ -45,6 +46,16 @@ function calendarEventDate(event: CalendarEvent) {
   const value = event.start?.date ?? event.start?.dateTime;
   const match = value?.match(/^\d{4}-\d{2}-\d{2}/);
   return match ? match[0].replaceAll('-', '.') : null;
+}
+
+function buildLogTags(rule: string, playerCount: string, type: string, format: TrpgUploadDraft['format']) {
+  const platform = FORMAT_OPTIONS.find((option) => option.value === format)?.label ?? format;
+  return [
+    ...(rule ? [`룰: ${rule}`] : []),
+    ...(playerCount ? [`인원수: ${playerCount}`] : []),
+    ...(type ? [`유형: ${type}`] : []),
+    `플랫폼: ${platform}`,
+  ];
 }
 
 function detectUploadFormat(html: string): TrpgUploadDraft['format'] {
@@ -111,7 +122,10 @@ export default function TrpgUploadButton() {
   const [gmName, setGmName] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(dateToday);
-  const [tags, setTags] = useState('');
+  const [plays, setPlays] = useState<PlayEntry[]>([]);
+  const [rule, setRule] = useState('');
+  const [playerCount, setPlayerCount] = useState('');
+  const [playType, setPlayType] = useState('');
   const [format, setFormat] = useState<TrpgUploadDraft['format']>('roll20');
   const [mainChannels, setMainChannels] = useState('main');
   const [locked, setLocked] = useState(false);
@@ -128,6 +142,8 @@ export default function TrpgUploadButton() {
     if (savedToken) setToken(savedToken);
     if (savedMasterKey) setMasterKey(savedMasterKey);
   }, []);
+
+  useEffect(() => subscribeToPlays(setPlays), []);
 
   useEffect(() => {
     const normalizedTitle = normalizeTitle(title);
@@ -193,6 +209,10 @@ export default function TrpgUploadButton() {
     generatedDescriptionRef.current = generatedDescription;
   };
 
+  const rules = Array.from(new Set(plays.map((play) => play.rule.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ko'));
+  const playerCounts = Array.from(new Set(plays.map((play) => play.playerCount.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ko'));
+  const playTypes = Array.from(new Set(plays.map((play) => play.type))).sort();
+
   const readSource = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -227,7 +247,9 @@ export default function TrpgUploadButton() {
     setGmName('');
     setDescription('');
     setDate(dateToday());
-    setTags('');
+    setRule('');
+    setPlayerCount('');
+    setPlayType('');
     setFormat('roll20');
     setMainChannels('main');
     setLocked(false);
@@ -255,7 +277,7 @@ export default function TrpgUploadButton() {
 
     const draft: TrpgUploadDraft = {
       title: title.trim(), gmName: gmName.trim(), description: description.trim(), date,
-      tags: tagsFromInput(tags), format, locked, mainChannels: format === 'roll20' ? [] : tagsFromInput(mainChannels),
+      tags: buildLogTags(rule, playerCount, playType, format), format, locked, mainChannels: format === 'roll20' ? [] : tagsFromInput(mainChannels),
       sourceFileName: source.name, sourceHtml: locked ? await encryptTrpgLogContent(source.html, password) : source.html,
       cast: castSelections.map(({ plName, pcName, imageIndex }) => ({
         plName,
@@ -289,7 +311,7 @@ export default function TrpgUploadButton() {
   };
 
   const previewPath = source && title && date.match(/^\d{4}/)
-    ? buildTrpgUploadFiles({ title, gmName, description, date, tags: tagsFromInput(tags), format, locked, mainChannels: format === 'roll20' ? [] : tagsFromInput(mainChannels), sourceFileName: source.name, sourceHtml: source.html, cast: castSelections.map(({ plName, pcName, imageIndex }) => ({ plName, pcName, iconSrc: imageIndex === null ? '' : imageSources[imageIndex] ?? '' })) }).folderPath
+    ? buildTrpgUploadFiles({ title, gmName, description, date, tags: buildLogTags(rule, playerCount, playType, format), format, locked, mainChannels: format === 'roll20' ? [] : tagsFromInput(mainChannels), sourceFileName: source.name, sourceHtml: source.html, cast: castSelections.map(({ plName, pcName, imageIndex }) => ({ plName, pcName, iconSrc: imageIndex === null ? '' : imageSources[imageIndex] ?? '' })) }).folderPath
     : null;
 
   return (
@@ -334,7 +356,16 @@ export default function TrpgUploadButton() {
                 {recommendedDate ? <p className="afterroll-meta mt-[0.35rem] text-[0.68rem] text-[var(--atr-accent)]">같은 이름의 최근 일정: {recommendedDate}</p> : null}
               </Field>
               <Field label="날짜 (YYYY.MM.DD)"><input value={date} onChange={(event) => setDate(event.target.value)} placeholder="2026.08.28" /></Field>
-              <Field label="태그 (쉼표로 구분)"><input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="시노비가미, PL, 4인" /></Field>
+              <div className="md:col-span-2 grid gap-[0.65rem] md:grid-cols-2">
+                <TagChipField label="룰" options={rules} value={rule} onChange={setRule} />
+                <TagChipField label="인원수" options={playerCounts} value={playerCount} onChange={setPlayerCount} />
+                <TagChipField label="유형" options={playTypes} value={playType} onChange={setPlayType} />
+                <Field label="플랫폼">
+                  <span className="afterroll-meta inline-flex rounded-full border border-[var(--atr-accent)] bg-[rgba(88,125,163,0.14)] px-[0.55rem] py-[0.2rem] text-[0.72rem] text-[var(--atr-accent)]">
+                    {FORMAT_OPTIONS.find((option) => option.value === format)?.label}
+                  </span>
+                </Field>
+              </div>
               {format !== 'roll20' ? <Field label="메인 채널 (쉼표로 구분)"><input value={mainChannels} onChange={(event) => setMainChannels(event.target.value)} placeholder="main" /></Field> : null}
               <div className="md:col-span-2">
               <Field label="공개 설정">
@@ -422,6 +453,31 @@ export default function TrpgUploadButton() {
         </div>
       ) : null}
     </>
+  );
+}
+
+function TagChipField({ label, options, value, onChange }: { label: string; options: string[]; value: string; onChange: (value: string) => void }) {
+  return (
+    <Field label={label}>
+      {options.length > 0 ? (
+        <div className="flex flex-wrap gap-[0.3rem]">
+          {options.map((option) => {
+            const selected = option === value;
+            return (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => onChange(selected ? '' : option)}
+                className={`afterroll-meta rounded-full border px-[0.55rem] py-[0.2rem] text-[0.72rem] transition-colors ${selected ? 'border-[var(--atr-accent)] bg-[rgba(88,125,163,0.14)] text-[var(--atr-accent)]' : 'border-[var(--atr-line)] bg-[rgba(255,250,239,0.62)] text-[var(--ledger-soft)] hover:bg-[rgba(88,125,163,0.08)]'}`}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
+      ) : <p className="afterroll-meta text-[0.72rem] text-[var(--ledger-soft)]">플레이 목록에 등록된 항목이 없습니다.</p>}
+    </Field>
   );
 }
 
