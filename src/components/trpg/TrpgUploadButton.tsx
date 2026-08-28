@@ -135,6 +135,9 @@ async function prepareRoll20Source(html: string, files: File[]): Promise<Prepare
   };
 
   content.querySelectorAll('script, style, link').forEach((node) => node.remove());
+  content.querySelectorAll<HTMLImageElement>('img[src]').forEach((image) => {
+    if (image.getAttribute('src')?.includes('<$!')) image.removeAttribute('src');
+  });
   content.querySelectorAll<HTMLElement>('[src], [href]').forEach((element) => {
     for (const attribute of ['src', 'href']) {
       const value = element.getAttribute(attribute);
