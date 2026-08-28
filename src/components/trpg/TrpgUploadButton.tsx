@@ -322,12 +322,14 @@ export default function TrpgUploadButton() {
         window.localStorage.removeItem(MASTER_KEY_STORAGE_KEY);
       }
       const resolvedDraft = await resolveTrpgUploadTitle(accessToken, draft);
+      let folder: string;
       if (locked) {
+        folder = await commitTrpgUpload(accessToken, resolvedDraft);
         setStatus('비밀번호 목록을 안전하게 갱신하는 중…');
         const { postSlug } = buildTrpgUploadFiles(resolvedDraft);
         await saveTrpgPassword(accessToken, masterKey, postSlug, password);
       }
-      const folder = await commitTrpgUpload(accessToken, resolvedDraft);
+      if (!locked) folder = await commitTrpgUpload(accessToken, resolvedDraft);
       setStatus(`${folder}에 저장했습니다. 저장소 동기화 배포 후 로그 목록에 표시됩니다.`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Upload failed with an unknown error.';
