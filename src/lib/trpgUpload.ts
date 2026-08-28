@@ -292,9 +292,10 @@ async function createAtomicUploadCommit(token: string, files: UploadFile[], mess
       method: 'POST', headers,
       body: JSON.stringify({ content: file.isBase64 ? file.content.replace(/\s/g, '') : encodeUtf8Base64(file.content), encoding: 'base64' }),
     });
+    const failureResponse = blobResponse.clone();
     const blob = (await blobResponse.json().catch(() => null)) as { sha?: string } | null;
     if (!blobResponse.ok || !blob?.sha) {
-      throw new Error(await githubFailureMessage(blobResponse, '로그 파일을 만들지 못했습니다. 토큰의 Trpg-Logs 저장소 Contents 쓰기 권한을 확인해 주세요.'));
+      throw new Error(await githubFailureMessage(failureResponse, '로그 파일을 만들지 못했습니다. 토큰의 Trpg-Logs 저장소 Contents 쓰기 권한을 확인해 주세요.'));
     }
     return { path: file.path, mode: '100644', type: 'blob', sha: blob.sha };
   }));
