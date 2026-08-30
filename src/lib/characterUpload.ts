@@ -1,4 +1,4 @@
-import type { Character } from '@/lib/data/characters';
+import type { Character, CharacterSticker } from '@/lib/data/characters';
 
 const REPOSITORY = 'flosnidor9/Trpg-Logs';
 const BRANCH = 'incoming';
@@ -9,6 +9,13 @@ const ARCHIVE_PATH = 'public/characters/characters.json';
 const UPLOAD_RETRIES = 3;
 
 type UploadFile = { path: string; content: string; encoding: 'base64' | 'utf-8' };
+
+function stickerUploadFiles(stickerFiles: File[], stickers: CharacterSticker[]): Array<{ file: File; src: string }> {
+  if (stickerFiles.length !== stickers.length) {
+    throw new Error('스티커 파일과 저장 경로가 일치하지 않습니다. 다시 선택해 주세요.');
+  }
+  return stickerFiles.map((file, index) => ({ file, src: stickers[index].src }));
+}
 
 function api(path: string) { return `https://api.github.com/repos/${REPOSITORY}${path}`; }
 function headers(token: string) { return { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}` }; }
@@ -84,10 +91,8 @@ export async function uploadCharacter(token: string, character: Character, origi
     { path: `${root}/portrait.webp`, content: await blobBase64(portrait), encoding: 'base64' },
     { path: ARCHIVE_PATH, content: JSON.stringify(nextArchive, null, 2), encoding: 'utf-8' },
   ];
-  for (let index = 0; index < stickerFiles.length; index += 1) {
-    const src = character.stickers?.[index]?.src;
-    if (!src) continue;
-    files.push({ path: `public${src}`, content: await blobBase64(stickerFiles[index]), encoding: 'base64' });
+  for (const { file, src } of stickerUploadFiles(stickerFiles, character.stickers ?? [])) {
+    files.push({ path: `public${src}`, content: await blobBase64(file), encoding: 'base64' });
   }
   for (let attempt = 0; attempt < UPLOAD_RETRIES; attempt += 1) {
     if (await commit(token, files, `Add character: ${character.name}`)) return;
@@ -95,18 +100,15 @@ export async function uploadCharacter(token: string, character: Character, origi
   throw new Error('다른 업로드와 충돌했습니다. 잠시 후 다시 시도해 주세요.');
 }
 
-export async function updateCharacter(token: string, character: Character, stickerFiles: File[] = []) {
+export async function updateCharacter(token: string, character: Character, stickerFiles: File[] = [], newStickers: CharacterSticker[] = []) {
   const archive = await readArchive(token);
   if (!archive.some((entry) => entry.id === character.id)) throw new Error('수정할 캐릭터를 찾을 수 없습니다.');
   const nextArchive = {
     characters: archive.map((entry) => entry.id === character.id ? character : entry),
   };
   const files: UploadFile[] = [{ path: ARCHIVE_PATH, content: JSON.stringify(nextArchive, null, 2), encoding: 'utf-8' }];
-  for (let index = 0; index < stickerFiles.length; index += 1) {
-    const sticker = stickerFiles[index];
-    const src = character.stickers?.at(-(stickerFiles.length - index))?.src;
-    if (!src) continue;
-    files.push({ path: `public${src}`, content: await blobBase64(sticker), encoding: 'base64' });
+  for (const { file, src } of stickerUploadFiles(stickerFiles, newStickers)) {
+    files.push({ path: `public${src}`, content: await blobBase64(file), encoding: 'base64' });
   }
   for (let attempt = 0; attempt < UPLOAD_RETRIES; attempt += 1) {
     if (await commit(token, files, `Update character: ${character.name}`)) return;

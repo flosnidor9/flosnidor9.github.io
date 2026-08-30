@@ -45,8 +45,9 @@ export default function CharacterManagementActions({ character, onUpdated, onDel
     if (!values.name.trim() || !token.trim()) return;
     setSaving(true); setStatus('수정 내용을 저장하는 중…');
     try {
-      const nextCharacter: Character = { ...character, ...values, name: values.name.trim(), linkItems: links.filter((link) => link.name.trim() && link.url.trim()), stickers: [...stickers, ...characterStickerPaths(character.id, stickerFiles)], sessionKeys, updatedAt: new Date().toISOString() };
-      await updateCharacter(token.trim(), nextCharacter, stickerFiles);
+      const newStickers = characterStickerPaths(character.id, stickerFiles);
+      const nextCharacter: Character = { ...character, ...values, name: values.name.trim(), linkItems: links.filter((link) => link.name.trim() && link.url.trim()), stickers: [...stickers, ...newStickers], sessionKeys, updatedAt: new Date().toISOString() };
+      await updateCharacter(token.trim(), nextCharacter, stickerFiles, newStickers);
       await savePrivateCharacterLinks(character.id, privateLinks);
       onUpdated(nextCharacter); resetAndClose();
     } catch (error) { setStatus(error instanceof Error ? error.message : '수정 중 오류가 발생했습니다.'); }
