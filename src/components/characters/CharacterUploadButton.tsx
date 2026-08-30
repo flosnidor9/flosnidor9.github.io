@@ -22,6 +22,7 @@ type Crop = { x: number; y: number; zoom: number };
 type Profile = {
   name: string;
   alias: string;
+  catchphrase: string;
   age: string;
   gender: string;
   heightWeight: string;
@@ -32,6 +33,7 @@ type Profile = {
 const EMPTY: Profile = {
   name: "",
   alias: "",
+  catchphrase: "",
   age: "",
   gender: "",
   heightWeight: "",
@@ -432,6 +434,11 @@ export default function CharacterUploadButton() {
                       label="종족"
                       value={profile.species}
                       onChange={set("species")}
+                    />
+                    <Field
+                      label="캐치프레이즈"
+                      value={profile.catchphrase}
+                      onChange={set("catchphrase")}
                     />
                   </div>
                   <section>

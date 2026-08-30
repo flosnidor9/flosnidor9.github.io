@@ -7,6 +7,7 @@ export type Character = {
   id: string;
   name: string;
   alias?: string;
+  catchphrase?: string;
   age?: string;
   gender?: string;
   heightWeight?: string;

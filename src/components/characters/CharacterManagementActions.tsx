@@ -7,12 +7,12 @@ import { deleteCharacter, updateCharacter } from '@/lib/characterUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import CharacterSessionSelector from '@/components/characters/CharacterSessionSelector';
 
-type EditableField = 'name' | 'alias' | 'age' | 'gender' | 'heightWeight' | 'occupation' | 'species' | 'personality';
+type EditableField = 'name' | 'alias' | 'catchphrase' | 'age' | 'gender' | 'heightWeight' | 'occupation' | 'species' | 'personality';
 type Mode = 'edit' | 'delete' | null;
 
 const FIELDS: Array<{ key: EditableField; label: string; multiline?: boolean }> = [
   { key: 'name', label: '이름' }, { key: 'alias', label: '별칭' }, { key: 'age', label: '나이' }, { key: 'gender', label: '성별' },
-  { key: 'heightWeight', label: '키 / 몸무게' }, { key: 'occupation', label: '직업' }, { key: 'species', label: '종족' }, { key: 'personality', label: '성격', multiline: true },
+  { key: 'heightWeight', label: '키 / 몸무게' }, { key: 'occupation', label: '직업' }, { key: 'species', label: '종족' }, { key: 'catchphrase', label: '캐치프레이즈' }, { key: 'personality', label: '성격', multiline: true },
 ];
 
 function valuesFrom(character: Character) {
