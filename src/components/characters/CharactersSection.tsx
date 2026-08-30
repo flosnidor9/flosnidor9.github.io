@@ -11,6 +11,20 @@ import CharacterManagementActions from '@/components/characters/CharacterManagem
 
 const HOVER_ROTATIONS = [-1.1, -0.65, -0.45, 0.7, 1.15] as const;
 const HOVER_LIFT = '-0.35rem';
+const DETAIL_ENTER_DURATION = 0.28;
+const STICKER_ENTER_DELAY = 0.34;
+const STICKER_STAGGER = 0.12;
+const STICKER_EXIT_DURATION = 0.12;
+const STICKER_POSITIONS = [
+  { left: '0%', top: '12%' }, { left: '100%', top: '43%' },
+  { left: '70%', top: '100%' }, { left: '20%', top: '100%' },
+  { left: '0%', top: '64%' },
+] as const;
+
+function stickerRotation(characterId: string, index: number) {
+  const seed = [...`${characterId}-${index}`].reduce((total, letter) => total + letter.charCodeAt(0), 0);
+  return (seed % 15) - 7;
+}
 
 function getHoverRotation() {
   return HOVER_ROTATIONS[Math.floor(Math.random() * HOVER_ROTATIONS.length)];
@@ -29,18 +43,31 @@ function CharacterDetail({ character, onClose, onShowOriginal }: { character: Ch
   const facts = [['나이', character.age], ['성별', character.gender], ['키 / 몸무게', character.heightWeight], ['직업', character.occupation], ['종족', character.species]].filter(([, value]) => value);
   const linkItems = character.linkItems ?? [];
   const [privateLinkItems, setPrivateLinkItems] = useState<CharacterLink[]>([]);
+  const [isClosing, setIsClosing] = useState(false);
   useEffect(() => {
     if (!isAdmin) return;
     return subscribeToPrivateCharacterLinks(character.id, setPrivateLinkItems);
   }, [character.id, isAdmin]);
-  return <div className="fixed inset-0 z-[90] flex items-end justify-center bg-[rgba(76,51,61,0.3)] p-[0.7rem] backdrop-blur-[0.25rem] sm:items-center" onClick={onClose}>
-    <motion.article layoutId={`pc-${character.id}`} onClick={(event) => event.stopPropagation()} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="pc-detail w-full max-w-[48rem] overflow-y-auto">
-      <button className="pc-detail-close" type="button" onClick={onClose}>닫기</button>
+  const closeDetail = () => {
+    if (isClosing) return;
+    if (!(character.stickers?.length)) { onClose(); return; }
+    setIsClosing(true);
+    window.setTimeout(onClose, STICKER_EXIT_DURATION * 1000);
+  };
+  return <div className="fixed inset-0 z-[90] flex items-end justify-center bg-[rgba(76,51,61,0.3)] p-[0.7rem] backdrop-blur-[0.25rem] sm:items-center" onClick={closeDetail}>
+    <div className="pc-detail-stage w-full max-w-[48rem]" onClick={(event) => event.stopPropagation()}>
+    <motion.article layoutId={`pc-${character.id}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: DETAIL_ENTER_DURATION }} className="pc-detail relative z-[1] w-full overflow-y-auto">
+      <button className="pc-detail-close" type="button" onClick={closeDetail}>닫기</button>
       <div className="grid items-center gap-[1.4rem] sm:grid-cols-[minmax(0,15rem)_1fr]">
         <div className="pc-polaroid"><button type="button" className="pc-polaroid-photo relative block aspect-square w-full cursor-zoom-in overflow-hidden" onClick={onShowOriginal} aria-label="원본 사진 보기"><Image src={character.portrait.cropped} alt={`${character.name}의 외형`} fill sizes="15rem" className="object-cover" /><div className="pointer-events-none absolute inset-0 z-[1]" style={{ boxShadow: 'inset 0 0 0.8rem rgba(0,0,0,0.18)' }} /></button><div className="px-[0.2rem] pb-[1rem] pt-[0.55rem]">{character.alias && <p className="afterroll-meta text-[0.75rem] text-[var(--atr-muted)]">{character.alias}</p>}<p className="afterroll-title text-[1.6rem] text-[var(--atr-text)]">{character.name}</p>{character.catchphrase && <p className="afterroll-meta mt-[0.2rem] text-[0.75rem] text-[var(--atr-soft)]">“{character.catchphrase}”</p>}</div></div>
         <div><dl className="mt-[0.6rem] grid gap-x-[1rem] gap-y-[0.5rem] sm:grid-cols-2">{facts.map(([label, value]) => <div key={label}><dt className="pc-field-label">{label}</dt><dd className="afterroll-meta text-[0.84rem] text-[var(--atr-text)]">{value}</dd></div>)}</dl>{character.personality && <div className="mt-[1rem] border-t border-dashed border-[var(--atr-line)] pt-[0.8rem]"><p className="pc-field-label">성격</p><p className="afterroll-body whitespace-pre-wrap text-[0.88rem] leading-[1.7] text-[var(--atr-muted)]">{character.personality}</p></div>}<div className="mt-[1rem] flex flex-wrap gap-[0.5rem]">{linkItems.map((link) => <a key={`${link.name}-${link.url}`} className="pc-link" href={link.url} target="_blank" rel="noreferrer">{link.name} ↗</a>)}{character.links.characterSheet && <a className="pc-link" href={character.links.characterSheet} target="_blank" rel="noreferrer">캐릭터 시트 ↗</a>}{character.links.commission && <a className="pc-link" href={character.links.commission} target="_blank" rel="noreferrer">커미션 ↗</a>}</div>{isAdmin && privateLinkItems.length > 0 && <div className="mt-[1rem] border-t border-dashed border-[var(--atr-line)] pt-[0.8rem]"><p className="pc-field-label">비공개 링크</p><div className="mt-[0.45rem] flex flex-wrap gap-[0.5rem]">{privateLinkItems.map((link) => <a key={`${link.name}-${link.url}`} className="pc-link" href={link.url} target="_blank" rel="noreferrer">{link.name} ↗</a>)}</div></div>}<p className="afterroll-meta mt-[1rem] text-[0.72rem] text-[var(--atr-soft)]">참여 세션 {character.sessionKeys.length}회</p></div>
       </div>
     </motion.article>
+    {(character.stickers ?? []).map((sticker, index) => {
+      const position = STICKER_POSITIONS[index % STICKER_POSITIONS.length];
+      return <div key={sticker.src} className="pc-detail-sticker" style={position}><motion.div className="relative size-full" initial={{ opacity: 0, scale: 0.82, rotate: stickerRotation(character.id, index) - 4 }} animate={isClosing ? { opacity: 0, scale: 0.68 } : { opacity: 1, scale: 1, rotate: stickerRotation(character.id, index) }} transition={isClosing ? { duration: STICKER_EXIT_DURATION } : { duration: DETAIL_ENTER_DURATION, delay: STICKER_ENTER_DELAY + index * STICKER_STAGGER }}><Image src={sticker.src} alt="" fill sizes="(max-width: 40rem) 3.4rem, 5.2rem" className="object-contain" /></motion.div></div>;
+    })}
+    </div>
   </div>;
 }
 

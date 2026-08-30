@@ -73,7 +73,7 @@ async function commit(token: string, files: UploadFile[], message: string) {
   return update.status !== 422 && update.ok;
 }
 
-export async function uploadCharacter(token: string, character: Character, original: File, portrait: Blob) {
+export async function uploadCharacter(token: string, character: Character, original: File, portrait: Blob, stickerFiles: File[] = []) {
   const archive = await readArchive(token);
   if (archive.some((entry) => entry.id === character.id)) throw new Error('같은 캐릭터 ID가 이미 있습니다.');
   const originalExtension = original.name.includes('.') ? original.name.slice(original.name.lastIndexOf('.')).toLowerCase() : '.webp';
@@ -84,19 +84,30 @@ export async function uploadCharacter(token: string, character: Character, origi
     { path: `${root}/portrait.webp`, content: await blobBase64(portrait), encoding: 'base64' },
     { path: ARCHIVE_PATH, content: JSON.stringify(nextArchive, null, 2), encoding: 'utf-8' },
   ];
+  for (let index = 0; index < stickerFiles.length; index += 1) {
+    const src = character.stickers?.[index]?.src;
+    if (!src) continue;
+    files.push({ path: `public${src}`, content: await blobBase64(stickerFiles[index]), encoding: 'base64' });
+  }
   for (let attempt = 0; attempt < UPLOAD_RETRIES; attempt += 1) {
     if (await commit(token, files, `Add character: ${character.name}`)) return;
   }
   throw new Error('다른 업로드와 충돌했습니다. 잠시 후 다시 시도해 주세요.');
 }
 
-export async function updateCharacter(token: string, character: Character) {
+export async function updateCharacter(token: string, character: Character, stickerFiles: File[] = []) {
   const archive = await readArchive(token);
   if (!archive.some((entry) => entry.id === character.id)) throw new Error('수정할 캐릭터를 찾을 수 없습니다.');
   const nextArchive = {
     characters: archive.map((entry) => entry.id === character.id ? character : entry),
   };
   const files: UploadFile[] = [{ path: ARCHIVE_PATH, content: JSON.stringify(nextArchive, null, 2), encoding: 'utf-8' }];
+  for (let index = 0; index < stickerFiles.length; index += 1) {
+    const sticker = stickerFiles[index];
+    const src = character.stickers?.at(-(stickerFiles.length - index))?.src;
+    if (!src) continue;
+    files.push({ path: `public${src}`, content: await blobBase64(sticker), encoding: 'base64' });
+  }
   for (let attempt = 0; attempt < UPLOAD_RETRIES; attempt += 1) {
     if (await commit(token, files, `Update character: ${character.name}`)) return;
   }
@@ -117,4 +128,12 @@ export async function deleteCharacter(token: string, character: Character) {
 export function characterImagePaths(id: string, originalName: string) {
   const extension = originalName.includes('.') ? originalName.slice(originalName.lastIndexOf('.')).toLowerCase() : '.webp';
   return { original: `/images/characters/${id}/original${extension}`, cropped: `/images/characters/${id}/portrait.webp` };
+}
+
+export function characterStickerPaths(id: string, files: File[]) {
+  const stamp = Date.now();
+  return files.map((file, index) => {
+    const extension = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')).toLowerCase() : '.webp';
+    return { src: `/images/characters/${id}/stickers/sticker-${stamp}-${index + 1}${extension}` };
+  });
 }

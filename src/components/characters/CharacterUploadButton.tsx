@@ -13,7 +13,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Character, CharacterLink } from "@/lib/data/characters";
-import { characterImagePaths, uploadCharacter } from "@/lib/characterUpload";
+import { characterImagePaths, characterStickerPaths, uploadCharacter } from "@/lib/characterUpload";
 import { savePrivateCharacterLinks } from '@/lib/data/firebasePrivateCharacterLinks';
 import CharacterSessionSelector from '@/components/characters/CharacterSessionSelector';
 
@@ -291,6 +291,7 @@ export default function CharacterUploadButton() {
   const [profile, setProfile] = useState<Profile>(EMPTY);
   const [links, setLinks] = useState<CharacterLink[]>([]);
   const [privateLinks, setPrivateLinks] = useState<CharacterLink[]>([]);
+  const [stickerFiles, setStickerFiles] = useState<File[]>([]);
   const [sessionKeys, setSessionKeys] = useState<string[]>([]);
   const [token, setToken] = useState("");
   const [status, setStatus] = useState("");
@@ -315,6 +316,7 @@ export default function CharacterUploadButton() {
         id,
         ...profile,
         linkItems: links.filter((link) => link.name.trim() && link.url.trim()),
+        stickers: characterStickerPaths(id, stickerFiles),
         links: {},
         portrait: { ...characterImagePaths(id, file.name), crop },
         sessionKeys,
@@ -326,6 +328,7 @@ export default function CharacterUploadButton() {
         character,
         file,
         await cropPortrait(file, crop),
+        stickerFiles,
       );
       await savePrivateCharacterLinks(id, privateLinks);
       setStatus("올리기가 완료됐습니다. 배포가 시작됩니다.");
@@ -402,6 +405,24 @@ export default function CharacterUploadButton() {
                       onCropChange={setCrop}
                     />
                   )}
+                  <section>
+                    <div className="mb-[0.45rem] flex items-center justify-between gap-[0.75rem]">
+                      <div>
+                        <p className="pc-field-label mb-0">스티커</p>
+                        <p className="afterroll-meta mt-[0.15rem] text-[0.68rem] text-[var(--atr-soft)]">상세 카드의 가장자리에 붙습니다.</p>
+                      </div>
+                      <label className="pc-link cursor-pointer">
+                        + 스티커 추가
+                        <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" multiple className="sr-only" onChange={(event) => {
+                          setStickerFiles((current) => [...current, ...Array.from(event.target.files ?? [])]);
+                          event.currentTarget.value = '';
+                        }} />
+                      </label>
+                    </div>
+                    {stickerFiles.length > 0 && <ul className="space-y-[0.35rem]" aria-label="추가할 스티커">
+                      {stickerFiles.map((sticker, index) => <li key={`${sticker.name}-${index}`} className="flex items-center justify-between gap-[0.75rem] border-b border-dashed border-[var(--atr-line)] pb-[0.35rem] afterroll-meta text-[0.72rem] text-[var(--atr-muted)]"><span className="truncate">{sticker.name}</span><button type="button" className="pc-link shrink-0" onClick={() => setStickerFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))}>제거</button></li>)}
+                    </ul>}
+                  </section>
                   <div className="grid gap-[0.75rem] sm:grid-cols-2">
                     <Field
                       label="이름 *"

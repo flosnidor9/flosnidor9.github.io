@@ -2726,6 +2726,28 @@ body.after-roll-theme button.pc-polaroid:hover {
   padding: 1.4rem;
 }
 
+.pc-detail-stage {
+  position: relative;
+}
+
+.pc-detail-sticker {
+  position: absolute;
+  z-index: 10;
+  display: block;
+  width: 3.7rem;
+  aspect-ratio: 1;
+  overflow: visible;
+  pointer-events: none;
+  translate: -50% -50%;
+  filter: drop-shadow(0 0.28rem 0.28rem rgba(91, 48, 64, 0.18));
+}
+
+@media (min-width: 40rem) {
+  .pc-detail-sticker {
+    width: 5.2rem;
+  }
+}
+
 .pc-detail-close {
   position: absolute;
   top: 0.7rem;
