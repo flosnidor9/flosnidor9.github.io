@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { Character } from '@/lib/data/characters';
+import type { Character, CharacterLink } from '@/lib/data/characters';
 import { deleteCharacter, updateCharacter } from '@/lib/characterUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import CharacterSessionSelector from '@/components/characters/CharacterSessionSelector';
@@ -23,6 +23,7 @@ export default function CharacterManagementActions({ character, onUpdated, onDel
   const { isAdmin, loading } = useAuth();
   const [mode, setMode] = useState<Mode>(null);
   const [values, setValues] = useState(() => valuesFrom(character));
+  const [links, setLinks] = useState<CharacterLink[]>(character.linkItems ?? []);
   const [sessionKeys, setSessionKeys] = useState(character.sessionKeys);
   const [token, setToken] = useState('');
   const [status, setStatus] = useState('');
@@ -31,12 +32,12 @@ export default function CharacterManagementActions({ character, onUpdated, onDel
 
   const resetAndClose = () => { setMode(null); setToken(''); setStatus(''); };
   const close = () => { if (!saving) resetAndClose(); };
-  const open = (nextMode: Exclude<Mode, null>) => { setValues(valuesFrom(character)); setSessionKeys(character.sessionKeys); setStatus(''); setMode(nextMode); };
+  const open = (nextMode: Exclude<Mode, null>) => { setValues(valuesFrom(character)); setLinks(character.linkItems ?? []); setSessionKeys(character.sessionKeys); setStatus(''); setMode(nextMode); };
   const save = async () => {
     if (!values.name.trim() || !token.trim()) return;
     setSaving(true); setStatus('수정 내용을 저장하는 중…');
     try {
-      const nextCharacter: Character = { ...character, ...values, name: values.name.trim(), sessionKeys, updatedAt: new Date().toISOString() };
+      const nextCharacter: Character = { ...character, ...values, name: values.name.trim(), linkItems: links.filter((link) => link.name.trim() && link.url.trim()), sessionKeys, updatedAt: new Date().toISOString() };
       await updateCharacter(token.trim(), nextCharacter);
       onUpdated(nextCharacter); resetAndClose();
     } catch (error) { setStatus(error instanceof Error ? error.message : '수정 중 오류가 발생했습니다.'); }
@@ -57,7 +58,10 @@ export default function CharacterManagementActions({ character, onUpdated, onDel
     <section className="pc-composer max-h-[90vh] w-full max-w-[38rem] overflow-y-auto" onClick={(event) => event.stopPropagation()}>
       <header className="flex items-center justify-between border-b border-[var(--atr-line)] px-[1.1rem] py-[0.9rem]"><p className="afterroll-title text-[1.35rem] text-[var(--atr-text)]">{mode === 'edit' ? '캐릭터 수정' : '캐릭터 삭제'}</p><button type="button" className="afterroll-meta text-[0.8rem] text-[var(--atr-muted)]" onClick={close}>닫기</button></header>
       <div className="space-y-[0.8rem] px-[1.1rem] py-[1rem]">{mode === 'edit' ? <div className="grid gap-[0.65rem] sm:grid-cols-2">{FIELDS.map(({ key, label, multiline }) => <label key={key} className={multiline ? 'sm:col-span-2' : undefined}><span className="pc-field-label">{label}{key === 'name' ? ' *' : ''}</span>{multiline ? <textarea className="pc-field min-h-[5rem] resize-y" value={values[key]} onChange={(event) => setValues((current) => ({ ...current, [key]: event.target.value }))} /> : <input className="pc-field" value={values[key]} onChange={(event) => setValues((current) => ({ ...current, [key]: event.target.value }))} />}</label>)}</div> : <p className="afterroll-body text-[0.9rem] text-[var(--atr-muted)]">“{character.name}”을(를) 목록에서 삭제합니다. 이미지 파일은 보관소에 남고, 공개 목록에서만 제거됩니다.</p>}
-        {mode === 'edit' && <CharacterSessionSelector value={sessionKeys} onChange={setSessionKeys} />}
+        {mode === 'edit' && <><section>
+          <div className="mb-[0.45rem] flex items-center justify-between gap-[0.75rem]"><p className="pc-field-label mb-0">링크</p><button type="button" className="pc-link" onClick={() => setLinks((current) => [...current, { name: '', url: '' }])}>+ 링크 추가</button></div>
+          <div className="space-y-[0.5rem]">{links.map((link, index) => <div key={index} className="grid gap-[0.5rem] sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]"><input className="pc-field" value={link.name} onChange={(event) => setLinks((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))} placeholder="이름" aria-label={`링크 ${index + 1} 이름`} /><input className="pc-field" type="url" value={link.url} onChange={(event) => setLinks((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, url: event.target.value } : item))} placeholder="https://..." aria-label={`링크 ${index + 1} 주소`} /><button type="button" className="pc-link justify-self-end sm:self-center" onClick={() => setLinks((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={`링크 ${index + 1} 삭제`}>삭제</button></div>)}</div>
+        </section><CharacterSessionSelector value={sessionKeys} onChange={setSessionKeys} /></>}
         <label><span className="pc-field-label">GitHub access token</span><input className="pc-field" type="password" value={token} onChange={(event) => setToken(event.target.value)} autoComplete="off" placeholder="fine-grained token (Contents: Read and write)" /></label>
         {status && <p className="afterroll-meta text-[0.72rem] text-[var(--atr-muted)]">{status}</p>}
         <div className="flex justify-end gap-[0.45rem]"><button type="button" className="pc-text-button" onClick={close}>취소</button><button type="button" className={mode === 'delete' ? 'pc-danger-button' : 'pc-primary-button'} disabled={saving || !token.trim() || (mode === 'edit' && !values.name.trim())} onClick={() => void (mode === 'edit' ? save() : remove())}>{saving ? '처리 중…' : mode === 'edit' ? '수정 저장' : '삭제'}</button></div>
