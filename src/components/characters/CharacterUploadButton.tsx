@@ -292,12 +292,18 @@ export default function CharacterUploadButton() {
   const [links, setLinks] = useState<CharacterLink[]>([]);
   const [privateLinks, setPrivateLinks] = useState<CharacterLink[]>([]);
   const [stickerFiles, setStickerFiles] = useState<File[]>([]);
+  const stickerInput = useRef<HTMLInputElement>(null);
   const [sessionKeys, setSessionKeys] = useState<string[]>([]);
   const [token, setToken] = useState("");
   const [status, setStatus] = useState("");
   const [saving, setSaving] = useState(false);
   const set = (key: keyof Profile) => (value: string) =>
     setProfile((current) => ({ ...current, [key]: value }));
+  const addStickers = (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files ?? []);
+    if (selectedFiles.length) setStickerFiles((current) => [...current, ...selectedFiles]);
+    event.target.value = '';
+  };
   if (!isAdmin) return null;
   async function submit() {
     if (!file || !profile.name.trim() || !token.trim()) return;
@@ -411,13 +417,10 @@ export default function CharacterUploadButton() {
                         <p className="pc-field-label mb-0">스티커</p>
                         <p className="afterroll-meta mt-[0.15rem] text-[0.68rem] text-[var(--atr-soft)]">상세 카드의 가장자리에 붙습니다.</p>
                       </div>
-                      <label className="pc-link cursor-pointer">
+                      <button type="button" className="pc-link" onClick={() => stickerInput.current?.click()}>
                         + 스티커 추가
-                        <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" multiple className="sr-only" onChange={(event) => {
-                          setStickerFiles((current) => [...current, ...Array.from(event.target.files ?? [])]);
-                          event.currentTarget.value = '';
-                        }} />
-                      </label>
+                      </button>
+                      <input ref={stickerInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" multiple className="sr-only" onChange={addStickers} />
                     </div>
                     {stickerFiles.length > 0 && <ul className="space-y-[0.35rem]" aria-label="추가할 스티커">
                       {stickerFiles.map((sticker, index) => <li key={`${sticker.name}-${index}`} className="flex items-center justify-between gap-[0.75rem] border-b border-dashed border-[var(--atr-line)] pb-[0.35rem] afterroll-meta text-[0.72rem] text-[var(--atr-muted)]"><span className="truncate">{sticker.name}</span><button type="button" className="pc-link shrink-0" onClick={() => setStickerFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))}>제거</button></li>)}
