@@ -3,6 +3,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import CharacterPreviewModal, { LinkedCharacterButtons } from '@/components/characters/CharacterPreviewModal';
+import { CHARACTERS, type Character } from '@/lib/data/characters';
+import { subscribeToPlays, type PlayEntry } from '@/lib/data/firebasePlays';
 
 function Portal({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
@@ -178,10 +181,12 @@ const DETAIL_W = 240;
 const DETAIL_MAX_H = 320;
 
 function EventDetailPanel({
-  detail, onClose,
+  detail, onClose, characters, onSelectCharacter,
 }: {
   detail: DetailState;
   onClose: () => void;
+  characters: Character[];
+  onSelectCharacter: (character: Character) => void;
 }) {
   const { event, x: cx, y: cy } = detail;
   const vw = typeof window !== 'undefined' ? window.innerWidth : 800;
@@ -230,6 +235,10 @@ function EventDetailPanel({
           </p>
         </div>
       )}
+      <div className="mt-[0.65rem] border-t border-[rgba(87,67,48,0.1)] pt-[0.65rem]">
+        <LinkedCharacterButtons characters={characters} onSelect={onSelectCharacter} />
+        {!characters.length && <p className="afterroll-meta text-[0.7rem] text-[var(--ledger-soft)]">연결된 캐릭터가 없습니다.</p>}
+      </div>
     </motion.div>
   );
 }
@@ -582,6 +591,10 @@ export default function CalendarSection() {
   const [, setAnnualError] = useState<string | null>(null);
   const [externalDates, setExternalDates] = useState<Map<string, ExternalEventSlot[]>>(new Map());
   const [detail, setDetail] = useState<DetailState | null>(null);
+  const [plays, setPlays] = useState<PlayEntry[]>([]);
+  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
+
+  useEffect(() => subscribeToPlays(setPlays), []);
 
   function openDetail(event: GoogleCalendarEvent, x: number, y: number) {
     setDetail({ event, x, y });
@@ -749,6 +762,20 @@ export default function CalendarSection() {
     () => buildEventColorMap([...annualEvents, ...events]),
     [annualEvents, events],
   );
+  const charactersByTitle = useMemo(() => {
+    const charactersForTitle = new Map<string, Character[]>();
+    const charactersBySession = new Map<string, Character[]>();
+    CHARACTERS.forEach((character) => character.sessionKeys.forEach((sessionKey) => {
+      const linked = charactersBySession.get(sessionKey) ?? [];
+      linked.push(character);
+      charactersBySession.set(sessionKey, linked);
+    }));
+    plays.forEach((play) => {
+      const linked = charactersBySession.get(play.id) ?? [];
+      if (linked.length) charactersForTitle.set(play.title.trim(), linked);
+    });
+    return charactersForTitle;
+  }, [plays]);
 
   const today = new Date();
   const isThisMonth = today.getFullYear() === year && today.getMonth() === month;
@@ -977,8 +1004,13 @@ export default function CalendarSection() {
               <EventDetailPanel
                 detail={detail}
                 onClose={() => setDetail(null)}
+                characters={charactersByTitle.get(detail.event.summary.trim()) ?? []}
+                onSelectCharacter={setSelectedCharacter}
               />
             </div>
+          )}
+          {selectedCharacter && (
+            <CharacterPreviewModal character={selectedCharacter} onClose={() => setSelectedCharacter(null)} />
           )}
         </AnimatePresence>
       </Portal>

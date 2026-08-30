@@ -13,6 +13,8 @@ import {
 } from '@/lib/data/firebasePlays';
 import PlaysComposer from './PlaysComposer';
 import PlaysStats from './PlaysStats';
+import CharacterPreviewModal, { LinkedCharacterButtons } from '@/components/characters/CharacterPreviewModal';
+import { CHARACTERS, type Character } from '@/lib/data/characters';
 
 const CALENDAR_ID =
   '848efa2587af083c615b7c3581e818075a6489d1d0ce70c4ac3ef60880d0fbae%40group.calendar.google.com';
@@ -248,6 +250,7 @@ export default function PlaysSection() {
   const [editTarget, setEditTarget] = useState<PlayEntry | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
 
   // 드롭다운
   const [openColumn, setOpenColumn] = useState<string | null>(null);
@@ -349,6 +352,18 @@ export default function PlaysSection() {
     });
     return counts;
   }, [plays]);
+
+  const charactersBySession = useMemo(() => {
+    const bySession = new Map<string, Character[]>();
+    CHARACTERS.forEach((character) => {
+      character.sessionKeys.forEach((sessionKey) => {
+        const linked = bySession.get(sessionKey) ?? [];
+        linked.push(character);
+        bySession.set(sessionKey, linked);
+      });
+    });
+    return bySession;
+  }, []);
 
   const filteredPlays = useMemo(() => {
     return plays
@@ -573,7 +588,8 @@ export default function PlaysSection() {
                   const isExpanded = expandedId === entry.id;
                   const hasParticipants = entry.participants.length > 0;
                   const hasSessions = sessions.length > 0;
-                  const canExpand = hasParticipants || hasSessions;
+                  const linkedCharacters = charactersBySession.get(entry.id) ?? [];
+                  const canExpand = hasParticipants || hasSessions || linkedCharacters.length > 0;
                   return (
                     <article
                       key={entry.id}
@@ -683,6 +699,7 @@ export default function PlaysSection() {
                                   </div>
                                 </div>
                               )}
+                              <LinkedCharacterButtons characters={linkedCharacters} onSelect={setSelectedCharacter} />
                               {hasParticipants && (
                                 <div className="flex flex-wrap gap-[0.3rem]">
                                   <span className="afterroll-meta mr-[0.15rem] text-[0.7rem] text-[var(--ledger-soft)]">참여자</span>
@@ -762,7 +779,8 @@ export default function PlaysSection() {
                     const isExpanded = expandedId === entry.id;
                     const hasParticipants = entry.participants.length > 0;
                     const hasSessions = sessions.length > 0;
-                    const canExpand = hasParticipants || hasSessions;
+                    const linkedCharacters = charactersBySession.get(entry.id) ?? [];
+                    const canExpand = hasParticipants || hasSessions || linkedCharacters.length > 0;
                     return (
                       <Fragment key={entry.id}>
                         <tr
@@ -876,6 +894,7 @@ export default function PlaysSection() {
                                         </div>
                                       </div>
                                     )}
+                                    <LinkedCharacterButtons characters={linkedCharacters} onSelect={setSelectedCharacter} />
                                     {hasParticipants && (
                                       <div className="flex flex-wrap gap-[0.3rem]">
                                         <span className="afterroll-meta mr-[0.2rem] text-[0.7rem] text-[var(--ledger-soft)]">
@@ -948,6 +967,9 @@ export default function PlaysSection() {
             onClose={closeComposer}
           />
         )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {selectedCharacter && <CharacterPreviewModal character={selectedCharacter} onClose={() => setSelectedCharacter(null)} />}
       </AnimatePresence>
     </div>
   );
