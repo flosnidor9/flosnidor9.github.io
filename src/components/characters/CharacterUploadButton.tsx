@@ -43,6 +43,10 @@ const EMPTY: Profile = {
   personality: "",
 };
 const DEFAULT_CROP: Crop = { x: 0, y: 0, zoom: 1 };
+const DEFAULT_STICKER_SIZE = 1;
+const STICKER_SIZE_MIN = 0.5;
+const STICKER_SIZE_MAX = 1.8;
+const STICKER_SIZE_STEP = 0.1;
 const clamp = (value: number) => Math.max(-1, Math.min(1, value));
 
 async function cropPortrait(file: File, crop: Crop) {
@@ -292,6 +296,7 @@ export default function CharacterUploadButton() {
   const [links, setLinks] = useState<CharacterLink[]>([]);
   const [privateLinks, setPrivateLinks] = useState<CharacterLink[]>([]);
   const [stickerFiles, setStickerFiles] = useState<File[]>([]);
+  const [stickerSizes, setStickerSizes] = useState<number[]>([]);
   const stickerInput = useRef<HTMLInputElement>(null);
   const [sessionKeys, setSessionKeys] = useState<string[]>([]);
   const [token, setToken] = useState("");
@@ -301,7 +306,10 @@ export default function CharacterUploadButton() {
     setProfile((current) => ({ ...current, [key]: value }));
   const addStickers = (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(event.target.files ?? []);
-    if (selectedFiles.length) setStickerFiles((current) => [...current, ...selectedFiles]);
+    if (selectedFiles.length) {
+      setStickerFiles((current) => [...current, ...selectedFiles]);
+      setStickerSizes((current) => [...current, ...selectedFiles.map(() => DEFAULT_STICKER_SIZE)]);
+    }
     event.target.value = '';
   };
   if (!isAdmin) return null;
@@ -322,7 +330,7 @@ export default function CharacterUploadButton() {
         id,
         ...profile,
         linkItems: links.filter((link) => link.name.trim() && link.url.trim()),
-        stickers: characterStickerPaths(id, stickerFiles),
+        stickers: characterStickerPaths(id, stickerFiles).map((sticker, index) => ({ ...sticker, size: stickerSizes[index] ?? DEFAULT_STICKER_SIZE })),
         links: {},
         portrait: { ...characterImagePaths(id, file.name), crop },
         sessionKeys,
@@ -422,8 +430,8 @@ export default function CharacterUploadButton() {
                       </button>
                       <input ref={stickerInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" multiple className="sr-only" onChange={addStickers} />
                     </div>
-                    {stickerFiles.length > 0 && <ul className="space-y-[0.35rem]" aria-label="추가할 스티커">
-                      {stickerFiles.map((sticker, index) => <li key={`${sticker.name}-${index}`} className="flex items-center justify-between gap-[0.75rem] border-b border-dashed border-[var(--atr-line)] pb-[0.35rem] afterroll-meta text-[0.72rem] text-[var(--atr-muted)]"><span className="truncate">{sticker.name}</span><button type="button" className="pc-link shrink-0" onClick={() => setStickerFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))}>제거</button></li>)}
+                    {stickerFiles.length > 0 && <ul className="space-y-[0.5rem]" aria-label="추가할 스티커">
+                      {stickerFiles.map((sticker, index) => <li key={`${sticker.name}-${index}`} className="border-b border-dashed border-[var(--atr-line)] pb-[0.45rem] afterroll-meta text-[0.72rem] text-[var(--atr-muted)]"><div className="flex items-center justify-between gap-[0.75rem]"><span className="truncate">{sticker.name}</span><button type="button" className="pc-link shrink-0" onClick={() => { setStickerFiles((current) => current.filter((_, itemIndex) => itemIndex !== index)); setStickerSizes((current) => current.filter((_, itemIndex) => itemIndex !== index)); }}>제거</button></div><label className="mt-[0.3rem] flex items-center gap-[0.5rem]"><span className="shrink-0 text-[var(--atr-soft)]">크기 {Math.round((stickerSizes[index] ?? DEFAULT_STICKER_SIZE) * 100)}%</span><input className="w-full accent-[var(--atr-accent)]" type="range" min={STICKER_SIZE_MIN} max={STICKER_SIZE_MAX} step={STICKER_SIZE_STEP} value={stickerSizes[index] ?? DEFAULT_STICKER_SIZE} onChange={(event) => setStickerSizes((current) => current.map((size, itemIndex) => itemIndex === index ? Number(event.target.value) : size))} aria-label={`${sticker.name} 스티커 크기`} /></label></li>)}
                     </ul>}
                   </section>
                   <div className="grid gap-[0.75rem] sm:grid-cols-2">

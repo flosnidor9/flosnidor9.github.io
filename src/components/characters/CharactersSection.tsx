@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useState } from 'react';
+import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { Character, CharacterLink } from '@/lib/data/characters';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +16,9 @@ const DETAIL_ENTER_DURATION = 0.28;
 const STICKER_ENTER_DELAY = 0.34;
 const STICKER_STAGGER = 0.12;
 const STICKER_EXIT_DURATION = 0.12;
+const DEFAULT_STICKER_SIZE = 1;
+const STICKER_BASE_SIZE_REM = 3.7;
+const STICKER_BASE_SIZE_DESKTOP_REM = 5.2;
 const STICKER_POSITIONS = [
   { left: '0%', top: '12%' }, { left: '100%', top: '43%' },
   { left: '70%', top: '100%' }, { left: '20%', top: '100%' },
@@ -103,7 +106,9 @@ function CharacterDetail({ character, sessions, onClose, onShowOriginal }: { cha
     </motion.article>
     {(character.stickers ?? []).map((sticker, index) => {
       const position = STICKER_POSITIONS[index % STICKER_POSITIONS.length];
-      return <div key={sticker.src} className="pc-detail-sticker" style={position}><motion.div className="relative size-full" initial={{ opacity: 0, scale: 0.82, rotate: stickerRotation(character.id, index) - 4 }} animate={isClosing ? { opacity: 0, scale: 0.68 } : { opacity: 1, scale: 1, rotate: stickerRotation(character.id, index) }} transition={isClosing ? { duration: STICKER_EXIT_DURATION } : { duration: DETAIL_ENTER_DURATION, delay: STICKER_ENTER_DELAY + index * STICKER_STAGGER }}><Image src={sticker.src} alt="" fill sizes="(max-width: 40rem) 3.4rem, 5.2rem" className="object-contain" /></motion.div></div>;
+      const size = sticker.size ?? DEFAULT_STICKER_SIZE;
+      const style: CSSProperties & Record<'--pc-sticker-size' | '--pc-sticker-size-desktop', string> = { ...position, '--pc-sticker-size': `${STICKER_BASE_SIZE_REM * size}rem`, '--pc-sticker-size-desktop': `${STICKER_BASE_SIZE_DESKTOP_REM * size}rem` };
+      return <div key={sticker.src} className="pc-detail-sticker" style={style}><motion.div className="relative size-full" initial={{ opacity: 0, scale: 0.82, rotate: stickerRotation(character.id, index) - 4 }} animate={isClosing ? { opacity: 0, scale: 0.68 } : { opacity: 1, scale: 1, rotate: stickerRotation(character.id, index) }} transition={isClosing ? { duration: STICKER_EXIT_DURATION } : { duration: DETAIL_ENTER_DURATION, delay: STICKER_ENTER_DELAY + index * STICKER_STAGGER }}><Image src={sticker.src} alt="" fill sizes="(max-width: 40rem) 3.4rem, 5.2rem" className="object-contain" /></motion.div></div>;
     })}
     </div>
   </div>;

@@ -2,7 +2,11 @@ import characterArchive from '@/content/characters.json';
 
 export type CharacterCrop = { x: number; y: number; zoom: number };
 export type CharacterLink = { name: string; url: string };
-export type CharacterSticker = { src: string };
+export type CharacterSticker = {
+  src: string;
+  /** Detail-card sticker scale. Older entries without this use the default. */
+  size?: number;
+};
 
 export type Character = {
   id: string;

@@ -2734,7 +2734,7 @@ body.after-roll-theme button.pc-polaroid:hover {
   position: absolute;
   z-index: 10;
   display: block;
-  width: 3.7rem;
+  width: var(--pc-sticker-size, 3.7rem);
   aspect-ratio: 1;
   overflow: visible;
   pointer-events: none;
@@ -2744,7 +2744,7 @@ body.after-roll-theme button.pc-polaroid:hover {
 
 @media (min-width: 40rem) {
   .pc-detail-sticker {
-    width: 5.2rem;
+    width: var(--pc-sticker-size-desktop, 5.2rem);
   }
 }
 
