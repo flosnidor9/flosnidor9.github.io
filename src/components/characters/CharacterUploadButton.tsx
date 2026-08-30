@@ -14,6 +14,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Character, CharacterLink } from "@/lib/data/characters";
 import { characterImagePaths, uploadCharacter } from "@/lib/characterUpload";
+import CharacterSessionSelector from '@/components/characters/CharacterSessionSelector';
 
 const OUTPUT_SIZE = 1024;
 const MAX_ZOOM = 3;
@@ -286,6 +287,7 @@ export default function CharacterUploadButton() {
   const [crop, setCrop] = useState(DEFAULT_CROP);
   const [profile, setProfile] = useState<Profile>(EMPTY);
   const [links, setLinks] = useState<CharacterLink[]>([]);
+  const [sessionKeys, setSessionKeys] = useState<string[]>([]);
   const [token, setToken] = useState("");
   const [status, setStatus] = useState("");
   const [saving, setSaving] = useState(false);
@@ -311,7 +313,7 @@ export default function CharacterUploadButton() {
         linkItems: links.filter((link) => link.name.trim() && link.url.trim()),
         links: {},
         portrait: { ...characterImagePaths(id, file.name), crop },
-        sessionKeys: [],
+        sessionKeys,
         createdAt: now,
         updatedAt: now,
       };
@@ -445,6 +447,7 @@ export default function CharacterUploadButton() {
                       </div>)}
                     </div>
                   </section>
+                  <CharacterSessionSelector value={sessionKeys} onChange={setSessionKeys} />
                   <label>
                     <span className="pc-field-label">성격</span>
                     <textarea
