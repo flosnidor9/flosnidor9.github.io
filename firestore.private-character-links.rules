@@ -1,0 +1,6 @@
+// Add this match block inside your existing Cloud Firestore ruleset.
+// Do not deploy this fragment as a complete ruleset: it intentionally does not
+// include rules for the site's other Firestore collections.
+match /private_character_links/{characterId} {
+  allow read, write: if isAdmin();
+}

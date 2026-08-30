@@ -14,6 +14,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Character, CharacterLink } from "@/lib/data/characters";
 import { characterImagePaths, uploadCharacter } from "@/lib/characterUpload";
+import { savePrivateCharacterLinks } from '@/lib/data/firebasePrivateCharacterLinks';
 import CharacterSessionSelector from '@/components/characters/CharacterSessionSelector';
 
 const OUTPUT_SIZE = 1024;
@@ -289,6 +290,7 @@ export default function CharacterUploadButton() {
   const [crop, setCrop] = useState(DEFAULT_CROP);
   const [profile, setProfile] = useState<Profile>(EMPTY);
   const [links, setLinks] = useState<CharacterLink[]>([]);
+  const [privateLinks, setPrivateLinks] = useState<CharacterLink[]>([]);
   const [sessionKeys, setSessionKeys] = useState<string[]>([]);
   const [token, setToken] = useState("");
   const [status, setStatus] = useState("");
@@ -325,6 +327,7 @@ export default function CharacterUploadButton() {
         file,
         await cropPortrait(file, crop),
       );
+      await savePrivateCharacterLinks(id, privateLinks);
       setStatus("올리기가 완료됐습니다. 배포가 시작됩니다.");
     } catch (error) {
       setStatus(
@@ -451,6 +454,22 @@ export default function CharacterUploadButton() {
                         <input className="pc-field" value={link.name} onChange={(event) => setLinks((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))} placeholder="이름" aria-label={`링크 ${index + 1} 이름`} />
                         <input className="pc-field" type="url" value={link.url} onChange={(event) => setLinks((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, url: event.target.value } : item))} placeholder="https://..." aria-label={`링크 ${index + 1} 주소`} />
                         <button type="button" className="pc-link justify-self-end sm:self-center" onClick={() => setLinks((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={`링크 ${index + 1} 삭제`}>삭제</button>
+                      </div>)}
+                    </div>
+                  </section>
+                  <section>
+                    <div className="mb-[0.45rem] flex items-center justify-between gap-[0.75rem]">
+                      <div>
+                        <p className="pc-field-label mb-0">비공개 링크</p>
+                        <p className="afterroll-meta mt-[0.15rem] text-[0.68rem] text-[var(--atr-soft)]">관리자 로그인 시에만 표시됩니다.</p>
+                      </div>
+                      <button type="button" className="pc-link" onClick={() => setPrivateLinks((current) => [...current, { name: "", url: "" }])}>+ 링크 추가</button>
+                    </div>
+                    <div className="space-y-[0.5rem]">
+                      {privateLinks.map((link, index) => <div key={index} className="grid gap-[0.5rem] sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]">
+                        <input className="pc-field" value={link.name} onChange={(event) => setPrivateLinks((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))} placeholder="이름" aria-label={`비공개 링크 ${index + 1} 이름`} />
+                        <input className="pc-field" type="url" value={link.url} onChange={(event) => setPrivateLinks((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, url: event.target.value } : item))} placeholder="https://..." aria-label={`비공개 링크 ${index + 1} 주소`} />
+                        <button type="button" className="pc-link justify-self-end sm:self-center" onClick={() => setPrivateLinks((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={`비공개 링크 ${index + 1} 삭제`}>삭제</button>
                       </div>)}
                     </div>
                   </section>

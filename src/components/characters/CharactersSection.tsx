@@ -1,9 +1,11 @@
 'use client';
 
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import type { Character } from '@/lib/data/characters';
+import type { Character, CharacterLink } from '@/lib/data/characters';
+import { useAuth } from '@/contexts/AuthContext';
+import { subscribeToPrivateCharacterLinks } from '@/lib/data/firebasePrivateCharacterLinks';
 import CharacterUploadButton from '@/components/characters/CharacterUploadButton';
 import CharacterManagementActions from '@/components/characters/CharacterManagementActions';
 
@@ -23,14 +25,20 @@ function Polaroid({ character, onOpen, onUpdated, onDeleted }: { character: Char
 }
 
 function CharacterDetail({ character, onClose, onShowOriginal }: { character: Character; onClose: () => void; onShowOriginal: () => void }) {
+  const { isAdmin } = useAuth();
   const facts = [['나이', character.age], ['성별', character.gender], ['키 / 몸무게', character.heightWeight], ['직업', character.occupation], ['종족', character.species]].filter(([, value]) => value);
   const linkItems = character.linkItems ?? [];
+  const [privateLinkItems, setPrivateLinkItems] = useState<CharacterLink[]>([]);
+  useEffect(() => {
+    if (!isAdmin) return;
+    return subscribeToPrivateCharacterLinks(character.id, setPrivateLinkItems);
+  }, [character.id, isAdmin]);
   return <div className="fixed inset-0 z-[90] flex items-end justify-center bg-[rgba(76,51,61,0.3)] p-[0.7rem] backdrop-blur-[0.25rem] sm:items-center" onClick={onClose}>
     <motion.article layoutId={`pc-${character.id}`} onClick={(event) => event.stopPropagation()} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="pc-detail w-full max-w-[48rem] overflow-y-auto">
       <button className="pc-detail-close" type="button" onClick={onClose}>닫기</button>
       <div className="grid items-center gap-[1.4rem] sm:grid-cols-[minmax(0,15rem)_1fr]">
         <div className="pc-polaroid"><button type="button" className="pc-polaroid-photo relative block aspect-square w-full cursor-zoom-in overflow-hidden" onClick={onShowOriginal} aria-label="원본 사진 보기"><Image src={character.portrait.cropped} alt={`${character.name}의 외형`} fill sizes="15rem" className="object-cover" /><div className="pointer-events-none absolute inset-0 z-[1]" style={{ boxShadow: 'inset 0 0 0.8rem rgba(0,0,0,0.18)' }} /></button><div className="px-[0.2rem] pb-[1rem] pt-[0.55rem]">{character.alias && <p className="afterroll-meta text-[0.75rem] text-[var(--atr-muted)]">{character.alias}</p>}<p className="afterroll-title text-[1.6rem] text-[var(--atr-text)]">{character.name}</p>{character.catchphrase && <p className="afterroll-meta mt-[0.2rem] text-[0.75rem] text-[var(--atr-soft)]">“{character.catchphrase}”</p>}</div></div>
-        <div><dl className="mt-[0.6rem] grid gap-x-[1rem] gap-y-[0.5rem] sm:grid-cols-2">{facts.map(([label, value]) => <div key={label}><dt className="pc-field-label">{label}</dt><dd className="afterroll-meta text-[0.84rem] text-[var(--atr-text)]">{value}</dd></div>)}</dl>{character.personality && <div className="mt-[1rem] border-t border-dashed border-[var(--atr-line)] pt-[0.8rem]"><p className="pc-field-label">성격</p><p className="afterroll-body whitespace-pre-wrap text-[0.88rem] leading-[1.7] text-[var(--atr-muted)]">{character.personality}</p></div>}<div className="mt-[1rem] flex flex-wrap gap-[0.5rem]">{linkItems.map((link) => <a key={`${link.name}-${link.url}`} className="pc-link" href={link.url} target="_blank" rel="noreferrer">{link.name} ↗</a>)}{character.links.characterSheet && <a className="pc-link" href={character.links.characterSheet} target="_blank" rel="noreferrer">캐릭터 시트 ↗</a>}{character.links.commission && <a className="pc-link" href={character.links.commission} target="_blank" rel="noreferrer">커미션 ↗</a>}</div><p className="afterroll-meta mt-[1rem] text-[0.72rem] text-[var(--atr-soft)]">참여 세션 {character.sessionKeys.length}회</p></div>
+        <div><dl className="mt-[0.6rem] grid gap-x-[1rem] gap-y-[0.5rem] sm:grid-cols-2">{facts.map(([label, value]) => <div key={label}><dt className="pc-field-label">{label}</dt><dd className="afterroll-meta text-[0.84rem] text-[var(--atr-text)]">{value}</dd></div>)}</dl>{character.personality && <div className="mt-[1rem] border-t border-dashed border-[var(--atr-line)] pt-[0.8rem]"><p className="pc-field-label">성격</p><p className="afterroll-body whitespace-pre-wrap text-[0.88rem] leading-[1.7] text-[var(--atr-muted)]">{character.personality}</p></div>}<div className="mt-[1rem] flex flex-wrap gap-[0.5rem]">{linkItems.map((link) => <a key={`${link.name}-${link.url}`} className="pc-link" href={link.url} target="_blank" rel="noreferrer">{link.name} ↗</a>)}{character.links.characterSheet && <a className="pc-link" href={character.links.characterSheet} target="_blank" rel="noreferrer">캐릭터 시트 ↗</a>}{character.links.commission && <a className="pc-link" href={character.links.commission} target="_blank" rel="noreferrer">커미션 ↗</a>}</div>{isAdmin && privateLinkItems.length > 0 && <div className="mt-[1rem] border-t border-dashed border-[var(--atr-line)] pt-[0.8rem]"><p className="pc-field-label">비공개 링크</p><div className="mt-[0.45rem] flex flex-wrap gap-[0.5rem]">{privateLinkItems.map((link) => <a key={`${link.name}-${link.url}`} className="pc-link" href={link.url} target="_blank" rel="noreferrer">{link.name} ↗</a>)}</div></div>}<p className="afterroll-meta mt-[1rem] text-[0.72rem] text-[var(--atr-soft)]">참여 세션 {character.sessionKeys.length}회</p></div>
       </div>
     </motion.article>
   </div>;
