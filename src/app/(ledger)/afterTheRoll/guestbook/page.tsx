@@ -5,7 +5,7 @@ export const dynamic = 'force-static';
 export default function AfterTheRollGuestbookPage() {
   return (
     <main className="afterroll-desk min-h-screen px-[1.1rem] pb-[4rem] pt-[5.4rem] md:px-[2rem]">
-      <div className="mx-auto max-w-[48rem]">
+      <div className="mx-auto max-w-[52rem]">
         <header className="mb-[1.5rem] flex flex-wrap items-end justify-between gap-[0.85rem] border-b border-[var(--atr-line)] pb-[0.85rem]">
           <div>
             <p className="afterroll-meta text-[0.74rem] uppercase tracking-[0.14em] text-[var(--ledger-soft)]">Guestbook</p>

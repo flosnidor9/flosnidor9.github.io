@@ -741,8 +741,8 @@ export default function TendencySection() {
   const primarySections = useMemo(() => profile.sections.slice(0, 5), [profile.sections]);
 
   return (
-    <main className="afterroll-desk min-h-screen px-[1rem] pb-[3rem] pt-[1rem] text-[var(--atr-text)] md:px-[1.35rem]">
-      <div className="mx-auto max-w-[78rem]">
+    <main className="afterroll-desk min-h-screen px-[1.1rem] pb-[3rem] pt-[1rem] text-[var(--atr-text)] md:px-[2rem]">
+      <div className="mx-auto max-w-[72rem]">
         <header className="mb-[1rem] flex flex-wrap items-center justify-between gap-[0.75rem] border-b border-[var(--atr-line)] pb-[0.85rem]">
           <div>
             <p className="text-[0.74rem] uppercase tracking-[0.14em] text-[var(--atr-soft)]">TRPG Profile</p>
