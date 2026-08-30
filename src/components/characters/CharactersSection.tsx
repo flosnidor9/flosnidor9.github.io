@@ -24,6 +24,40 @@ const STICKER_POSITIONS = [
 const SESSION_STATUS_LABEL: Record<PlayEntry['status'], string> = {
   scheduled: '예정', ongoing: '진행', completed: '완주', dropped: '하차',
 };
+const SESSION_STATUS_PRIORITY: Record<PlayEntry['status'], number> = {
+  scheduled: 0,
+  ongoing: 1,
+  completed: 2,
+  dropped: 3,
+};
+const UNLINKED_CHARACTER_PRIORITY = Number.MAX_SAFE_INTEGER;
+
+function latestSessionDate(session: PlayEntry) {
+  return session.endDate ?? session.startDate;
+}
+
+function compareCharactersBySessions(aSessions: PlayEntry[], bSessions: PlayEntry[]) {
+  const aPriority = aSessions.reduce(
+    (priority, session) => Math.min(priority, SESSION_STATUS_PRIORITY[session.status]),
+    UNLINKED_CHARACTER_PRIORITY,
+  );
+  const bPriority = bSessions.reduce(
+    (priority, session) => Math.min(priority, SESSION_STATUS_PRIORITY[session.status]),
+    UNLINKED_CHARACTER_PRIORITY,
+  );
+  const statusDifference = aPriority - bPriority;
+  if (statusDifference !== 0) return statusDifference;
+
+  const aLatestDate = aSessions.reduce((latest, session) => {
+    const date = latestSessionDate(session);
+    return date > latest ? date : latest;
+  }, '');
+  const bLatestDate = bSessions.reduce((latest, session) => {
+    const date = latestSessionDate(session);
+    return date > latest ? date : latest;
+  }, '');
+  return bLatestDate.localeCompare(aLatestDate);
+}
 
 function stickerRotation(characterId: string, index: number) {
   const seed = [...`${characterId}-${index}`].reduce((total, letter) => total + letter.charCodeAt(0), 0);
@@ -89,7 +123,16 @@ export default function CharactersSection({ characters }: { characters: Characte
       return session ? [session] : [];
     })]));
   }, [characterList, plays]);
-  const visible = useMemo(() => { const needle = query.trim().toLowerCase(); return needle ? characterList.filter((character) => `${character.name} ${character.alias ?? ''}`.toLowerCase().includes(needle)) : characterList; }, [characterList, query]);
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const filteredCharacters = needle
+      ? characterList.filter((character) => `${character.name} ${character.alias ?? ''}`.toLowerCase().includes(needle))
+      : characterList;
+    return [...filteredCharacters].sort((a, b) => compareCharactersBySessions(
+      sessionsByCharacter.get(a.id) ?? [],
+      sessionsByCharacter.get(b.id) ?? [],
+    ));
+  }, [characterList, query, sessionsByCharacter]);
   const updateSelected = (updated: Character) => { setCharacterList((current) => current.map((character) => character.id === updated.id ? updated : character)); setSelected(updated); };
   const deleteCharacterFromList = (id: string) => { setCharacterList((current) => current.filter((character) => character.id !== id)); setSelected((current) => current?.id === id ? null : current); };
   return <section className="pc-archive afterroll-desk mx-auto min-h-full max-w-[72rem] px-[1.1rem] py-[0.7rem] sm:py-[1.1rem] md:px-[2rem]"><header className="relative z-[1] mb-[1rem] flex flex-wrap items-center justify-between gap-[0.75rem] border-b border-[var(--atr-line)] pb-[0.85rem]"><div><p className="afterroll-meta text-[0.74rem] uppercase tracking-[0.14em] text-[var(--atr-soft)]">Character List</p><h1 className="afterroll-title mt-[0.18rem] text-[2.4rem] leading-none text-[var(--atr-text)]">캐릭터 목록</h1></div><CharacterUploadButton /></header><div className="relative z-[1] mb-[1.5rem] max-w-[22rem]"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="이름 또는 별칭으로 찾기" className="pc-field" aria-label="캐릭터 검색" /></div>{visible.length ? <div className="relative z-[1] grid grid-cols-2 gap-x-[1rem] gap-y-[1.6rem] sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{visible.map((character) => <Polaroid key={character.id} character={character} sessions={sessionsByCharacter.get(character.id) ?? []} onOpen={() => setSelected(character)} onUpdated={updateSelected} onDeleted={() => deleteCharacterFromList(character.id)} />)}</div> : <p className="relative z-[1] afterroll-meta py-[4rem] text-center text-[0.78rem] text-[var(--atr-muted)]">아직 보관된 캐릭터가 없습니다.</p>}<AnimatePresence>{selected && <CharacterDetail character={selected} sessions={sessionsByCharacter.get(selected.id) ?? []} onClose={() => setSelected(null)} onShowOriginal={() => setOriginalUrl(selected.portrait.original)} />}</AnimatePresence><AnimatePresence>{originalUrl && <motion.div key="lightbox" className="fixed inset-0 z-[200] flex cursor-zoom-out items-center justify-center bg-black/80" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} onClick={() => setOriginalUrl(null)}><motion.div className="relative h-[85vh] w-[85vw]" initial={{ scale: 0.96 }} animate={{ scale: 1 }} exit={{ scale: 0.96 }} transition={{ duration: 0.25 }}><Image src={originalUrl} alt="원본 사진" fill className="object-contain" /></motion.div></motion.div>}</AnimatePresence></section>;
