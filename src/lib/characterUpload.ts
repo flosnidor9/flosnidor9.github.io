@@ -90,6 +90,30 @@ export async function uploadCharacter(token: string, character: Character, origi
   throw new Error('다른 업로드와 충돌했습니다. 잠시 후 다시 시도해 주세요.');
 }
 
+export async function updateCharacter(token: string, character: Character) {
+  const archive = await readArchive(token);
+  if (!archive.some((entry) => entry.id === character.id)) throw new Error('수정할 캐릭터를 찾을 수 없습니다.');
+  const nextArchive = {
+    characters: archive.map((entry) => entry.id === character.id ? character : entry),
+  };
+  const files: UploadFile[] = [{ path: ARCHIVE_PATH, content: JSON.stringify(nextArchive, null, 2), encoding: 'utf-8' }];
+  for (let attempt = 0; attempt < UPLOAD_RETRIES; attempt += 1) {
+    if (await commit(token, files, `Update character: ${character.name}`)) return;
+  }
+  throw new Error('다른 수정과 충돌했습니다. 잠시 후 다시 시도해 주세요.');
+}
+
+export async function deleteCharacter(token: string, character: Character) {
+  const archive = await readArchive(token);
+  if (!archive.some((entry) => entry.id === character.id)) throw new Error('삭제할 캐릭터를 찾을 수 없습니다.');
+  const nextArchive = { characters: archive.filter((entry) => entry.id !== character.id) };
+  const files: UploadFile[] = [{ path: ARCHIVE_PATH, content: JSON.stringify(nextArchive, null, 2), encoding: 'utf-8' }];
+  for (let attempt = 0; attempt < UPLOAD_RETRIES; attempt += 1) {
+    if (await commit(token, files, `Delete character: ${character.name}`)) return;
+  }
+  throw new Error('다른 수정과 충돌했습니다. 잠시 후 다시 시도해 주세요.');
+}
+
 export function characterImagePaths(id: string, originalName: string) {
   const extension = originalName.includes('.') ? originalName.slice(originalName.lastIndexOf('.')).toLowerCase() : '.webp';
   return { original: `/images/characters/${id}/original${extension}`, cropped: `/images/characters/${id}/portrait.webp` };
