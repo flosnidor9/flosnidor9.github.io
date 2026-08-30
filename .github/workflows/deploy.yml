@@ -38,8 +38,11 @@ jobs:
       - name: Copy TRPG logs
         run: |
           rm -rf public/images/afterTheRoll
+          rm -rf public/images/characters
           mkdir -p public/images
           cp -R trpg-logs/public/images/afterTheRoll public/images/afterTheRoll
+          if [ -d trpg-logs/public/images/characters ]; then cp -R trpg-logs/public/images/characters public/images/characters; fi
+          if [ -f trpg-logs/public/characters/characters.json ]; then cp trpg-logs/public/characters/characters.json src/content/characters.json; fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

@@ -10,6 +10,7 @@ import {
   ChatBubbleLeftRightIcon,
   CubeIcon,
   FaceSmileIcon,
+  IdentificationIcon,
   SparklesIcon,
   TicketIcon,
 } from '@heroicons/react/24/solid';
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { label: '플레이 목록', href: '/afterTheRoll/plays', exact: false, icon: CubeIcon },
   { label: '도토리 목록', href: '/afterTheRoll/acorns', exact: false, icon: SparklesIcon },
   { label: '공수표 목록', href: '/afterTheRoll/promises', exact: false, icon: TicketIcon },
+  { label: '캐릭터 목록', href: '/afterTheRoll/characters', exact: false, icon: IdentificationIcon },
   { label: '로그', href: '/afterTheRoll/logs', exact: false, icon: BookOpenIcon },
   { label: '방명록', href: '/afterTheRoll/guestbook', exact: false, icon: ChatBubbleLeftRightIcon },
 ] as const;
