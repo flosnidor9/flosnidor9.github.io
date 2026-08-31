@@ -45,7 +45,7 @@ export default function CharacterPreviewModal({
 }) {
   return (
     <motion.div
-      className="fixed inset-0 z-[10000] flex items-end justify-center bg-[rgba(76,51,61,0.36)] p-[0.8rem] backdrop-blur-[0.25rem] sm:items-center"
+      className="fixed inset-0 z-[10000] flex items-end justify-center bg-[rgba(76,51,61,0.36)] p-[0.8rem] backdrop-blur-[0.125rem] sm:backdrop-blur-[0.25rem] sm:items-center"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}

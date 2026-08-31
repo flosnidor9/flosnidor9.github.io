@@ -15,9 +15,11 @@ import { subscribeToPlays, type PlayEntry } from '@/lib/data/firebasePlays';
 const HOVER_ROTATIONS = [-1.1, -0.65, -0.45, 0.7, 1.15] as const;
 const HOVER_LIFT = '-0.35rem';
 const DETAIL_ENTER_DURATION = 0.28;
+const DETAIL_OVERLAY_EXIT_DURATION = 0.08;
+const DETAIL_LAYOUT_EXIT_DELAY = DETAIL_ENTER_DURATION;
 const STICKER_ENTER_DELAY = 0.34;
 const STICKER_STAGGER = 0.12;
-const STICKER_EXIT_DURATION = 0.12;
+const STICKER_EXIT_DURATION = 0.08;
 const POLAROID_REVEAL_INITIAL_SCALE = 1.16;
 const POLAROID_REVEAL_INITIAL_Y = '-1.4rem';
 const POLAROID_REVEAL_STAGGER = 0.06;
@@ -164,7 +166,7 @@ function CharacterDetail({ character, sessions, sessionLogLinks, onClose, onShow
     setIsClosing(true);
     window.setTimeout(onClose, STICKER_EXIT_DURATION * 1000);
   };
-  return <div className="fixed inset-0 z-[90] flex items-end justify-center bg-[rgba(76,51,61,0.3)] p-[0.7rem] backdrop-blur-[0.25rem] sm:items-center" onClick={closeDetail}>
+  return <motion.div className="fixed inset-0 z-[90] flex items-end justify-center bg-[rgba(76,51,61,0.3)] p-[0.7rem] backdrop-blur-[0.125rem] sm:backdrop-blur-[0.25rem] sm:items-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { delay: DETAIL_LAYOUT_EXIT_DELAY, duration: DETAIL_OVERLAY_EXIT_DURATION } }} transition={{ duration: DETAIL_OVERLAY_EXIT_DURATION }} onClick={closeDetail}>
     <div className="pc-detail-stage w-full max-w-[48rem]" onClick={(event) => event.stopPropagation()}>
     <motion.article layoutId={`pc-${character.id}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: DETAIL_ENTER_DURATION }} className="pc-detail relative z-[1] w-full overflow-y-auto">
       <button className="pc-detail-close" type="button" onClick={closeDetail}>닫기</button>
@@ -187,7 +189,7 @@ function CharacterDetail({ character, sessions, sessionLogLinks, onClose, onShow
       return <div key={sticker.src} className="pc-detail-sticker" style={style}><motion.div className="relative size-full" initial={{ opacity: 0, scale: 0.82, rotate: stickerRotation(character.id, index) - 4 }} animate={isClosing ? { opacity: 0, scale: 0.68 } : { opacity: 1, scale: 1, rotate: stickerRotation(character.id, index) }} transition={isClosing ? { duration: STICKER_EXIT_DURATION } : { duration: DETAIL_ENTER_DURATION, delay: STICKER_ENTER_DELAY + index * STICKER_STAGGER }}><Image src={sticker.src} alt="" fill sizes="(max-width: 40rem) 3.4rem, 5.2rem" className="object-contain" /></motion.div></div>;
     })}
     </div>
-  </div>;
+  </motion.div>;
 }
 
 export default function CharactersSection({ characters, sessionLogLinks = [] }: { characters: Character[]; sessionLogLinks?: SessionLogLink[] }) {
