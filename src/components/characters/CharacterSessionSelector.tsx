@@ -20,6 +20,13 @@ export default function CharacterSessionSelector({ value, onChange }: Props) {
   }), []);
 
   const selectedKeys = useMemo(() => new Set(value), [value]);
+  const selectedSessions = useMemo(
+    () => value.flatMap((key) => {
+      const session = sessions.find((entry) => entry.id === key);
+      return session ? [session] : [];
+    }),
+    [sessions, value],
+  );
   const unavailableKeys = value.filter((key) => !sessions.some((session) => session.id === key));
   const filteredSessions = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('ko-KR');
@@ -33,7 +40,10 @@ export default function CharacterSessionSelector({ value, onChange }: Props) {
   return <section aria-labelledby="character-session-label">
     <div className="mb-[0.45rem] flex items-baseline justify-between gap-[0.75rem]">
       <p id="character-session-label" className="pc-field-label mb-0">연결할 세션</p>
-      <span className="afterroll-meta text-[0.7rem] text-[var(--atr-soft)]">{value.length}개 선택됨</span>
+      <div className="flex flex-wrap items-center justify-end gap-[0.3rem]">
+        <span className="afterroll-meta text-[0.7rem] text-[var(--atr-soft)]">{value.length}개 선택됨</span>
+        {selectedSessions.map((session) => <button key={session.id} type="button" title={`${sessionLabel(session)} 연결 해제`} className="afterroll-meta flex max-w-[9rem] items-center gap-[0.25rem] rounded-full border border-[var(--atr-line)] bg-[rgba(255,248,250,0.56)] px-[0.45rem] py-[0.12rem] text-[0.68rem] text-[var(--atr-muted)] hover:border-[var(--atr-muted)]" onClick={() => toggle(session.id)} aria-label={`${session.title} 연결 해제`}><span className="truncate">{session.title}</span><span aria-hidden="true">×</span></button>)}
+      </div>
     </div>
     {loading ? <p className="afterroll-meta text-[0.72rem] text-[var(--atr-soft)]">세션 목록을 불러오는 중…</p> : sessions.length ? <>
       <input

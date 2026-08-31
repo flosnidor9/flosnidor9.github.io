@@ -34,6 +34,7 @@ const SESSION_STATUS_PRIORITY: Record<PlayEntry['status'], number> = {
   dropped: 3,
 };
 const UNLINKED_CHARACTER_PRIORITY = Number.MAX_SAFE_INTEGER;
+const HEX_COLOR = /^#[\da-f]{6}$/i;
 
 function latestSessionDate(session: PlayEntry) {
   return session.endDate ?? session.startDate;
@@ -79,9 +80,27 @@ function Polaroid({ character, sessions, onOpen, onUpdated, onDeleted }: { chara
   </button><CharacterManagementActions character={character} onUpdated={onUpdated} onDeleted={onDeleted} /></motion.div>;
 }
 
+function CocDetails({ character }: { character: Character }) {
+  if (!character.coc?.characteristics.length) return null;
+  return <section className="mt-[1rem] border-t border-dashed border-[var(--atr-line)] pt-[0.8rem]"><p className="pc-field-label">특성치</p><dl className="mt-[0.4rem] grid grid-cols-3 gap-x-[0.7rem] gap-y-[0.35rem]">{character.coc.characteristics.map((stat) => <div key={stat.label} className="flex items-baseline gap-[0.35rem]"><dt className="afterroll-meta text-[0.72rem] text-[var(--atr-soft)]">{stat.label}</dt><dd className="afterroll-meta text-[0.76rem] text-[var(--atr-text)]">{stat.value}</dd></div>)}</dl></section>;
+}
+
+function ShinobigamiDetails({ character }: { character: Character }) {
+  if (!character.shinobigami) return null;
+  const data = character.shinobigami;
+  const facts = [['계급', data.rank], ['유파', data.faction], ['하위 유파', data.subfaction], ['신념', data.belief], ['신분', data.socialStatus]].filter(([, value]) => value);
+  return <section className="mt-[1rem] border-t border-dashed border-[var(--atr-line)] pt-[0.8rem]"><dl className="grid grid-cols-2 gap-x-[0.7rem] gap-y-[0.35rem]">{facts.map(([label, value]) => <div key={label}><dt className="pc-field-label">{label}</dt><dd className="afterroll-meta text-[0.76rem] text-[var(--atr-text)]">{value}</dd></div>)}</dl>{data.secretArt && <p className="afterroll-meta mt-[0.65rem] text-[0.78rem] text-[var(--atr-muted)]"><span className="text-[var(--atr-soft)]">오의</span> {data.secretArt.name} · {data.secretArt.type}</p>}{data.ninpo.length > 0 && <div className="mt-[0.65rem]"><p className="pc-field-label">인법</p><p className="afterroll-meta mt-[0.3rem] text-[0.76rem] leading-[1.6] text-[var(--atr-muted)]">{data.ninpo.join(' · ')}</p></div>}</section>;
+}
+
+function InsaneDetails({ character }: { character: Character }) {
+  if (!character.insane) return null;
+  const { abilities } = character.insane;
+  return <section className="mt-[1rem] border-t border-dashed border-[var(--atr-line)] pt-[0.8rem]">{abilities.length > 0 && <div><p className="pc-field-label">어빌리티</p><p className="afterroll-meta mt-[0.3rem] text-[0.76rem] leading-[1.6] text-[var(--atr-muted)]">{abilities.join(' · ')}</p></div>}</section>;
+}
+
 function CharacterDetail({ character, sessions, onClose, onShowOriginal }: { character: Character; sessions: PlayEntry[]; onClose: () => void; onShowOriginal: () => void }) {
   const { isAdmin } = useAuth();
-  const facts = [['나이', character.age], ['성별', character.gender], ['키 / 몸무게', character.heightWeight], ['직업', character.occupation], ['종족', character.species]].filter(([, value]) => value);
+  const facts = [['룰', character.rule], ['Color', character.color ?? character.insane?.color], ['나이', character.age], ['성별', character.gender], ['키 / 몸무게', character.heightWeight], ['직업', character.occupation], ['종족', character.species]].filter(([, value]) => value);
   const linkItems = character.linkItems ?? [];
   const [privateLinkItems, setPrivateLinkItems] = useState<CharacterLink[]>([]);
   const [isClosing, setIsClosing] = useState(false);
@@ -101,7 +120,7 @@ function CharacterDetail({ character, sessions, onClose, onShowOriginal }: { cha
       <button className="pc-detail-close" type="button" onClick={closeDetail}>닫기</button>
       <div className="grid items-center gap-[1.4rem] sm:grid-cols-[minmax(0,15rem)_1fr]">
         <div className="pc-polaroid"><button type="button" className="pc-polaroid-photo relative block aspect-square w-full cursor-zoom-in overflow-hidden" onClick={onShowOriginal} aria-label="원본 사진 보기"><Image src={character.portrait.cropped} alt={`${character.name}의 외형`} fill sizes="15rem" className="object-cover" /><div className="pointer-events-none absolute inset-0 z-[1]" style={{ boxShadow: 'inset 0 0 0.8rem rgba(0,0,0,0.18)' }} /></button><div className="px-[0.2rem] pb-[1rem] pt-[0.55rem]">{character.alias && <p className="afterroll-meta text-[0.75rem] text-[var(--atr-muted)]">{character.alias}</p>}<p className="afterroll-title text-[1.6rem] text-[var(--atr-text)]">{character.name}</p>{character.catchphrase && <p className="afterroll-meta mt-[0.2rem] text-[0.75rem] text-[var(--atr-soft)]">“{character.catchphrase}”</p>}</div></div>
-        <div><dl className="mt-[0.6rem] grid gap-x-[1rem] gap-y-[0.5rem] sm:grid-cols-2">{facts.map(([label, value]) => <div key={label}><dt className="pc-field-label">{label}</dt><dd className="afterroll-meta text-[0.84rem] text-[var(--atr-text)]">{value}</dd></div>)}</dl>{character.personality && <div className="mt-[1rem] border-t border-dashed border-[var(--atr-line)] pt-[0.8rem]"><p className="pc-field-label">성격</p><p className="afterroll-body whitespace-pre-wrap text-[0.88rem] leading-[1.7] text-[var(--atr-muted)]">{character.personality}</p></div>}<div className="mt-[1rem] flex flex-wrap gap-[0.5rem]">{linkItems.map((link) => <a key={`${link.name}-${link.url}`} className="pc-link" href={link.url} target="_blank" rel="noreferrer">{link.name} ↗</a>)}{character.links.characterSheet && <a className="pc-link" href={character.links.characterSheet} target="_blank" rel="noreferrer">캐릭터 시트 ↗</a>}{character.links.commission && <a className="pc-link" href={character.links.commission} target="_blank" rel="noreferrer">커미션 ↗</a>}</div>{isAdmin && privateLinkItems.length > 0 && <div className="mt-[1rem] border-t border-dashed border-[var(--atr-line)] pt-[0.8rem]"><p className="pc-field-label">비공개 링크</p><div className="mt-[0.45rem] flex flex-wrap gap-[0.5rem]">{privateLinkItems.map((link) => <a key={`${link.name}-${link.url}`} className="pc-link" href={link.url} target="_blank" rel="noreferrer">{link.name} ↗</a>)}</div></div>}<div className="mt-[1rem] border-t border-dashed border-[var(--atr-line)] pt-[0.8rem]"><p className="pc-field-label">연결된 세션</p>{sessions.length ? <ul className="mt-[0.4rem] space-y-[0.25rem]">{sessions.map((session) => <li key={session.id} className="afterroll-meta text-[0.78rem] text-[var(--atr-muted)]">{session.title} <span className="text-[var(--atr-soft)]">· {SESSION_STATUS_LABEL[session.status]}</span></li>)}</ul> : <p className="afterroll-meta mt-[0.4rem] text-[0.78rem] text-[var(--atr-soft)]">연결된 세션이 없습니다.</p>}</div></div>
+        <div><dl className="mt-[0.6rem] grid gap-x-[1rem] gap-y-[0.5rem] sm:grid-cols-2">{facts.map(([label, value]) => <div key={label}><dt className="pc-field-label">{label}</dt><dd className="afterroll-meta text-[0.84rem] text-[var(--atr-text)]" style={label === 'Color' && HEX_COLOR.test(value ?? '') ? { color: value } : undefined}>{value}</dd></div>)}</dl><CocDetails character={character} /><ShinobigamiDetails character={character} /><InsaneDetails character={character} />{character.personality && <div className="mt-[1rem] border-t border-dashed border-[var(--atr-line)] pt-[0.8rem]"><p className="pc-field-label">{character.coc || character.shinobigami ? '설정' : '성격'}</p><p className="afterroll-body whitespace-pre-wrap text-[0.88rem] leading-[1.7] text-[var(--atr-muted)]">{character.personality}</p></div>}<div className="mt-[1rem] flex flex-wrap gap-[0.5rem]">{linkItems.map((link) => <a key={`${link.name}-${link.url}`} className="pc-link" href={link.url} target="_blank" rel="noreferrer">{link.name} ↗</a>)}{character.links.characterSheet && <a className="pc-link" href={character.links.characterSheet} target="_blank" rel="noreferrer">캐릭터 시트 ↗</a>}{character.links.commission && <a className="pc-link" href={character.links.commission} target="_blank" rel="noreferrer">커미션 ↗</a>}</div>{isAdmin && privateLinkItems.length > 0 && <div className="mt-[1rem] border-t border-dashed border-[var(--atr-line)] pt-[0.8rem]"><p className="pc-field-label">비공개 링크</p><div className="mt-[0.45rem] flex flex-wrap gap-[0.5rem]">{privateLinkItems.map((link) => <a key={`${link.name}-${link.url}`} className="pc-link" href={link.url} target="_blank" rel="noreferrer">{link.name} ↗</a>)}</div></div>}<div className="mt-[1rem] border-t border-dashed border-[var(--atr-line)] pt-[0.8rem]"><p className="pc-field-label">연결된 세션</p>{sessions.length ? <ul className="mt-[0.4rem] space-y-[0.25rem]">{sessions.map((session) => <li key={session.id} className="afterroll-meta text-[0.78rem] text-[var(--atr-muted)]">{session.title} <span className="text-[var(--atr-soft)]">· {SESSION_STATUS_LABEL[session.status]}</span></li>)}</ul> : <p className="afterroll-meta mt-[0.4rem] text-[0.78rem] text-[var(--atr-soft)]">연결된 세션이 없습니다.</p>}</div></div>
       </div>
     </motion.article>
     {(character.stickers ?? []).map((sticker, index) => {

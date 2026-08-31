@@ -12,10 +12,12 @@ import {
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
-import type { Character, CharacterLink } from "@/lib/data/characters";
+import type { Character, CharacterLink, CocCharacterData, InsaneCharacterData, ShinobigamiCharacterData } from "@/lib/data/characters";
 import { characterImagePaths, characterStickerPaths, uploadCharacter } from "@/lib/characterUpload";
 import { savePrivateCharacterLinks } from '@/lib/data/firebasePrivateCharacterLinks';
 import CharacterSessionSelector from '@/components/characters/CharacterSessionSelector';
+import { subscribeToPlaysOptions } from '@/lib/data/firebasePlays';
+import { isCocRule, isInsaneRule, isShinobigamiRule, parseCocofoliaCharacter } from '@/lib/cocofoliaCharacter';
 
 const OUTPUT_SIZE = 1024;
 const MAX_ZOOM = 3;
@@ -24,6 +26,7 @@ type Profile = {
   name: string;
   alias: string;
   catchphrase: string;
+  color: string;
   age: string;
   gender: string;
   heightWeight: string;
@@ -35,6 +38,7 @@ const EMPTY: Profile = {
   name: "",
   alias: "",
   catchphrase: "",
+  color: "",
   age: "",
   gender: "",
   heightWeight: "",
@@ -287,16 +291,51 @@ function Field({
   );
 }
 
+function CocCharacteristics({ characteristics }: { characteristics: CocCharacterData['characteristics'] }) {
+  if (!characteristics.length) return null;
+  return <section className="rounded-[0.45rem] border border-dashed border-[var(--atr-line)] p-[0.7rem]"><p className="pc-field-label">특성치</p><dl className="mt-[0.45rem] grid grid-cols-3 gap-x-[0.7rem] gap-y-[0.35rem] sm:grid-cols-5">{characteristics.map((stat) => <div key={stat.label} className="flex items-baseline gap-[0.35rem]"><dt className="afterroll-meta text-[0.68rem] text-[var(--atr-soft)]">{stat.label}</dt><dd className="afterroll-meta text-[0.75rem] text-[var(--atr-text)]">{stat.value}</dd></div>)}</dl></section>;
+}
+
+function ShinobigamiFields({ value, onChange }: { value: ShinobigamiCharacterData | undefined; onChange: (value: ShinobigamiCharacterData) => void }) {
+  const fields: Array<{ key: keyof Pick<ShinobigamiCharacterData, 'rank' | 'faction' | 'subfaction' | 'belief' | 'socialStatus'>; label: string }> = [
+    { key: 'rank', label: '계급' }, { key: 'faction', label: '유파' }, { key: 'subfaction', label: '하위 유파' }, { key: 'belief', label: '신념' }, { key: 'socialStatus', label: '신분' },
+  ];
+  const setField = (key: typeof fields[number]['key'], next: string) => onChange({ ...(value ?? { ninpo: [] }), [key]: next });
+  return <>{fields.map(({ key, label }) => <Field key={key} label={label} value={value?.[key] ?? ''} onChange={(next) => setField(key, next)} />)}</>;
+}
+
+function ShinobigamiImportedValues({ value }: { value: ShinobigamiCharacterData | undefined }) {
+  if (!value?.ninpo.length && !value?.secretArt) return null;
+  return <section className="rounded-[0.45rem] border border-dashed border-[var(--atr-line)] p-[0.7rem]">{value.secretArt && <p className="afterroll-meta text-[0.76rem] text-[var(--atr-muted)]"><span className="text-[var(--atr-soft)]">오의</span> {value.secretArt.name} · {value.secretArt.type}</p>}{value.ninpo.length > 0 && <div className={value.secretArt ? 'mt-[0.55rem]' : ''}><p className="pc-field-label">인법</p><p className="afterroll-meta mt-[0.3rem] text-[0.72rem] leading-[1.6] text-[var(--atr-muted)]">{value.ninpo.join(' · ')}</p></div>}</section>;
+}
+
+function ColorField({ value, onChange }: { value?: string; onChange: (value: string) => void }) {
+  const normalizedValue = value ?? '';
+  const isHex = /^#[\da-f]{6}$/i.test(normalizedValue);
+  return <label><span className="pc-field-label">Color</span><input className="pc-field" value={normalizedValue} onChange={(event) => onChange(event.target.value)} placeholder="#FAF3A5" style={isHex ? { color: normalizedValue } : undefined} /></label>;
+}
+
+function InsaneImportedValues({ value }: { value: InsaneCharacterData | undefined }) {
+  if (!value?.abilities.length) return null;
+  return <section className="rounded-[0.45rem] border border-dashed border-[var(--atr-line)] p-[0.7rem]"><p className="pc-field-label">어빌리티</p><p className="afterroll-meta mt-[0.3rem] text-[0.72rem] leading-[1.6] text-[var(--atr-muted)]">{value.abilities.join(' · ')}</p></section>;
+}
+
 export default function CharacterUploadButton() {
   const { isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [crop, setCrop] = useState(DEFAULT_CROP);
   const [profile, setProfile] = useState<Profile>(EMPTY);
+  const [rule, setRule] = useState('');
+  const [rules, setRules] = useState<string[]>([]);
+  const [coc, setCoc] = useState<CocCharacterData | undefined>();
+  const [shinobigami, setShinobigami] = useState<ShinobigamiCharacterData | undefined>();
+  const [insane, setInsane] = useState<InsaneCharacterData | undefined>();
   const [links, setLinks] = useState<CharacterLink[]>([]);
   const [privateLinks, setPrivateLinks] = useState<CharacterLink[]>([]);
   const [stickerFiles, setStickerFiles] = useState<File[]>([]);
   const [stickerSizes, setStickerSizes] = useState<number[]>([]);
+  const portraitInput = useRef<HTMLInputElement>(null);
   const stickerInput = useRef<HTMLInputElement>(null);
   const [sessionKeys, setSessionKeys] = useState<string[]>([]);
   const [token, setToken] = useState("");
@@ -304,6 +343,43 @@ export default function CharacterUploadButton() {
   const [saving, setSaving] = useState(false);
   const set = (key: keyof Profile) => (value: string) =>
     setProfile((current) => ({ ...current, [key]: value }));
+  const resetForm = () => {
+    setFile(null);
+    setCrop(DEFAULT_CROP);
+    setProfile(EMPTY);
+    setRule('');
+    setCoc(undefined);
+    setShinobigami(undefined);
+    setInsane(undefined);
+    setLinks([]);
+    setPrivateLinks([]);
+    setStickerFiles([]);
+    setStickerSizes([]);
+    setSessionKeys([]);
+    setToken('');
+    setStatus('');
+    if (portraitInput.current) portraitInput.current.value = '';
+    if (stickerInput.current) stickerInput.current.value = '';
+  };
+  useEffect(() => subscribeToPlaysOptions((options) => setRules(options.rules)), []);
+  const importCocofolia = async () => {
+    try {
+      const imported = parseCocofoliaCharacter(await navigator.clipboard.readText(), rule);
+      if (!imported) {
+        const message = '클립보드에 선택한 룰의 코코포리아 캐릭터 API가 없습니다.';
+        setStatus(message);
+        window.alert(message);
+        return;
+      }
+      setProfile((current) => ({ ...current, name: imported.name || current.name, catchphrase: imported.catchphrase || current.catchphrase, color: imported.color || current.color, age: imported.age || current.age, gender: imported.gender || current.gender, heightWeight: imported.heightWeight || current.heightWeight, occupation: imported.occupation || current.occupation, personality: imported.setting || current.personality }));
+      setCoc(imported.coc);
+      setShinobigami(imported.shinobigami);
+      setInsane(imported.insane);
+      setStatus('코코포리아 API에서 필요한 항목을 불러왔습니다.');
+    } catch {
+      setStatus('클립보드를 읽을 수 없습니다. 브라우저 권한을 확인해 주세요.');
+    }
+  };
   const addStickers = (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(event.target.files ?? []);
     if (selectedFiles.length) {
@@ -329,6 +405,10 @@ export default function CharacterUploadButton() {
       const character: Character = {
         id,
         ...profile,
+        rule,
+        coc,
+        shinobigami,
+        insane,
         linkItems: links.filter((link) => link.name.trim() && link.url.trim()),
         stickers: characterStickerPaths(id, stickerFiles).map((sticker, index) => ({ ...sticker, size: stickerSizes[index] ?? DEFAULT_STICKER_SIZE })),
         links: {},
@@ -388,6 +468,14 @@ export default function CharacterUploadButton() {
                   </button>
                 </header>
                 <div className="space-y-[1rem] px-[1.1rem] py-[1rem]">
+                  <section>
+                    <label htmlFor="character-rule" className="pc-field-label">룰</label>
+                    <select id="character-rule" value={rule} onChange={(event) => { setRule(event.target.value); setCoc(undefined); setShinobigami(undefined); setInsane(undefined); setStatus(''); }} className="pc-field mt-[0.35rem] max-w-[16rem] rounded-full py-[0.42rem]">
+                      <option value="">룰 선택</option>
+                      {rules.map((option) => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                    {(isCocRule(rule) || isShinobigamiRule(rule) || isInsaneRule(rule)) && <div className="mt-[0.45rem] flex flex-wrap items-center gap-[0.55rem]"><button type="button" className="pc-link" onClick={() => void importCocofolia()}>코코포리아 API 붙여넣기</button><p className="afterroll-meta text-[0.68rem] text-[var(--atr-soft)]">클립보드의 캐릭터 API에서 이 룰에 필요한 항목만 채웁니다.</p></div>}
+                  </section>
                   <div>
                     <p className="pc-field-label">외형 원본</p>
                     <div className="flex items-center gap-[0.6rem]">
@@ -401,6 +489,7 @@ export default function CharacterUploadButton() {
                         {file?.name ?? "선택된 파일 없음"}
                       </span>
                       <input
+                        ref={portraitInput}
                         id="character-portrait-file"
                         type="file"
                         accept="image/jpeg,image/png,image/webp"
@@ -440,11 +529,7 @@ export default function CharacterUploadButton() {
                       value={profile.name}
                       onChange={set("name")}
                     />
-                    <Field
-                      label="별칭"
-                      value={profile.alias}
-                      onChange={set("alias")}
-                    />
+                    {!isCocRule(rule) && !isShinobigamiRule(rule) && !isInsaneRule(rule) && <Field label="별칭" value={profile.alias} onChange={set("alias")} />}
                     <Field
                       label="나이"
                       value={profile.age}
@@ -455,27 +540,14 @@ export default function CharacterUploadButton() {
                       value={profile.gender}
                       onChange={set("gender")}
                     />
-                    <Field
-                      label="키 / 몸무게"
-                      value={profile.heightWeight}
-                      onChange={set("heightWeight")}
-                    />
-                    <Field
-                      label="직업"
-                      value={profile.occupation}
-                      onChange={set("occupation")}
-                    />
-                    <Field
-                      label="종족"
-                      value={profile.species}
-                      onChange={set("species")}
-                    />
-                    <Field
-                      label="캐치프레이즈"
-                      value={profile.catchphrase}
-                      onChange={set("catchphrase")}
-                    />
+                    {isCocRule(rule) && <><Field label="키 / 몸무게" value={profile.heightWeight} onChange={set("heightWeight")} /><Field label="직업" value={profile.occupation} onChange={set("occupation")} /><ColorField value={profile.color} onChange={set("color")} /></>}
+                    {isShinobigamiRule(rule) && <><ShinobigamiFields value={shinobigami} onChange={setShinobigami} /><ColorField value={profile.color} onChange={set("color")} /></>}
+                    {isInsaneRule(rule) && <><Field label="직업" value={profile.occupation} onChange={set("occupation")} /><Field label="한마디" value={profile.catchphrase} onChange={set("catchphrase")} /><ColorField value={profile.color} onChange={set("color")} /></>}
+                    {!isCocRule(rule) && !isShinobigamiRule(rule) && !isInsaneRule(rule) && <><Field label="키 / 몸무게" value={profile.heightWeight} onChange={set("heightWeight")} /><Field label="직업" value={profile.occupation} onChange={set("occupation")} /><Field label="종족" value={profile.species} onChange={set("species")} /><Field label="캐치프레이즈" value={profile.catchphrase} onChange={set("catchphrase")} /></>}
                   </div>
+                  {isCocRule(rule) && <CocCharacteristics characteristics={coc?.characteristics ?? []} />}
+                  {isShinobigamiRule(rule) && <ShinobigamiImportedValues value={shinobigami} />}
+                  {isInsaneRule(rule) && <InsaneImportedValues value={insane} />}
                   <section>
                     <div className="mb-[0.45rem] flex items-center justify-between gap-[0.75rem]">
                       <p className="pc-field-label mb-0">링크</p>
@@ -506,8 +578,8 @@ export default function CharacterUploadButton() {
                     </div>
                   </section>
                   <CharacterSessionSelector value={sessionKeys} onChange={setSessionKeys} />
-                  <label>
-                    <span className="pc-field-label">성격</span>
+                  {!isInsaneRule(rule) && <label>
+                    <span className="pc-field-label">{isCocRule(rule) || isShinobigamiRule(rule) ? '설정' : '성격'}</span>
                     <textarea
                       className="pc-field min-h-[5rem] resize-y"
                       value={profile.personality}
@@ -515,7 +587,7 @@ export default function CharacterUploadButton() {
                         set("personality")(event.target.value)
                       }
                     />
-                  </label>
+                  </label>}
                   <label>
                     <span className="pc-field-label">GitHub access token</span>
                     <input
@@ -532,7 +604,15 @@ export default function CharacterUploadButton() {
                       {status}
                     </p>
                   )}
-                  <div className="flex justify-end">
+                  <div className="flex justify-end gap-[0.45rem]">
+                    <button
+                      type="button"
+                      className="pc-text-button"
+                      disabled={saving}
+                      onClick={resetForm}
+                    >
+                      초기화
+                    </button>
                     <button
                       type="button"
                       disabled={
