@@ -604,6 +604,11 @@ export default function CalendarSection({ logLinks = [] }: { logLinks?: Calendar
     setDetail({ event, x, y });
   }
 
+  function closePopups() {
+    setDetail(null);
+    setSelectedCharacter(null);
+  }
+
   const year = baseDate.getFullYear();
   const month = baseDate.getMonth();
 
@@ -1016,7 +1021,7 @@ export default function CalendarSection({ logLinks = [] }: { logLinks?: Calendar
           {detail && (
             <div
               style={{ position: 'fixed', inset: 0, zIndex: 9999, cursor: 'default' }}
-              onClick={() => setDetail(null)}
+              onClick={closePopups}
             >
               <EventDetailPanel
                 detail={detail}
@@ -1028,7 +1033,11 @@ export default function CalendarSection({ logLinks = [] }: { logLinks?: Calendar
             </div>
           )}
           {selectedCharacter && (
-            <CharacterPreviewModal character={selectedCharacter} onClose={() => setSelectedCharacter(null)} />
+            <CharacterPreviewModal
+              character={selectedCharacter}
+              onClose={() => setSelectedCharacter(null)}
+              onBackdropClose={closePopups}
+            />
           )}
         </AnimatePresence>
       </Portal>

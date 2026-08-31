@@ -34,14 +34,22 @@ export function LinkedCharacterButtons({
   );
 }
 
-export default function CharacterPreviewModal({ character, onClose }: { character: Character; onClose: () => void }) {
+export default function CharacterPreviewModal({
+  character,
+  onClose,
+  onBackdropClose = onClose,
+}: {
+  character: Character;
+  onClose: () => void;
+  onBackdropClose?: () => void;
+}) {
   return (
     <motion.div
-      className="fixed inset-0 z-[200] flex items-end justify-center bg-[rgba(76,51,61,0.36)] p-[0.8rem] backdrop-blur-[0.25rem] sm:items-center"
+      className="fixed inset-0 z-[10000] flex items-end justify-center bg-[rgba(76,51,61,0.36)] p-[0.8rem] backdrop-blur-[0.25rem] sm:items-center"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      onClick={onClose}
+      onClick={onBackdropClose}
     >
       <motion.article
         className="ledger-paper-sheet w-full max-w-[25rem] rounded-[1rem] p-[1rem] shadow-xl"
