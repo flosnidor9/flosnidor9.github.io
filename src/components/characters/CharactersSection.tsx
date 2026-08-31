@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { Character, CharacterLink } from '@/lib/data/characters';
+import { getShinobigamiMark } from '@/lib/shinobigamiMarks';
 import { useAuth } from '@/contexts/AuthContext';
 import { subscribeToPrivateCharacterLinks } from '@/lib/data/firebasePrivateCharacterLinks';
 import CharacterUploadButton from '@/components/characters/CharacterUploadButton';
@@ -77,8 +78,9 @@ function getHoverRotation() {
 
 function Polaroid({ character, sessions, onOpen, onUpdated, onDeleted }: { character: Character; sessions: PlayEntry[]; onOpen: () => void; onUpdated: (character: Character) => void; onDeleted: () => void }) {
   const [hoverRotation, setHoverRotation] = useState(0);
+  const shinobigamiMark = getShinobigamiMark(character.shinobigami?.subfaction);
   return <motion.div layoutId={`pc-${character.id}`} onHoverStart={() => setHoverRotation(getHoverRotation())} whileHover={{ y: HOVER_LIFT, rotate: hoverRotation }} className="pc-polaroid group relative w-full"><button type="button" onClick={onOpen} className="block w-full text-left active:scale-[0.98]" aria-label={`${character.name} 캐릭터 상세 보기`}>
-    <div className="pc-polaroid-photo relative aspect-square overflow-hidden bg-[rgba(200,121,147,0.13)]"><Image src={character.portrait.cropped} alt={`${character.name}의 외형`} fill sizes="(max-width: 48rem) 50vw, (max-width: 80rem) 33vw, 15rem" className="object-cover transition-transform duration-500 group-hover:scale-[1.03]" /><div className="pointer-events-none absolute inset-0 z-[1]" style={{ boxShadow: 'inset 0 0 0.8rem rgba(0,0,0,0.18)' }} /></div>
+    <div className="pc-polaroid-photo relative aspect-square overflow-hidden bg-[rgba(200,121,147,0.13)]"><Image src={character.portrait.cropped} alt={`${character.name}의 외형`} fill sizes="(max-width: 48rem) 50vw, (max-width: 80rem) 33vw, 15rem" className="object-cover transition-transform duration-500 group-hover:scale-[1.03]" />{shinobigamiMark && <div className="pointer-events-none absolute right-[0.5rem] top-[0.5rem] z-[2] size-[2.8rem] rounded-full bg-[rgba(255,252,248,0.78)] p-[0.28rem] shadow-[0_0.1rem_0.45rem_rgba(54,35,44,0.3)]"><Image src={shinobigamiMark} alt={`${character.shinobigami?.subfaction} 문양`} fill sizes="2.8rem" className="object-contain p-[0.28rem]" /></div>}<div className="pointer-events-none absolute inset-0 z-[1]" style={{ boxShadow: 'inset 0 0 0.8rem rgba(0,0,0,0.18)' }} /></div>
     <div className="px-[0.2rem] pb-[1rem] pt-[0.55rem]"><p className="afterroll-meta min-h-[1rem] truncate text-[0.72rem] text-[var(--atr-muted)]">{character.alias ?? '\u00a0'}</p><p className="afterroll-title truncate text-[1.35rem] text-[var(--atr-text)]">{character.name}</p>{character.catchphrase && <p className="afterroll-meta mt-[0.16rem] truncate text-[0.68rem] text-[var(--atr-soft)]">“{character.catchphrase}”</p>}<p className="afterroll-meta mt-[0.7rem] border-t border-dashed border-[rgba(200,121,147,0.3)] pt-[0.46rem] text-[0.68rem] text-[var(--atr-soft)]">{sessions.length ? sessions.map((session) => session.title).join(' · ') : '연결된 세션 없음'}</p></div>
   </button><CharacterManagementActions character={character} onUpdated={onUpdated} onDeleted={onDeleted} /></motion.div>;
 }
@@ -103,7 +105,7 @@ function InsaneDetails({ character }: { character: Character }) {
 
 function CharacterDetail({ character, sessions, onClose, onShowOriginal }: { character: Character; sessions: PlayEntry[]; onClose: () => void; onShowOriginal: () => void }) {
   const { isAdmin } = useAuth();
-  const facts = [['룰', character.rule], ['Color', character.color ?? character.insane?.color], ['나이', character.age], ['성별', character.gender], ['키 / 몸무게', character.heightWeight], ['직업', character.occupation], ['종족', character.species]].filter(([, value]) => value);
+  const facts = [['룰', character.rule], ['Color', character.color ?? character.insane?.color], ['나이', character.age], ['성별', character.gender], ['키 / 몸무게', character.heightWeight], ['직업', character.occupation]].filter(([, value]) => value);
   const linkItems = character.linkItems ?? [];
   const [privateLinkItems, setPrivateLinkItems] = useState<CharacterLink[]>([]);
   const [isClosing, setIsClosing] = useState(false);

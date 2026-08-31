@@ -31,7 +31,6 @@ type Profile = {
   gender: string;
   heightWeight: string;
   occupation: string;
-  species: string;
   personality: string;
 };
 const EMPTY: Profile = {
@@ -43,7 +42,6 @@ const EMPTY: Profile = {
   gender: "",
   heightWeight: "",
   occupation: "",
-  species: "",
   personality: "",
 };
 const DEFAULT_CROP: Crop = { x: 0, y: 0, zoom: 1 };
@@ -274,10 +272,12 @@ function Field({
   label,
   value,
   onChange,
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  placeholder?: string;
 }) {
   return (
     <label>
@@ -285,6 +285,7 @@ function Field({
       <input
         className="pc-field"
         value={value}
+        placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
       />
     </label>
@@ -312,7 +313,7 @@ function ShinobigamiImportedValues({ value }: { value: ShinobigamiCharacterData 
 function ColorField({ value, onChange }: { value?: string; onChange: (value: string) => void }) {
   const normalizedValue = value ?? '';
   const isHex = /^#[\da-f]{6}$/i.test(normalizedValue);
-  return <label><span className="pc-field-label">Color</span><input className="pc-field" value={normalizedValue} onChange={(event) => onChange(event.target.value)} placeholder="#FAF3A5" style={isHex ? { color: normalizedValue } : undefined} /></label>;
+  return <label><span className="pc-field-label">Color</span><input className="pc-field" value={normalizedValue} onChange={(event) => onChange(event.target.value)} placeholder="#FFC0CB" style={isHex ? { color: normalizedValue } : undefined} /></label>;
 }
 
 function InsaneImportedValues({ value }: { value: InsaneCharacterData | undefined }) {
@@ -523,28 +524,35 @@ export default function CharacterUploadButton() {
                       {stickerFiles.map((sticker, index) => <li key={`${sticker.name}-${index}`} className="border-b border-dashed border-[var(--atr-line)] pb-[0.45rem] afterroll-meta text-[0.72rem] text-[var(--atr-muted)]"><div className="flex items-center justify-between gap-[0.75rem]"><span className="truncate">{sticker.name}</span><button type="button" className="pc-link shrink-0" onClick={() => { setStickerFiles((current) => current.filter((_, itemIndex) => itemIndex !== index)); setStickerSizes((current) => current.filter((_, itemIndex) => itemIndex !== index)); }}>제거</button></div><label className="mt-[0.3rem] flex items-center gap-[0.5rem]"><span className="shrink-0 text-[var(--atr-soft)]">크기 {Math.round((stickerSizes[index] ?? DEFAULT_STICKER_SIZE) * 100)}%</span><input className="w-full accent-[var(--atr-accent)]" type="range" min={STICKER_SIZE_MIN} max={STICKER_SIZE_MAX} step={STICKER_SIZE_STEP} value={stickerSizes[index] ?? DEFAULT_STICKER_SIZE} onChange={(event) => setStickerSizes((current) => current.map((size, itemIndex) => itemIndex === index ? Number(event.target.value) : size))} aria-label={`${sticker.name} 스티커 크기`} /></label></li>)}
                     </ul>}
                   </section>
-                  <div className="grid gap-[0.75rem] sm:grid-cols-2">
+                  <section>
+                    <p className="pc-field-label mb-[0.45rem]">기본 프로필</p>
+                    <div className="grid gap-[0.75rem] sm:grid-cols-2">
                     <Field
                       label="이름 *"
                       value={profile.name}
                       onChange={set("name")}
+                      placeholder="예: 키요"
                     />
-                    {!isCocRule(rule) && !isShinobigamiRule(rule) && !isInsaneRule(rule) && <Field label="별칭" value={profile.alias} onChange={set("alias")} />}
+                    <Field label="별칭" value={profile.alias} onChange={set("alias")} placeholder="예: 레이" />
                     <Field
                       label="나이"
                       value={profile.age}
                       onChange={set("age")}
+                      placeholder="예: 20"
                     />
                     <Field
                       label="성별"
                       value={profile.gender}
                       onChange={set("gender")}
+                      placeholder="예: 여성"
                     />
-                    {isCocRule(rule) && <><Field label="키 / 몸무게" value={profile.heightWeight} onChange={set("heightWeight")} /><Field label="직업" value={profile.occupation} onChange={set("occupation")} /><ColorField value={profile.color} onChange={set("color")} /></>}
-                    {isShinobigamiRule(rule) && <><ShinobigamiFields value={shinobigami} onChange={setShinobigami} /><ColorField value={profile.color} onChange={set("color")} /></>}
-                    {isInsaneRule(rule) && <><Field label="직업" value={profile.occupation} onChange={set("occupation")} /><Field label="한마디" value={profile.catchphrase} onChange={set("catchphrase")} /><ColorField value={profile.color} onChange={set("color")} /></>}
-                    {!isCocRule(rule) && !isShinobigamiRule(rule) && !isInsaneRule(rule) && <><Field label="키 / 몸무게" value={profile.heightWeight} onChange={set("heightWeight")} /><Field label="직업" value={profile.occupation} onChange={set("occupation")} /><Field label="종족" value={profile.species} onChange={set("species")} /><Field label="캐치프레이즈" value={profile.catchphrase} onChange={set("catchphrase")} /></>}
-                  </div>
+                    <Field label="키 / 몸무게" value={profile.heightWeight} onChange={set("heightWeight")} placeholder="예: 166cm/55kg" />
+                    <Field label="직업" value={profile.occupation} onChange={set("occupation")} placeholder="예: 경찰보조 안드로이드" />
+                    <Field label="한마디" value={profile.catchphrase} onChange={set("catchphrase")} placeholder="예: 무언가로 불리고 싶거든요," />
+                    <ColorField value={profile.color} onChange={set("color")} />
+                    </div>
+                  </section>
+                  {isShinobigamiRule(rule) && <section className="rounded-[0.45rem] border border-dashed border-[var(--atr-line)] p-[0.7rem]"><p className="pc-field-label mb-[0.45rem]">룰 정보</p><div className="grid gap-[0.75rem] sm:grid-cols-2"><ShinobigamiFields value={shinobigami} onChange={setShinobigami} /></div></section>}
                   {isCocRule(rule) && <CocCharacteristics characteristics={coc?.characteristics ?? []} />}
                   {isShinobigamiRule(rule) && <ShinobigamiImportedValues value={shinobigami} />}
                   {isInsaneRule(rule) && <InsaneImportedValues value={insane} />}
@@ -578,7 +586,7 @@ export default function CharacterUploadButton() {
                     </div>
                   </section>
                   <CharacterSessionSelector value={sessionKeys} onChange={setSessionKeys} />
-                  {!isInsaneRule(rule) && <label>
+                  <label>
                     <span className="pc-field-label">{isCocRule(rule) || isShinobigamiRule(rule) ? '설정' : '성격'}</span>
                     <textarea
                       className="pc-field min-h-[5rem] resize-y"
@@ -587,7 +595,7 @@ export default function CharacterUploadButton() {
                         set("personality")(event.target.value)
                       }
                     />
-                  </label>}
+                  </label>
                   <label>
                     <span className="pc-field-label">GitHub access token</span>
                     <input

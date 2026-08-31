@@ -38,7 +38,6 @@ type EditableField =
   | "gender"
   | "heightWeight"
   | "occupation"
-  | "species"
   | "personality";
 type Mode = "edit" | "delete" | null;
 
@@ -94,16 +93,16 @@ function StickerPreview({ stickers }: { stickers: CharacterSticker[] }) {
 const FIELDS: Array<{
   key: EditableField;
   label: string;
+  placeholder?: string;
   multiline?: boolean;
 }> = [
-  { key: "name", label: "이름" },
-  { key: "alias", label: "별칭" },
-  { key: "age", label: "나이" },
-  { key: "gender", label: "성별" },
-  { key: "heightWeight", label: "키 / 몸무게" },
-  { key: "occupation", label: "직업" },
-  { key: "species", label: "종족" },
-  { key: "catchphrase", label: "캐치프레이즈" },
+  { key: "name", label: "이름", placeholder: "예: 키요" },
+  { key: "alias", label: "별칭", placeholder: "예: 레이" },
+  { key: "age", label: "나이", placeholder: "예: 20" },
+  { key: "gender", label: "성별", placeholder: "예: 여성" },
+  { key: "heightWeight", label: "키 / 몸무게", placeholder: "예: 166cm/55kg" },
+  { key: "occupation", label: "직업", placeholder: "예: 경찰보조 안드로이드" },
+  { key: "catchphrase", label: "한마디", placeholder: "예: 무언가로 불리고 싶거든요," },
   { key: "personality", label: "성격", multiline: true },
 ];
 
@@ -166,10 +165,12 @@ function ImportedRuleDetails({
   coc,
   shinobigami,
   insane,
+  showShinobigamiMetadata = true,
 }: {
   coc?: CocCharacterData;
   shinobigami?: ShinobigamiCharacterData;
   insane?: InsaneCharacterData;
+  showShinobigamiMetadata?: boolean;
 }) {
   if (coc?.characteristics.length)
     return (
@@ -189,9 +190,29 @@ function ImportedRuleDetails({
         </dl>
       </section>
     );
-  if (shinobigami?.ninpo.length || shinobigami?.secretArt)
+  if (shinobigami && (showShinobigamiMetadata || shinobigami.ninpo.length || shinobigami.secretArt))
     return (
       <section className="rounded-[0.45rem] border border-dashed border-[var(--atr-line)] p-[0.7rem]">
+        {showShinobigamiMetadata && <><p className="pc-field-label">룰 정보</p>
+        {([
+          ["계급", shinobigami.rank],
+          ["유파", shinobigami.faction],
+          ["하위 유파", shinobigami.subfaction],
+          ["신념", shinobigami.belief],
+          ["신분", shinobigami.socialStatus],
+        ] as const).some(([, value]) => value) && (
+          <dl className="mt-[0.45rem] grid grid-cols-2 gap-x-[0.7rem] gap-y-[0.35rem]">
+            {([
+              ["계급", shinobigami.rank],
+              ["유파", shinobigami.faction],
+              ["하위 유파", shinobigami.subfaction],
+              ["신념", shinobigami.belief],
+              ["신분", shinobigami.socialStatus],
+            ] as const).filter(([, value]) => value).map(([label, value]) => (
+              <div key={label}><dt className="afterroll-meta text-[0.68rem] text-[var(--atr-soft)]">{label}</dt><dd className="afterroll-meta text-[0.75rem] text-[var(--atr-text)]">{value}</dd></div>
+            ))}
+          </dl>
+        )}</>}
         {shinobigami.secretArt && (
           <p className="afterroll-meta text-[0.76rem] text-[var(--atr-muted)]">
             <span className="text-[var(--atr-soft)]">오의</span>{" "}
@@ -218,6 +239,32 @@ function ImportedRuleDetails({
       </section>
     );
   return null;
+}
+
+function ShinobigamiRuleFields({
+  value,
+  onChange,
+}: {
+  value?: ShinobigamiCharacterData;
+  onChange: (value: ShinobigamiCharacterData) => void;
+}) {
+  const fields: Array<{ key: keyof Pick<ShinobigamiCharacterData, "rank" | "faction" | "subfaction" | "belief" | "socialStatus">; label: string }> = [
+    { key: "rank", label: "계급" },
+    { key: "faction", label: "유파" },
+    { key: "subfaction", label: "하위 유파" },
+    { key: "belief", label: "신념" },
+    { key: "socialStatus", label: "신분" },
+  ];
+  return (
+    <section className="rounded-[0.45rem] border border-dashed border-[var(--atr-line)] p-[0.7rem]">
+      <p className="pc-field-label mb-[0.45rem]">룰 정보</p>
+      <div className="grid gap-[0.65rem] sm:grid-cols-2">
+        {fields.map(({ key, label }) => (
+          <label key={key}><span className="pc-field-label">{label}</span><input className="pc-field" value={value?.[key] ?? ""} onChange={(event) => onChange({ ...(value ?? { ninpo: [] }), [key]: event.target.value })} /></label>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 export default function CharacterManagementActions({
@@ -465,8 +512,10 @@ export default function CharacterManagementActions({
                       }}
                       onImport={() => void importCocofolia()}
                     />
+                    <section>
+                      <p className="pc-field-label mb-[0.45rem]">기본 프로필</p>
                     <div className="grid gap-[0.65rem] sm:grid-cols-2">
-                      {FIELDS.map(({ key, label, multiline }) => (
+                      {FIELDS.map(({ key, label, placeholder, multiline }) => (
                         <label
                           key={key}
                           className={multiline ? "sm:col-span-2" : undefined}
@@ -490,6 +539,7 @@ export default function CharacterManagementActions({
                             <input
                               className="pc-field"
                               value={values[key]}
+                              placeholder={placeholder}
                               onChange={(event) =>
                                 setValues((current) => ({
                                   ...current,
@@ -501,6 +551,9 @@ export default function CharacterManagementActions({
                         </label>
                       ))}
                     </div>
+                    <label className="mt-[0.65rem] block"><span className="pc-field-label">Color</span><input className="pc-field" value={color} onChange={(event) => setColor(event.target.value)} placeholder="#FFC0CB" /></label>
+                    </section>
+                    {isShinobigamiRule(rule) && <ShinobigamiRuleFields value={shinobigami} onChange={setShinobigami} />}
                   </>
                 ) : (
                   <p className="afterroll-body text-[0.9rem] text-[var(--atr-muted)]">
@@ -513,6 +566,7 @@ export default function CharacterManagementActions({
                     coc={coc}
                     shinobigami={shinobigami}
                     insane={insane}
+                    showShinobigamiMetadata={!isShinobigamiRule(rule)}
                   />
                 )}
                 {false && mode === "edit" && (
