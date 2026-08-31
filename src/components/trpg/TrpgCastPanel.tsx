@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import Image from '@/components/ArchiveImage';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useMemo, useState, type MouseEvent, type PointerEvent } from 'react';
 import type { TrpgCastEntry } from '@/lib/data/trpg';

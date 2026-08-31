@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
-import Image from 'next/image';
+import Image from '@/components/ArchiveImage';
 import { getRelativeTime } from '@/lib/timeUtils';
 import type { LogEntry } from '@/lib/data/log';
 

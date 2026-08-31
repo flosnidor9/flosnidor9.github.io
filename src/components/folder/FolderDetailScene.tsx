@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import Image from 'next/image';
+import Image from '@/components/ArchiveImage';
 import Link from 'next/link';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
 import ReactMarkdown, { type Components } from 'react-markdown';

@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import Image from '@/components/ArchiveImage';
 import { motion } from 'framer-motion';
 import type { Character } from '@/lib/data/characters';
 

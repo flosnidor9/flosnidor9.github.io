@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import Image from 'next/image';
+import Image from '@/components/ArchiveImage';
 import { addLog } from '@/lib/data/firebaseLog';
 import PixelDustEffect from '@/components/effects/PixelDustEffect';
 

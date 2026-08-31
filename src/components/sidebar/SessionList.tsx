@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import Image from 'next/image';
+import Image from '@/components/ArchiveImage';
 import { motion } from 'framer-motion';
 import type { FolderData } from '@/lib/data/folders';
 import { toGalleryPath } from '@/lib/galleryPath';

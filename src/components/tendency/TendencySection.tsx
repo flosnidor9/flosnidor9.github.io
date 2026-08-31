@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import Image from 'next/image';
+import Image from '@/components/ArchiveImage';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   DEFAULT_TENDENCY_PROFILE,

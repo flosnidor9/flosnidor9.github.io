@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import { motion } from 'framer-motion';
-import Image from 'next/image';
+import Image from '@/components/ArchiveImage';
 import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
 import { musicTracks } from '@/lib/data/music';
 

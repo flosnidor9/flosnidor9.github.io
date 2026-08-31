@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import Image from 'next/image';
+import Image from '@/components/ArchiveImage';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ACORN_RULE_ORDER, ACORN_SEED, type SeedAcorn } from '@/lib/data/acornSeed';

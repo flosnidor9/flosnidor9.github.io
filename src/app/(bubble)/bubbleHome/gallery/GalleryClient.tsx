@@ -2,7 +2,7 @@
 
 import { useCallback, useRef } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import Image from '@/components/ArchiveImage';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import type { FolderData, ImageOrientation } from '@/lib/data/folders';
 import { toGalleryPath } from '@/lib/galleryPath';

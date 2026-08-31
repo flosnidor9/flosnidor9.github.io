@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, useTransform, useMotionTemplate, type MotionValue } from 'framer-motion';
-import Image from 'next/image';
+import Image from '@/components/ArchiveImage';
 
 type Props = {
   albumArt: string;

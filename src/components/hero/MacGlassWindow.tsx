@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useEffect, forwardRef, useImperativeHandle } from 'react';
-import Image from 'next/image';
+import Image from '@/components/ArchiveImage';
 import {
   motion,
   useMotionTemplate,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useCallback } from 'react';
-import Image from 'next/image';
+import Image from '@/components/ArchiveImage';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import type { FolderData } from '@/lib/data/folders';
 

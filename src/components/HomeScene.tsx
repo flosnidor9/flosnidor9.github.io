@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import Image from 'next/image';
+import Image from '@/components/ArchiveImage';
 import {
   motion,
   AnimatePresence,

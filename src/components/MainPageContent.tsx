@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import FloatingParticles from '@/components/effects/FloatingParticles';
-import Image from 'next/image';
+import Image from '@/components/ArchiveImage';
 
 interface MainPageContentProps {
   imagePaths: string[];
