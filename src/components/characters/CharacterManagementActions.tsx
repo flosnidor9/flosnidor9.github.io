@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, Fragment, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import type {
@@ -516,41 +516,40 @@ export default function CharacterManagementActions({
                       <p className="pc-field-label mb-[0.45rem]">기본 프로필</p>
                     <div className="grid gap-[0.65rem] sm:grid-cols-2">
                       {FIELDS.map(({ key, label, placeholder, multiline }) => (
-                        <label
-                          key={key}
-                          className={multiline ? "sm:col-span-2" : undefined}
-                        >
-                          <span className="pc-field-label">
-                            {label}
-                            {key === "name" ? " *" : ""}
-                          </span>
-                          {multiline ? (
-                            <textarea
-                              className="pc-field min-h-[5rem] resize-y"
-                              value={values[key]}
-                              onChange={(event) =>
-                                setValues((current) => ({
-                                  ...current,
-                                  [key]: event.target.value,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <input
-                              className="pc-field"
-                              value={values[key]}
-                              placeholder={placeholder}
-                              onChange={(event) =>
-                                setValues((current) => ({
-                                  ...current,
-                                  [key]: event.target.value,
-                                }))
-                              }
-                            />
-                          )}
-                        </label>
+                        <Fragment key={key}>
+                          <label className={multiline ? "sm:col-span-2" : undefined}>
+                            <span className="pc-field-label">
+                              {label}
+                              {key === "name" ? " *" : ""}
+                            </span>
+                            {multiline ? (
+                              <textarea
+                                className="pc-field min-h-[5rem] resize-y"
+                                value={values[key]}
+                                onChange={(event) =>
+                                  setValues((current) => ({
+                                    ...current,
+                                    [key]: event.target.value,
+                                  }))
+                                }
+                              />
+                            ) : (
+                              <input
+                                className="pc-field"
+                                value={values[key]}
+                                placeholder={placeholder}
+                                onChange={(event) =>
+                                  setValues((current) => ({
+                                    ...current,
+                                    [key]: event.target.value,
+                                  }))
+                                }
+                              />
+                            )}
+                          </label>
+                          {key === "catchphrase" && <label><span className="pc-field-label">Color</span><input className="pc-field" value={color} onChange={(event) => setColor(event.target.value)} placeholder="#FFC0CB" /></label>}
+                        </Fragment>
                       ))}
-                      <label><span className="pc-field-label">Color</span><input className="pc-field" value={color} onChange={(event) => setColor(event.target.value)} placeholder="#FFC0CB" /></label>
                     </div>
                     </section>
                     {isShinobigamiRule(rule) && <ShinobigamiRuleFields value={shinobigami} onChange={setShinobigami} />}

@@ -510,21 +510,6 @@ export default function CharacterUploadButton() {
                     />
                   )}
                   <section>
-                    <div className="mb-[0.45rem] flex items-center justify-between gap-[0.75rem]">
-                      <div>
-                        <p className="pc-field-label mb-0">스티커</p>
-                        <p className="afterroll-meta mt-[0.15rem] text-[0.68rem] text-[var(--atr-soft)]">상세 카드의 가장자리에 붙습니다.</p>
-                      </div>
-                      <button type="button" className="pc-link" onClick={() => stickerInput.current?.click()}>
-                        + 스티커 추가
-                      </button>
-                      <input ref={stickerInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" multiple className="sr-only" onChange={addStickers} />
-                    </div>
-                    {stickerFiles.length > 0 && <ul className="space-y-[0.5rem]" aria-label="추가할 스티커">
-                      {stickerFiles.map((sticker, index) => <li key={`${sticker.name}-${index}`} className="border-b border-dashed border-[var(--atr-line)] pb-[0.45rem] afterroll-meta text-[0.72rem] text-[var(--atr-muted)]"><div className="flex items-center justify-between gap-[0.75rem]"><span className="truncate">{sticker.name}</span><button type="button" className="pc-link shrink-0" onClick={() => { setStickerFiles((current) => current.filter((_, itemIndex) => itemIndex !== index)); setStickerSizes((current) => current.filter((_, itemIndex) => itemIndex !== index)); }}>제거</button></div><label className="mt-[0.3rem] flex items-center gap-[0.5rem]"><span className="shrink-0 text-[var(--atr-soft)]">크기 {Math.round((stickerSizes[index] ?? DEFAULT_STICKER_SIZE) * 100)}%</span><input className="w-full accent-[var(--atr-accent)]" type="range" min={STICKER_SIZE_MIN} max={STICKER_SIZE_MAX} step={STICKER_SIZE_STEP} value={stickerSizes[index] ?? DEFAULT_STICKER_SIZE} onChange={(event) => setStickerSizes((current) => current.map((size, itemIndex) => itemIndex === index ? Number(event.target.value) : size))} aria-label={`${sticker.name} 스티커 크기`} /></label></li>)}
-                    </ul>}
-                  </section>
-                  <section>
                     <p className="pc-field-label mb-[0.45rem]">기본 프로필</p>
                     <div className="grid gap-[0.75rem] sm:grid-cols-2">
                     <Field
@@ -550,12 +535,31 @@ export default function CharacterUploadButton() {
                     <Field label="직업" value={profile.occupation} onChange={set("occupation")} placeholder="예: 경찰보조 안드로이드" />
                     <Field label="한마디" value={profile.catchphrase} onChange={set("catchphrase")} placeholder="예: 무언가로 불리고 싶거든요," />
                     <ColorField value={profile.color} onChange={set("color")} />
+                    <label className="sm:col-span-2">
+                      <span className="pc-field-label">{isCocRule(rule) || isShinobigamiRule(rule) ? '설정' : '성격'}</span>
+                      <textarea className="pc-field min-h-[5rem] resize-y" value={profile.personality} onChange={(event) => set("personality")(event.target.value)} />
+                    </label>
                     </div>
                   </section>
                   {isShinobigamiRule(rule) && <section className="rounded-[0.45rem] border border-dashed border-[var(--atr-line)] p-[0.7rem]"><p className="pc-field-label mb-[0.45rem]">룰 정보</p><div className="grid gap-[0.75rem] sm:grid-cols-2"><ShinobigamiFields value={shinobigami} onChange={setShinobigami} /></div></section>}
                   {isCocRule(rule) && <CocCharacteristics characteristics={coc?.characteristics ?? []} />}
                   {isShinobigamiRule(rule) && <ShinobigamiImportedValues value={shinobigami} />}
                   {isInsaneRule(rule) && <InsaneImportedValues value={insane} />}
+                  <section>
+                    <div className="mb-[0.45rem] flex items-center justify-between gap-[0.75rem]">
+                      <div>
+                        <p className="pc-field-label mb-0">스티커</p>
+                        <p className="afterroll-meta mt-[0.15rem] text-[0.68rem] text-[var(--atr-soft)]">상세 카드의 가장자리에 붙습니다.</p>
+                      </div>
+                      <button type="button" className="pc-link" onClick={() => stickerInput.current?.click()}>
+                        + 스티커 추가
+                      </button>
+                      <input ref={stickerInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" multiple className="sr-only" onChange={addStickers} />
+                    </div>
+                    {stickerFiles.length > 0 && <ul className="space-y-[0.5rem]" aria-label="추가할 스티커">
+                      {stickerFiles.map((sticker, index) => <li key={`${sticker.name}-${index}`} className="border-b border-dashed border-[var(--atr-line)] pb-[0.45rem] afterroll-meta text-[0.72rem] text-[var(--atr-muted)]"><div className="flex items-center justify-between gap-[0.75rem]"><span className="truncate">{sticker.name}</span><button type="button" className="pc-link shrink-0" onClick={() => { setStickerFiles((current) => current.filter((_, itemIndex) => itemIndex !== index)); setStickerSizes((current) => current.filter((_, itemIndex) => itemIndex !== index)); }}>제거</button></div><label className="mt-[0.3rem] flex items-center gap-[0.5rem]"><span className="shrink-0 text-[var(--atr-soft)]">크기 {Math.round((stickerSizes[index] ?? DEFAULT_STICKER_SIZE) * 100)}%</span><input className="w-full accent-[var(--atr-accent)]" type="range" min={STICKER_SIZE_MIN} max={STICKER_SIZE_MAX} step={STICKER_SIZE_STEP} value={stickerSizes[index] ?? DEFAULT_STICKER_SIZE} onChange={(event) => setStickerSizes((current) => current.map((size, itemIndex) => itemIndex === index ? Number(event.target.value) : size))} aria-label={`${sticker.name} 스티커 크기`} /></label></li>)}
+                    </ul>}
+                  </section>
                   <section>
                     <div className="mb-[0.45rem] flex items-center justify-between gap-[0.75rem]">
                       <p className="pc-field-label mb-0">링크</p>
@@ -586,16 +590,6 @@ export default function CharacterUploadButton() {
                     </div>
                   </section>
                   <CharacterSessionSelector value={sessionKeys} onChange={setSessionKeys} />
-                  <label>
-                    <span className="pc-field-label">{isCocRule(rule) || isShinobigamiRule(rule) ? '설정' : '성격'}</span>
-                    <textarea
-                      className="pc-field min-h-[5rem] resize-y"
-                      value={profile.personality}
-                      onChange={(event) =>
-                        set("personality")(event.target.value)
-                      }
-                    />
-                  </label>
                   <label>
                     <span className="pc-field-label">GitHub access token</span>
                     <input
