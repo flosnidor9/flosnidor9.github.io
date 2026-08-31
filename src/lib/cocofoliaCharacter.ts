@@ -53,7 +53,7 @@ function characteristicsFromCommands(commands: string) {
   const values = new Map<string, string>();
   for (const match of commands.matchAll(/^\s*cc\s*<=\s*(\d+)\s+([^\n]+)$/gim)) {
     const sourceLabel = match[2].trim();
-    const characteristic = COC_CHARACTERISTICS.find(({ aliases }) => aliases.some((alias) => sourceLabel === alias));
+    const characteristic = COC_CHARACTERISTICS.find(({ aliases }) => aliases.some((alias) => sourceLabel.includes(alias)));
     if (characteristic && !values.has(characteristic.label)) values.set(characteristic.label, match[1]);
   }
   return values;
