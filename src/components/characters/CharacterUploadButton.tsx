@@ -17,6 +17,7 @@ import type { Character, CharacterLink, CocCharacterData, InsaneCharacterData, S
 import { characterImagePaths, characterStickerPaths, uploadCharacter } from "@/lib/characterUpload";
 import { savePrivateCharacterLinks } from '@/lib/data/firebasePrivateCharacterLinks';
 import CharacterSessionSelector from '@/components/characters/CharacterSessionSelector';
+import StickerPreview from '@/components/characters/StickerPreview';
 import { subscribeToPlaysOptions } from '@/lib/data/firebasePlays';
 import { isCocRule, isInsaneRule, isShinobigamiRule, parseCocofoliaCharacter } from '@/lib/cocofoliaCharacter';
 
@@ -111,6 +112,13 @@ function CropPreview({
   const [size, setSize] = useState({ width: 0, height: 0 });
   const stage = useRef<HTMLDivElement>(null);
   const start = useRef<{ x: number; y: number; crop: Crop } | null>(null);
+  useEffect(() => {
+    const element = stage.current;
+    if (!element) return;
+    const preventScroll = (event: globalThis.WheelEvent) => event.preventDefault();
+    element.addEventListener('wheel', preventScroll, { passive: false });
+    return () => element.removeEventListener('wheel', preventScroll);
+  }, []);
   useEffect(() => {
     const reader = new FileReader();
     reader.onload = () => setSrc(String(reader.result));
@@ -327,9 +335,12 @@ export default function CharacterUploadButton() {
   const [shinobigami, setShinobigami] = useState<ShinobigamiCharacterData | undefined>();
   const [insane, setInsane] = useState<InsaneCharacterData | undefined>();
   const [links, setLinks] = useState<CharacterLink[]>([]);
+  const [copyrightName, setCopyrightName] = useState('');
+  const [copyrightUrl, setCopyrightUrl] = useState('');
   const [privateLinks, setPrivateLinks] = useState<CharacterLink[]>([]);
   const [stickerFiles, setStickerFiles] = useState<File[]>([]);
   const [stickerSizes, setStickerSizes] = useState<number[]>([]);
+  const [stickerPreviews, setStickerPreviews] = useState<string[]>([]);
   const portraitInput = useRef<HTMLInputElement>(null);
   const stickerInput = useRef<HTMLInputElement>(null);
   const [sessionKeys, setSessionKeys] = useState<string[]>([]);
@@ -347,6 +358,8 @@ export default function CharacterUploadButton() {
     setShinobigami(undefined);
     setInsane(undefined);
     setLinks([]);
+    setCopyrightName('');
+    setCopyrightUrl('');
     setPrivateLinks([]);
     setStickerFiles([]);
     setStickerSizes([]);
@@ -357,6 +370,11 @@ export default function CharacterUploadButton() {
     if (stickerInput.current) stickerInput.current.value = '';
   };
   useEffect(() => subscribeToPlaysOptions((options) => setRules(options.rules)), []);
+  useEffect(() => {
+    const urls = stickerFiles.map((file) => URL.createObjectURL(file));
+    setStickerPreviews(urls);
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
+  }, [stickerFiles]);
   const importCocofolia = async () => {
     try {
       const imported = parseCocofoliaCharacter(await navigator.clipboard.readText(), rule);
@@ -404,6 +422,9 @@ export default function CharacterUploadButton() {
         coc,
         shinobigami,
         insane,
+        copyright: copyrightName.trim()
+          ? { name: copyrightName.trim(), ...(copyrightUrl.trim() ? { url: copyrightUrl.trim() } : {}) }
+          : undefined,
         linkItems: links.filter((link) => link.name.trim() && link.url.trim()),
         stickers: characterStickerPaths(id, stickerFiles).map((sticker, index) => ({ ...sticker, size: stickerSizes[index] ?? DEFAULT_STICKER_SIZE })),
         links: {},
@@ -463,14 +484,6 @@ export default function CharacterUploadButton() {
                   </button>
                 </header>
                 <div className="space-y-[1rem] px-[1.1rem] py-[1rem]">
-                  <section>
-                    <label htmlFor="character-rule" className="pc-field-label">룰</label>
-                    <select id="character-rule" value={rule} onChange={(event) => { setRule(event.target.value); setCoc(undefined); setShinobigami(undefined); setInsane(undefined); setStatus(''); }} className="pc-field mt-[0.35rem] max-w-[16rem] rounded-full py-[0.42rem]">
-                      <option value="">룰 선택</option>
-                      {rules.map((option) => <option key={option} value={option}>{option}</option>)}
-                    </select>
-                    {(isCocRule(rule) || isShinobigamiRule(rule) || isInsaneRule(rule)) && <div className="mt-[0.45rem] flex flex-wrap items-center gap-[0.55rem]"><button type="button" className="pc-link" onClick={() => void importCocofolia()}>코코포리아 API 붙여넣기</button><p className="afterroll-meta text-[0.68rem] text-[var(--atr-soft)]">클립보드의 캐릭터 API에서 이 룰에 필요한 항목만 채웁니다.</p></div>}
-                  </section>
                   <div>
                     <p className="pc-field-label">외형 원본</p>
                     <div className="flex items-center gap-[0.6rem]">
@@ -504,6 +517,14 @@ export default function CharacterUploadButton() {
                     />
                   )}
                   <section>
+                    <label htmlFor="character-rule" className="pc-field-label">룰</label>
+                    <select id="character-rule" value={rule} onChange={(event) => { setRule(event.target.value); setCoc(undefined); setShinobigami(undefined); setInsane(undefined); setStatus(''); }} className="pc-field mt-[0.35rem] max-w-[16rem] rounded-full py-[0.42rem]">
+                      <option value="">룰 선택</option>
+                      {rules.map((option) => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                    {(isCocRule(rule) || isShinobigamiRule(rule) || isInsaneRule(rule)) && <div className="mt-[0.45rem] flex flex-wrap items-center gap-[0.55rem]"><button type="button" className="pc-link" onClick={() => void importCocofolia()}>코코포리아 API 붙여넣기</button><p className="afterroll-meta text-[0.68rem] text-[var(--atr-soft)]">클립보드의 캐릭터 API에서 이 룰에 필요한 항목만 채웁니다.</p></div>}
+                  </section>
+                  <section>
                     <p className="pc-field-label mb-[0.45rem]">기본 프로필</p>
                     <div className="grid gap-[0.75rem] sm:grid-cols-2">
                     <Field
@@ -533,6 +554,8 @@ export default function CharacterUploadButton() {
                       <span className="pc-field-label">{isCocRule(rule) || isShinobigamiRule(rule) ? '설정' : '성격'}</span>
                       <textarea className="pc-field min-h-[5rem] resize-y" value={profile.personality} onChange={(event) => set("personality")(event.target.value)} />
                     </label>
+                    <Field label="저작권" value={copyrightName} onChange={setCopyrightName} placeholder="예: 홍길동" />
+                    <Field label="저작권 링크" value={copyrightUrl} onChange={setCopyrightUrl} placeholder="선택 · https://..." />
                     </div>
                   </section>
                   {isCocRule(rule) && <CocCharacteristics characteristics={coc?.characteristics ?? []} />}
@@ -552,6 +575,7 @@ export default function CharacterUploadButton() {
                     {stickerFiles.length > 0 && <ul className="space-y-[0.5rem]" aria-label="추가할 스티커">
                       {stickerFiles.map((sticker, index) => <li key={`${sticker.name}-${index}`} className="border-b border-dashed border-[var(--atr-line)] pb-[0.45rem] afterroll-meta text-[0.72rem] text-[var(--atr-muted)]"><div className="flex items-center justify-between gap-[0.75rem]"><span className="truncate">{sticker.name}</span><button type="button" className="pc-link shrink-0" onClick={() => { setStickerFiles((current) => current.filter((_, itemIndex) => itemIndex !== index)); setStickerSizes((current) => current.filter((_, itemIndex) => itemIndex !== index)); }}>제거</button></div><label className="mt-[0.3rem] flex items-center gap-[0.5rem]"><span className="shrink-0 text-[var(--atr-soft)]">크기 {Math.round((stickerSizes[index] ?? DEFAULT_STICKER_SIZE) * 100)}%</span><input className="w-full accent-[var(--atr-accent)]" type="range" min={STICKER_SIZE_MIN} max={STICKER_SIZE_MAX} step={STICKER_SIZE_STEP} value={stickerSizes[index] ?? DEFAULT_STICKER_SIZE} onChange={(event) => setStickerSizes((current) => current.map((size, itemIndex) => itemIndex === index ? Number(event.target.value) : size))} aria-label={`${sticker.name} 스티커 크기`} /></label></li>)}
                     </ul>}
+                    {stickerPreviews.length > 0 && <StickerPreview stickers={stickerPreviews.map((src, index) => ({ src, size: stickerSizes[index] ?? DEFAULT_STICKER_SIZE }))} />}
                   </section>
                   <section>
                     <div className="mb-[0.45rem] flex items-center justify-between gap-[0.75rem]">

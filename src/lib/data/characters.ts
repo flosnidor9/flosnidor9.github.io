@@ -2,6 +2,7 @@ import characterArchive from '@/content/characters.json';
 
 export type CharacterCrop = { x: number; y: number; zoom: number };
 export type CharacterLink = { name: string; url: string };
+export type CharacterCopyright = { name: string; url?: string };
 export type CharacterSticker = {
   src: string;
   /** Detail-card sticker scale. Older entries without this use the default. */
@@ -46,6 +47,7 @@ export type Character = {
   shinobigami?: ShinobigamiCharacterData;
   insane?: InsaneCharacterData;
   linkItems?: CharacterLink[];
+  copyright?: CharacterCopyright;
   stickers?: CharacterSticker[];
   portrait: { original: string; cropped: string; crop: CharacterCrop };
   links: Record<string, string | undefined>;

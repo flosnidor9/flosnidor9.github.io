@@ -100,7 +100,7 @@ export async function uploadCharacter(token: string, character: Character, origi
   throw new Error('다른 업로드와 충돌했습니다. 잠시 후 다시 시도해 주세요.');
 }
 
-export async function updateCharacter(token: string, character: Character, stickerFiles: File[] = [], newStickers: CharacterSticker[] = []) {
+export async function updateCharacter(token: string, character: Character, stickerFiles: File[] = [], newStickers: CharacterSticker[] = [], portrait?: { original: File; cropped: Blob }) {
   const archive = await readArchive(token);
   if (!archive.some((entry) => entry.id === character.id)) throw new Error('수정할 캐릭터를 찾을 수 없습니다.');
   const nextArchive = {
@@ -109,6 +109,12 @@ export async function updateCharacter(token: string, character: Character, stick
   const files: UploadFile[] = [{ path: ARCHIVE_PATH, content: JSON.stringify(nextArchive, null, 2), encoding: 'utf-8' }];
   for (const { file, src } of stickerUploadFiles(stickerFiles, newStickers)) {
     files.push({ path: `public${src}`, content: await blobBase64(file), encoding: 'base64' });
+  }
+  if (portrait) {
+    files.push(
+      { path: `public${character.portrait.original}`, content: await blobBase64(portrait.original), encoding: 'base64' },
+      { path: `public${character.portrait.cropped}`, content: await blobBase64(portrait.cropped), encoding: 'base64' },
+    );
   }
   for (let attempt = 0; attempt < UPLOAD_RETRIES; attempt += 1) {
     if (await commit(token, files, `Update character: ${character.name}`)) return;

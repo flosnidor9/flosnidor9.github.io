@@ -2,7 +2,8 @@
 
 import { ChangeEvent, CSSProperties, Fragment, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import Image from "@/components/ArchiveImage";
+import StickerPreview from '@/components/characters/StickerPreview';
+import PortraitCropPreview, { type PortraitCrop } from '@/components/characters/PortraitCropPreview';
 import type {
   Character,
   CharacterLink,
@@ -12,6 +13,7 @@ import type {
   ShinobigamiCharacterData,
 } from "@/lib/data/characters";
 import {
+  characterImagePaths,
   characterStickerPaths,
   deleteCharacter,
   updateCharacter,
@@ -45,51 +47,30 @@ const DEFAULT_STICKER_SIZE = 1;
 const STICKER_SIZE_MIN = 0.5;
 const STICKER_SIZE_MAX = 1.8;
 const STICKER_SIZE_STEP = 0.1;
-const STICKER_PREVIEW_POSITIONS = [
-  { left: "0%", top: "12%" },
-  { left: "100%", top: "43%" },
-  { left: "70%", top: "100%" },
-  { left: "20%", top: "100%" },
-  { left: "0%", top: "64%" },
-] as const;
 
-function StickerPreview({ stickers }: { stickers: CharacterSticker[] }) {
-  return (
-    <div className="relative mx-auto mt-[0.65rem] aspect-[4/3] w-full max-w-[18rem] rounded-[0.35rem] border border-dashed border-[var(--atr-line)] bg-[rgba(255,248,250,0.45)] p-[0.6rem]">
-      <div className="h-full w-full rounded-[0.15rem] bg-[rgba(200,121,147,0.14)]" />
-      {stickers.map((sticker, index) => {
-        const position =
-          STICKER_PREVIEW_POSITIONS[index % STICKER_PREVIEW_POSITIONS.length];
-        const size = sticker.size ?? DEFAULT_STICKER_SIZE;
-        return (
-          <div
-            key={`${sticker.src}-${index}`}
-            className="pointer-events-none absolute"
-            style={{
-              ...position,
-              width: `${3.2 * size}rem`,
-              height: `${3.2 * size}rem`,
-              transform: "translate(-50%, -50%)",
-            }}
-          >
-            <Image
-              src={sticker.src}
-              alt=""
-              fill
-              sizes="6rem"
-              unoptimized
-              className="object-contain drop-shadow-[0_0.18rem_0.2rem_rgba(91,48,64,0.2)]"
-            />
-          </div>
-        );
-      })}
-      <p className="absolute bottom-[0.35rem] left-1/2 -translate-x-1/2 whitespace-nowrap afterroll-meta text-[0.62rem] text-[var(--atr-soft)]">
-        상세 카드 미리보기
-      </p>
-    </div>
-  );
+async function cropPortrait(file: File, crop: PortraitCrop) {
+  const image = new window.Image();
+  const sourceUrl = URL.createObjectURL(file);
+  try {
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error('선택한 사진을 불러올 수 없습니다.'));
+      image.src = sourceUrl;
+    });
+    const size = Math.min(image.naturalWidth, image.naturalHeight) / crop.zoom;
+    const x = Math.max(0, Math.min(image.naturalWidth - size, ((image.naturalWidth - size) / 2) * (1 + crop.x)));
+    const y = Math.max(0, Math.min(image.naturalHeight - size, ((image.naturalHeight - size) / 2) * (1 + crop.y)));
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 1024;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('사진을 편집할 수 없습니다.');
+    context.drawImage(image, x, y, size, size, 0, 0, canvas.width, canvas.height);
+    return await new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('사진을 만들 수 없습니다.')), 'image/webp', 0.9));
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
 }
-
 const FIELDS: Array<{
   key: EditableField;
   label: string;
@@ -258,6 +239,8 @@ export default function CharacterManagementActions({
   const [links, setLinks] = useState<CharacterLink[]>(
     character.linkItems ?? [],
   );
+  const [copyrightName, setCopyrightName] = useState(character.copyright?.name ?? "");
+  const [copyrightUrl, setCopyrightUrl] = useState(character.copyright?.url ?? "");
   const [privateLinks, setPrivateLinks] = useState<CharacterLink[]>([]);
   const initialPrivateLinks = useRef<CharacterLink[]>([]);
   const [stickers, setStickers] = useState<CharacterSticker[]>(
@@ -267,6 +250,9 @@ export default function CharacterManagementActions({
   const [stickerSizes, setStickerSizes] = useState<number[]>([]);
   const [stickerPreviews, setStickerPreviews] = useState<string[]>([]);
   const stickerInput = useRef<HTMLInputElement>(null);
+  const [portraitFile, setPortraitFile] = useState<File | null>(null);
+  const [portraitCrop, setPortraitCrop] = useState<PortraitCrop>({ x: 0, y: 0, zoom: 1 });
+  const portraitInput = useRef<HTMLInputElement>(null);
   const [sessionKeys, setSessionKeys] = useState(character.sessionKeys);
   const [token, setToken] = useState("");
   const [status, setStatus] = useState("");
@@ -305,14 +291,19 @@ export default function CharacterManagementActions({
     setShinobigami(character.shinobigami);
     setInsane(character.insane);
     setLinks(character.linkItems ?? []);
+    setCopyrightName(character.copyright?.name ?? "");
+    setCopyrightUrl(character.copyright?.url ?? "");
     setPrivateLinks(initialPrivateLinks.current);
     setStickers(character.stickers ?? []);
     setStickerFiles([]);
     setStickerSizes([]);
+    setPortraitFile(null);
+    setPortraitCrop({ x: 0, y: 0, zoom: 1 });
     setSessionKeys(character.sessionKeys);
     setToken("");
     setStatus("");
     if (stickerInput.current) stickerInput.current.value = "";
+    if (portraitInput.current) portraitInput.current.value = "";
   };
   const open = (nextMode: Exclude<Mode, null>) => {
     resetEditForm();
@@ -378,8 +369,12 @@ export default function CharacterManagementActions({
         coc,
         shinobigami,
         insane,
+        copyright: copyrightName.trim()
+          ? { name: copyrightName.trim(), ...(copyrightUrl.trim() ? { url: copyrightUrl.trim() } : {}) }
+          : undefined,
         linkItems: links.filter((link) => link.name.trim() && link.url.trim()),
         stickers: [...stickers, ...newStickers],
+        portrait: portraitFile ? { ...characterImagePaths(character.id, portraitFile.name), crop: portraitCrop } : character.portrait,
         sessionKeys,
         updatedAt: new Date().toISOString(),
       };
@@ -388,6 +383,7 @@ export default function CharacterManagementActions({
         nextCharacter,
         stickerFiles,
         newStickers,
+        portraitFile ? { original: portraitFile, cropped: await cropPortrait(portraitFile, portraitCrop) } : undefined,
       );
       await savePrivateCharacterLinks(character.id, privateLinks);
       onUpdated(nextCharacter);
@@ -465,6 +461,15 @@ export default function CharacterManagementActions({
               <div className="space-y-[0.8rem] px-[1.1rem] py-[1rem]">
                 {mode === "edit" ? (
                   <>
+                    <section>
+                      <p className="pc-field-label">프로필 사진</p>
+                      <div className="mt-[0.35rem] flex flex-wrap items-center gap-[0.5rem]">
+                        <button type="button" className="pc-link" onClick={() => portraitInput.current?.click()}>사진 교체</button>
+                        <span className="afterroll-meta text-[0.68rem] text-[var(--atr-soft)]">{portraitFile ? portraitFile.name : '현재 사진 유지'}</span>
+                      </div>
+                      <input ref={portraitInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" className="sr-only" onChange={(event) => { setPortraitFile(event.target.files?.[0] ?? null); setPortraitCrop({ x: 0, y: 0, zoom: 1 }); }} />
+                      {portraitFile && <PortraitCropPreview file={portraitFile} crop={portraitCrop} onCropChange={setPortraitCrop} />}
+                    </section>
                     <RuleFields
                       characterId={character.id}
                       rule={rule}
@@ -517,7 +522,11 @@ export default function CharacterManagementActions({
                         </Fragment>
                       ))}
                     </div>
-                    </section>
+                    <div className="mt-[0.65rem] grid gap-[0.65rem] sm:grid-cols-2">
+                      <label><span className="pc-field-label">저작권</span><input className="pc-field" value={copyrightName} onChange={(event) => setCopyrightName(event.target.value)} placeholder="예: 홍길동" /></label>
+                      <label><span className="pc-field-label">저작권 링크</span><input className="pc-field" type="url" value={copyrightUrl} onChange={(event) => setCopyrightUrl(event.target.value)} placeholder="선택 · https://..." /></label>
+                    </div>
+                  </section>
                   </>
                 ) : (
                   <p className="afterroll-body text-[0.9rem] text-[var(--atr-muted)]">
