@@ -14,7 +14,8 @@ import {
 } from '@/lib/data/firebasePlays';
 import PlaysComposer from './PlaysComposer';
 import PlaysStats from './PlaysStats';
-import CharacterPreviewModal, { LinkedCharacterButtons } from '@/components/characters/CharacterPreviewModal';
+import CharacterPreviewModal from '@/components/characters/CharacterPreviewModal';
+import Image from '@/components/ArchiveImage';
 import { CHARACTERS, type Character } from '@/lib/data/characters';
 
 const CALENDAR_ID =
@@ -170,6 +171,103 @@ function getDisplayedParticipants(entry: PlayEntry): string[] {
   const { participants, type, gmParticipant } = entry;
   if (type !== 'PL' || !gmParticipant || !participants.includes(gmParticipant)) return participants;
   return [gmParticipant, ...participants.filter((participant) => participant !== gmParticipant)];
+}
+
+function PlayExpandedDetails({
+  entry,
+  sessions,
+  totalDurationMinutes,
+  linkedCharacters,
+  logHref,
+  onSelectCharacter,
+}: {
+  entry: PlayEntry;
+  sessions: PlaySession[];
+  totalDurationMinutes: number | null;
+  linkedCharacters: Character[];
+  logHref?: string;
+  onSelectCharacter: (character: Character) => void;
+}) {
+  const hasSessions = sessions.length > 0;
+  const hasParticipants = entry.participants.length > 0;
+
+  return (
+    <div className="flex flex-col gap-[0.8rem] py-[0.8rem]">
+      <div className={`grid gap-[0.8rem] items-start ${linkedCharacters.length ? 'grid-cols-[minmax(6.5rem,8rem)_minmax(0,1fr)] sm:grid-cols-[minmax(7rem,9rem)_minmax(0,1fr)]' : ''}`}>
+        <div className="grid grid-cols-1 gap-[0.45rem]">
+          {linkedCharacters.map((character) => (
+            <motion.button
+              key={character.id}
+              type="button"
+              whileHover={{ y: '-0.12rem', rotate: -0.5 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ duration: 0.16 }}
+              onClick={(event) => { event.stopPropagation(); onSelectCharacter(character); }}
+              className="group relative overflow-hidden rounded-[0.18rem] border border-[rgba(87,67,48,0.16)] bg-[#fffdfa] p-[0.3rem] pb-[0.55rem] text-left shadow-[0_0.18rem_0.45rem_rgba(87,67,48,0.1)]"
+              aria-label={`${character.name} 캐릭터 보기`}
+            >
+              <span className="relative block aspect-[0.78] overflow-hidden bg-[rgba(200,121,147,0.13)]">
+                <Image src={character.portrait.cropped} alt={`${character.name}의 초상`} fill sizes="(max-width: 640px) 42vw, 9rem" className="object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+              </span>
+              <span className="afterroll-meta mt-[0.38rem] block truncate text-center text-[0.74rem] text-[var(--ledger-ink)]">{character.name}</span>
+            </motion.button>
+          ))}
+        </div>
+
+        {hasSessions ? (
+          <section aria-label="캘린더 플레이 기록">
+            <div className="afterroll-meta mb-[0.38rem] text-[0.7rem] text-[var(--ledger-soft)]">
+              캘린더 플레이 기록
+              <span className="ml-[0.45rem] text-[var(--ledger-accent)]">총 {formatDuration(totalDurationMinutes)}</span>
+            </div>
+            <div className="grid gap-[0.28rem] lg:grid-cols-2">
+              {sessions.map((session) => (
+                <div
+                  key={session.id}
+                  className={`afterroll-meta rounded-[0.45rem] border px-[0.6rem] py-[0.45rem] text-[0.74rem] transition-colors ${
+                    session.isUpcoming
+                      ? 'border-[rgba(200,121,147,0.08)] bg-[rgba(255,248,250,0.34)] text-[rgba(128,96,107,0.42)]'
+                      : 'border-[rgba(200,121,147,0.18)] bg-[rgba(255,248,250,0.72)] text-[var(--ledger-muted)]'
+                  }`}
+                >
+                  <span className={session.isUpcoming ? 'text-[rgba(128,96,107,0.48)]' : 'text-[var(--ledger-ink)]'}>{formatDate(session.date)}</span>
+                  <span className="mx-[0.35rem] text-[rgba(128,96,107,0.4)]">/</span>
+                  <span>{formatSessionTime(session)}</span>
+                  <span className="mx-[0.35rem] text-[rgba(128,96,107,0.4)]">/</span>
+                  <span>{formatDuration(session.durationMinutes)}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <div className="hidden sm:block" aria-hidden="true" />
+        )}
+      </div>
+
+      {(hasParticipants || logHref) && (
+        <div className="flex flex-wrap items-center gap-[0.4rem] border-t border-[rgba(200,121,147,0.12)] pt-[0.65rem]">
+          {hasParticipants && (
+            <>
+              <span className="afterroll-meta mr-[0.12rem] text-[0.7rem] text-[var(--ledger-soft)]">참여자</span>
+              {getDisplayedParticipants(entry).map((participant) => (
+                <span
+                  key={participant}
+                  className={`afterroll-meta rounded-full border px-[0.5rem] py-[0.12rem] text-[0.72rem] ${
+                    entry.type === 'PL' && entry.gmParticipant === participant
+                      ? 'border-[var(--ledger-accent)] bg-[rgba(232,169,186,0.22)] text-[var(--ledger-accent)]'
+                      : 'border-[rgba(200,121,147,0.2)] bg-[rgba(232,169,186,0.12)] text-[var(--ledger-soft)]'
+                  }`}
+                >
+                  {participant}{entry.type === 'PL' && entry.gmParticipant === participant ? ' · GM' : ''}
+                </span>
+              ))}
+            </>
+          )}
+          {logHref && <span className="ml-auto"><LogLinkButton href={logHref} /></span>}
+        </div>
+      )}
+    </div>
+  );
 }
 
 const STATUS_LABEL: Record<PlayEntry['status'], string> = {
@@ -695,7 +793,11 @@ export default function PlaysSection({ logLinks = [] }: { logLinks?: PlayLogLink
                             transition={{ duration: 0.18 }}
                             className="overflow-hidden border-t border-[rgba(200,121,147,0.12)]"
                           >
-                            <div className="flex flex-col gap-[0.6rem] px-[0.9rem] py-[0.7rem]">
+                            <>
+                              <div className="px-[0.9rem]">
+                                <PlayExpandedDetails entry={entry} sessions={sessions} totalDurationMinutes={totalDurationMinutes} linkedCharacters={linkedCharacters} logHref={logHref} onSelectCharacter={setSelectedCharacter} />
+                              </div>
+                              <div className="hidden flex flex-col gap-[0.6rem] px-[0.9rem] py-[0.7rem]">
                               {logHref && <LogLinkButton href={logHref} />}
                               {hasSessions && (
                                 <div>
@@ -711,7 +813,7 @@ export default function PlaysSection({ logLinks = [] }: { logLinks?: PlayLogLink
                                   </div>
                                 </div>
                               )}
-                              <LinkedCharacterButtons characters={linkedCharacters} onSelect={setSelectedCharacter} />
+                              {null}
                               {hasParticipants && (
                                 <div className="flex flex-wrap gap-[0.3rem]">
                                   <span className="afterroll-meta mr-[0.15rem] text-[0.7rem] text-[var(--ledger-soft)]">참여자</span>
@@ -729,7 +831,8 @@ export default function PlaysSection({ logLinks = [] }: { logLinks?: PlayLogLink
                                   ))}
                                 </div>
                               )}
-                            </div>
+                              </div>
+                            </>
                           </motion.div>
                         )}
                       </AnimatePresence>
@@ -878,7 +981,9 @@ export default function PlaysSection({ logLinks = [] }: { logLinks?: PlayLogLink
                                   transition={{ duration: 0.18 }}
                                   className="overflow-hidden"
                                 >
-                                  <div className="flex flex-col gap-[0.65rem] py-[0.65rem]">
+                                  <>
+                                    <PlayExpandedDetails entry={entry} sessions={sessions} totalDurationMinutes={totalDurationMinutes} linkedCharacters={linkedCharacters} logHref={logHref} onSelectCharacter={setSelectedCharacter} />
+                                    <div className="hidden flex flex-col gap-[0.65rem] py-[0.65rem]">
                                     {logHref && <LogLinkButton href={logHref} />}
                                     {hasSessions && (
                                       <div>
@@ -908,7 +1013,7 @@ export default function PlaysSection({ logLinks = [] }: { logLinks?: PlayLogLink
                                         </div>
                                       </div>
                                     )}
-                                    <LinkedCharacterButtons characters={linkedCharacters} onSelect={setSelectedCharacter} />
+                                    {null}
                                     {hasParticipants && (
                                       <div className="flex flex-wrap gap-[0.3rem]">
                                         <span className="afterroll-meta mr-[0.2rem] text-[0.7rem] text-[var(--ledger-soft)]">
@@ -928,7 +1033,8 @@ export default function PlaysSection({ logLinks = [] }: { logLinks?: PlayLogLink
                                         ))}
                                       </div>
                                     )}
-                                  </div>
+                                    </div>
+                                  </>
                                 </motion.div>
                               </td>
                             </tr>
