@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import {
   ChangeEvent,
+  CSSProperties,
   PointerEvent,
   WheelEvent,
   useEffect,
@@ -297,23 +298,16 @@ function CocCharacteristics({ characteristics }: { characteristics: CocCharacter
   return <section className="rounded-[0.45rem] border border-dashed border-[var(--atr-line)] p-[0.7rem]"><p className="pc-field-label">특성치</p><dl className="mt-[0.45rem] grid grid-cols-3 gap-x-[0.7rem] gap-y-[0.35rem] sm:grid-cols-5">{characteristics.map((stat) => <div key={stat.label} className="flex items-baseline gap-[0.35rem]"><dt className="afterroll-meta text-[0.68rem] text-[var(--atr-soft)]">{stat.label}</dt><dd className="afterroll-meta text-[0.75rem] text-[var(--atr-text)]">{stat.value}</dd></div>)}</dl></section>;
 }
 
-function ShinobigamiFields({ value, onChange }: { value: ShinobigamiCharacterData | undefined; onChange: (value: ShinobigamiCharacterData) => void }) {
-  const fields: Array<{ key: keyof Pick<ShinobigamiCharacterData, 'rank' | 'faction' | 'subfaction' | 'belief' | 'socialStatus'>; label: string }> = [
-    { key: 'rank', label: '계급' }, { key: 'faction', label: '유파' }, { key: 'subfaction', label: '하위 유파' }, { key: 'belief', label: '신념' }, { key: 'socialStatus', label: '신분' },
-  ];
-  const setField = (key: typeof fields[number]['key'], next: string) => onChange({ ...(value ?? { ninpo: [] }), [key]: next });
-  return <>{fields.map(({ key, label }) => <Field key={key} label={label} value={value?.[key] ?? ''} onChange={(next) => setField(key, next)} />)}</>;
-}
-
 function ShinobigamiImportedValues({ value }: { value: ShinobigamiCharacterData | undefined }) {
-  if (!value?.ninpo.length && !value?.secretArt) return null;
-  return <section className="rounded-[0.45rem] border border-dashed border-[var(--atr-line)] p-[0.7rem]">{value.secretArt && <p className="afterroll-meta text-[0.76rem] text-[var(--atr-muted)]"><span className="text-[var(--atr-soft)]">오의</span> {value.secretArt.name} · {value.secretArt.type}</p>}{value.ninpo.length > 0 && <div className={value.secretArt ? 'mt-[0.55rem]' : ''}><p className="pc-field-label">인법</p><p className="afterroll-meta mt-[0.3rem] text-[0.72rem] leading-[1.6] text-[var(--atr-muted)]">{value.ninpo.join(' · ')}</p></div>}</section>;
+  if (!value) return null;
+  const facts = [['계급', value.rank], ['유파 / 하위 유파', [value.faction, value.subfaction].filter(Boolean).join(' · ')]] as const;
+  return <section className="rounded-[0.45rem] border border-dashed border-[var(--atr-line)] p-[0.7rem]"><p className="pc-field-label">룰 정보</p>{facts.some(([, fieldValue]) => fieldValue) && <dl className="mt-[0.45rem] grid grid-cols-2 gap-x-[0.7rem] gap-y-[0.35rem]">{facts.filter(([, fieldValue]) => fieldValue).map(([label, fieldValue]) => <div key={label}><dt className="afterroll-meta text-[0.68rem] text-[var(--atr-soft)]">{label}</dt><dd className="afterroll-meta text-[0.75rem] text-[var(--atr-text)]">{fieldValue}</dd></div>)}</dl>}{value.secretArt && <p className="afterroll-meta mt-[0.55rem] text-[0.76rem] text-[var(--atr-muted)]"><span className="text-[var(--atr-soft)]">오의</span> {value.secretArt.name} · {value.secretArt.type}</p>}{value.ninpo.length > 0 && <div className="mt-[0.55rem]"><p className="pc-field-label">인법</p><p className="afterroll-meta mt-[0.3rem] text-[0.72rem] leading-[1.6] text-[var(--atr-muted)]">{value.ninpo.join(' · ')}</p></div>}</section>;
 }
 
 function ColorField({ value, onChange }: { value?: string; onChange: (value: string) => void }) {
   const normalizedValue = value ?? '';
   const isHex = /^#[\da-f]{6}$/i.test(normalizedValue);
-  return <label><span className="pc-field-label">Color</span><input className="pc-field" value={normalizedValue} onChange={(event) => onChange(event.target.value)} placeholder="#FFC0CB" style={isHex ? { color: normalizedValue } : undefined} /></label>;
+  return <label><span className="pc-field-label">Color</span><div className="flex items-center gap-[0.5rem]"><input className={isHex ? "pc-field pc-color-field min-w-0 flex-1" : "pc-field min-w-0 flex-1"} value={normalizedValue} onChange={(event) => onChange(event.target.value)} placeholder="#FFC0CB" style={isHex ? { "--pc-character-color": normalizedValue } as CSSProperties : undefined} /><span className="size-[1.8rem] shrink-0 rounded-full border border-[var(--atr-line-strong)] shadow-[inset_0_0_0_0.16rem_rgba(255,255,255,0.45)]" style={{ backgroundColor: isHex ? normalizedValue : 'transparent' }} aria-label={isHex ? `${normalizedValue} 색상 미리보기` : '색상 미리보기'} /></div></label>;
 }
 
 function InsaneImportedValues({ value }: { value: InsaneCharacterData | undefined }) {
@@ -541,7 +535,6 @@ export default function CharacterUploadButton() {
                     </label>
                     </div>
                   </section>
-                  {isShinobigamiRule(rule) && <section className="rounded-[0.45rem] border border-dashed border-[var(--atr-line)] p-[0.7rem]"><p className="pc-field-label mb-[0.45rem]">룰 정보</p><div className="grid gap-[0.75rem] sm:grid-cols-2"><ShinobigamiFields value={shinobigami} onChange={setShinobigami} /></div></section>}
                   {isCocRule(rule) && <CocCharacteristics characteristics={coc?.characteristics ?? []} />}
                   {isShinobigamiRule(rule) && <ShinobigamiImportedValues value={shinobigami} />}
                   {isInsaneRule(rule) && <InsaneImportedValues value={insane} />}

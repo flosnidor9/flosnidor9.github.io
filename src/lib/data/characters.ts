@@ -18,8 +18,6 @@ export type ShinobigamiCharacterData = {
   rank?: string;
   faction?: string;
   subfaction?: string;
-  belief?: string;
-  socialStatus?: string;
   setting?: string;
   ninpo: string[];
   secretArt?: { name: string; type: string };

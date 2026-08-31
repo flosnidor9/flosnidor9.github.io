@@ -481,6 +481,10 @@ body.after-roll-theme textarea {
   color: var(--atr-text) !important;
 }
 
+body.after-roll-theme input.pc-color-field {
+  color: var(--pc-character-color) !important;
+}
+
 body.after-roll-theme input::placeholder,
 body.after-roll-theme textarea::placeholder {
   color: var(--atr-soft) !important;
@@ -2684,6 +2688,10 @@ body.after-roll-theme a::after {
 
 .pc-polaroid:hover {
   box-shadow: 0 0.85rem 1.15rem rgba(128, 76, 95, 0.22);
+}
+
+.atr-file-content .pc-character-color {
+  color: var(--pc-character-color) !important;
 }
 
 body.after-roll-theme button.pc-polaroid {

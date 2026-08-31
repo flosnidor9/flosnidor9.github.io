@@ -98,10 +98,18 @@ function parseCoc(data: CcData): CocofoliaImport {
   };
 }
 
+function commandSection(commands: string, heading: string) {
+  const sectionStart = `◆───────${heading}───────◆`;
+  const start = commands.indexOf(sectionStart);
+  if (start < 0) return '';
+  const content = commands.slice(start + sectionStart.length);
+  return content.split('◆────────────────◆', 1)[0];
+}
+
 function commandNames(commands: string, heading: string) {
-  const section = commands.match(new RegExp(`◆───────${heading}───────◆([\\s\\S]*?)(?=◆───────|$)`));
-  if (!section) return [];
-  return [...section[1].matchAll(/【([^】]+)】/g)].map((match) => match[1]).filter((name) => !/^(?:행동 완료|회상|사망|자발적 탈락)/.test(name));
+  return [...commandSection(commands, heading).matchAll(/\|\s*【([^】]+)】/g)]
+    .map((match) => match[1].trim())
+    .filter((name) => name !== '접근전공격');
 }
 
 function parseShinobigami(data: CcData): CocofoliaImport {
@@ -111,7 +119,9 @@ function parseShinobigami(data: CcData): CocofoliaImport {
   const factions = (classLine[2] ?? '').split('|').map((item) => item.trim()).filter(Boolean);
   const identity = memo.match(/나이\s*[:：]\s*([^/\n]*)\s*\/\s*성별\s*[:：]\s*([^/\n]*)\s*\/\s*신분\s*[:：]\s*([^\n]*)/);
   const setting = memo.match(/《설정》\s*\n?([\s\S]*?)(?=\n《|$)/)?.[1]?.trim() ?? '';
-  const secretArt = commands.match(/◆───────오의───────◆[\s\S]*?오의\s*[·・]\s*([^《|\n]+).*?【오의\s*[:：]\s*([^】]+)】/);
+  const secretArtLine = commandSection(commands, '오의').split('\n').find((line) => /【오의\s*[:：]/.test(line));
+  const secretArtName = secretArtLine?.match(/^\s*(.*?)\s*《/)?.[1]?.trim();
+  const secretArtType = secretArtLine?.match(/【오의\s*[:：]\s*([^】]+)】/)?.[1]?.trim();
   return {
     name: text(data.name),
     age: identity?.[1]?.trim() ?? '',
@@ -124,11 +134,9 @@ function parseShinobigami(data: CcData): CocofoliaImport {
       rank: classLine[1]?.trim() ?? '',
       faction: factions[0] ?? '',
       subfaction: factions[1] ?? '',
-      belief: memoValue(memo, '신념'),
-      socialStatus: identity?.[3]?.trim() ?? '',
       setting,
       ninpo: commandNames(commands, '인법'),
-      secretArt: secretArt ? { name: secretArt[1].trim(), type: secretArt[2].trim() } : undefined,
+      secretArt: secretArtName && secretArtType ? { name: secretArtName, type: secretArtType } : undefined,
     },
   };
 }

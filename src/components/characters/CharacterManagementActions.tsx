@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, Fragment, useEffect, useRef, useState } from "react";
+import { ChangeEvent, CSSProperties, Fragment, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "@/components/ArchiveImage";
 import type {
@@ -165,12 +165,10 @@ function ImportedRuleDetails({
   coc,
   shinobigami,
   insane,
-  showShinobigamiMetadata = true,
 }: {
   coc?: CocCharacterData;
   shinobigami?: ShinobigamiCharacterData;
   insane?: InsaneCharacterData;
-  showShinobigamiMetadata?: boolean;
 }) {
   if (coc?.characteristics.length)
     return (
@@ -190,29 +188,23 @@ function ImportedRuleDetails({
         </dl>
       </section>
     );
-  if (shinobigami && (showShinobigamiMetadata || shinobigami.ninpo.length || shinobigami.secretArt))
+  if (shinobigami)
     return (
       <section className="rounded-[0.45rem] border border-dashed border-[var(--atr-line)] p-[0.7rem]">
-        {showShinobigamiMetadata && <><p className="pc-field-label">룰 정보</p>
+        <p className="pc-field-label">룰 정보</p>
         {([
           ["계급", shinobigami.rank],
-          ["유파", shinobigami.faction],
-          ["하위 유파", shinobigami.subfaction],
-          ["신념", shinobigami.belief],
-          ["신분", shinobigami.socialStatus],
+          ["유파 / 하위 유파", [shinobigami.faction, shinobigami.subfaction].filter(Boolean).join(" · ")],
         ] as const).some(([, value]) => value) && (
           <dl className="mt-[0.45rem] grid grid-cols-2 gap-x-[0.7rem] gap-y-[0.35rem]">
             {([
               ["계급", shinobigami.rank],
-              ["유파", shinobigami.faction],
-              ["하위 유파", shinobigami.subfaction],
-              ["신념", shinobigami.belief],
-              ["신분", shinobigami.socialStatus],
+              ["유파 / 하위 유파", [shinobigami.faction, shinobigami.subfaction].filter(Boolean).join(" · ")],
             ] as const).filter(([, value]) => value).map(([label, value]) => (
               <div key={label}><dt className="afterroll-meta text-[0.68rem] text-[var(--atr-soft)]">{label}</dt><dd className="afterroll-meta text-[0.75rem] text-[var(--atr-text)]">{value}</dd></div>
             ))}
           </dl>
-        )}</>}
+        )}
         {shinobigami.secretArt && (
           <p className="afterroll-meta text-[0.76rem] text-[var(--atr-muted)]">
             <span className="text-[var(--atr-soft)]">오의</span>{" "}
@@ -239,32 +231,6 @@ function ImportedRuleDetails({
       </section>
     );
   return null;
-}
-
-function ShinobigamiRuleFields({
-  value,
-  onChange,
-}: {
-  value?: ShinobigamiCharacterData;
-  onChange: (value: ShinobigamiCharacterData) => void;
-}) {
-  const fields: Array<{ key: keyof Pick<ShinobigamiCharacterData, "rank" | "faction" | "subfaction" | "belief" | "socialStatus">; label: string }> = [
-    { key: "rank", label: "계급" },
-    { key: "faction", label: "유파" },
-    { key: "subfaction", label: "하위 유파" },
-    { key: "belief", label: "신념" },
-    { key: "socialStatus", label: "신분" },
-  ];
-  return (
-    <section className="rounded-[0.45rem] border border-dashed border-[var(--atr-line)] p-[0.7rem]">
-      <p className="pc-field-label mb-[0.45rem]">룰 정보</p>
-      <div className="grid gap-[0.65rem] sm:grid-cols-2">
-        {fields.map(({ key, label }) => (
-          <label key={key}><span className="pc-field-label">{label}</span><input className="pc-field" value={value?.[key] ?? ""} onChange={(event) => onChange({ ...(value ?? { ninpo: [] }), [key]: event.target.value })} /></label>
-        ))}
-      </div>
-    </section>
-  );
 }
 
 export default function CharacterManagementActions({
@@ -547,12 +513,11 @@ export default function CharacterManagementActions({
                               />
                             )}
                           </label>
-                          {key === "catchphrase" && <label><span className="pc-field-label">Color</span><input className="pc-field" value={color} onChange={(event) => setColor(event.target.value)} placeholder="#FFC0CB" /></label>}
+                          {key === "catchphrase" && <label><span className="pc-field-label">Color</span><div className="flex items-center gap-[0.5rem]"><input className={/^#[\da-f]{6}$/i.test(color) ? "pc-field pc-color-field min-w-0 flex-1" : "pc-field min-w-0 flex-1"} value={color} onChange={(event) => setColor(event.target.value)} placeholder="#FFC0CB" style={/^#[\da-f]{6}$/i.test(color) ? { "--pc-character-color": color } as CSSProperties : undefined} /><span className="size-[1.8rem] shrink-0 rounded-full border border-[var(--atr-line-strong)] shadow-[inset_0_0_0_0.16rem_rgba(255,255,255,0.45)]" style={{ backgroundColor: /^#[\da-f]{6}$/i.test(color) ? color : "transparent" }} aria-label={/^#[\da-f]{6}$/i.test(color) ? `${color} 색상 미리보기` : "색상 미리보기"} /></div></label>}
                         </Fragment>
                       ))}
                     </div>
                     </section>
-                    {isShinobigamiRule(rule) && <ShinobigamiRuleFields value={shinobigami} onChange={setShinobigami} />}
                   </>
                 ) : (
                   <p className="afterroll-body text-[0.9rem] text-[var(--atr-muted)]">
@@ -565,7 +530,6 @@ export default function CharacterManagementActions({
                     coc={coc}
                     shinobigami={shinobigami}
                     insane={insane}
-                    showShinobigamiMetadata={!isShinobigamiRule(rule)}
                   />
                 )}
                 {false && mode === "edit" && (
