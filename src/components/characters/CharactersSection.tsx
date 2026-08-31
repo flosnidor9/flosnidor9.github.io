@@ -45,6 +45,8 @@ const SESSION_STATUS_PRIORITY: Record<PlayEntry['status'], number> = {
 };
 const UNLINKED_CHARACTER_PRIORITY = Number.MAX_SAFE_INTEGER;
 const HEX_COLOR = /^#[\da-f]{6}$/i;
+const ALL_RULES_FILTER = '';
+const UNASSIGNED_RULE_FILTER = '__unassigned__';
 
 export type SessionLogLink = {
   playId: string;
@@ -190,6 +192,7 @@ function CharacterDetail({ character, sessions, sessionLogLinks, onClose, onShow
 
 export default function CharactersSection({ characters, sessionLogLinks = [] }: { characters: Character[]; sessionLogLinks?: SessionLogLink[] }) {
   const [query, setQuery] = useState('');
+  const [selectedRule, setSelectedRule] = useState(ALL_RULES_FILTER);
   const [characterList, setCharacterList] = useState(characters);
   const [selected, setSelected] = useState<Character | null>(null);
   const [originalUrl, setOriginalUrl] = useState<string | null>(null);
@@ -206,17 +209,33 @@ export default function CharactersSection({ characters, sessionLogLinks = [] }: 
       return session ? [session] : [];
     })]));
   }, [characterList, plays]);
+  const ruleOptions = useMemo(() => Array.from(new Set(
+    characterList.map((character) => character.rule?.trim()).filter((rule): rule is string => Boolean(rule)),
+  )).sort((a, b) => a.localeCompare(b, 'ko-KR')), [characterList]);
+  const hasUnassignedRule = useMemo(
+    () => characterList.some((character) => !character.rule?.trim()),
+    [characterList],
+  );
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const filteredCharacters = needle
-      ? characterList.filter((character) => `${character.name} ${character.alias ?? ''}`.toLowerCase().includes(needle))
-      : characterList;
+    const filteredCharacters = characterList.filter((character) => {
+      const matchesQuery = !needle || `${character.name} ${character.alias ?? ''}`.toLowerCase().includes(needle);
+      const rule = character.rule?.trim();
+      const matchesRule = selectedRule === ALL_RULES_FILTER
+        || (selectedRule === UNASSIGNED_RULE_FILTER ? !rule : rule === selectedRule);
+      return matchesQuery && matchesRule;
+    });
     return [...filteredCharacters].sort((a, b) => compareCharactersBySessions(
       sessionsByCharacter.get(a.id) ?? [],
       sessionsByCharacter.get(b.id) ?? [],
     ));
-  }, [characterList, query, sessionsByCharacter]);
+  }, [characterList, query, selectedRule, sessionsByCharacter]);
   const updateSelected = (updated: Character) => { setCharacterList((current) => current.map((character) => character.id === updated.id ? updated : character)); setSelected(updated); };
   const deleteCharacterFromList = (id: string) => { setCharacterList((current) => current.filter((character) => character.id !== id)); setSelected((current) => current?.id === id ? null : current); };
-  return <section className="pc-archive afterroll-desk mx-auto min-h-full max-w-[72rem] px-[1.1rem] py-[0.7rem] sm:py-[1.1rem] md:px-[2rem]" aria-busy={!isPlaysLoaded}><header className="relative z-[1] mb-[1rem] flex flex-wrap items-center justify-between gap-[0.75rem] border-b border-[var(--atr-line)] pb-[0.85rem]"><div><p className="afterroll-meta text-[0.74rem] uppercase tracking-[0.14em] text-[var(--atr-soft)]">Character List</p><h1 className="afterroll-title mt-[0.18rem] text-[2.4rem] leading-none text-[var(--atr-text)]">캐릭터 목록</h1></div><CharacterUploadButton /></header><div className="relative z-[1] mb-[1.5rem] max-w-[22rem]"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="이름 또는 별칭으로 찾기" className="pc-field" aria-label="캐릭터 검색" /></div>{isPlaysLoaded && (visible.length ? <div className="relative z-[1] grid grid-cols-2 gap-x-[1rem] gap-y-[1.6rem] sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{visible.map((character, index) => <Polaroid key={character.id} revealIndex={index} character={character} sessions={sessionsByCharacter.get(character.id) ?? []} onOpen={() => setSelected(character)} onUpdated={updateSelected} onDeleted={() => deleteCharacterFromList(character.id)} />)}</div> : <p className="relative z-[1] afterroll-meta py-[4rem] text-center text-[0.78rem] text-[var(--atr-muted)]">아직 보관된 캐릭터가 없습니다.</p>)}<AnimatePresence>{selected && <CharacterDetail character={selected} sessions={sessionsByCharacter.get(selected.id) ?? []} sessionLogLinks={sessionLogLinks} onClose={() => setSelected(null)} onShowOriginal={() => setOriginalUrl(selected.portrait.original)} />}</AnimatePresence><AnimatePresence>{originalUrl && <motion.div key="lightbox" className="fixed inset-0 z-[200] flex cursor-zoom-out items-center justify-center bg-black/80" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} onClick={() => setOriginalUrl(null)}><motion.div className="relative h-[85vh] w-[85vw]" initial={{ scale: 0.96 }} animate={{ scale: 1 }} exit={{ scale: 0.96 }} transition={{ duration: 0.25 }}><Image src={originalUrl} alt="원본 사진" fill className="object-contain" /></motion.div></motion.div>}</AnimatePresence></section>;
+  const ruleFilters = [
+    { value: ALL_RULES_FILTER, label: '모든 룰' },
+    ...ruleOptions.map((rule) => ({ value: rule, label: rule })),
+    ...(hasUnassignedRule ? [{ value: UNASSIGNED_RULE_FILTER, label: '룰 미지정' }] : []),
+  ];
+  return <section className="pc-archive afterroll-desk mx-auto min-h-full max-w-[72rem] px-[1.1rem] py-[0.7rem] sm:py-[1.1rem] md:px-[2rem]" aria-busy={!isPlaysLoaded}><header className="relative z-[1] mb-[1rem] flex flex-wrap items-center justify-between gap-[0.75rem] border-b border-[var(--atr-line)] pb-[0.85rem]"><div><p className="afterroll-meta text-[0.74rem] uppercase tracking-[0.14em] text-[var(--atr-soft)]">Character List</p><h1 className="afterroll-title mt-[0.18rem] text-[2.4rem] leading-none text-[var(--atr-text)]">캐릭터 목록</h1></div><CharacterUploadButton /></header><div className="relative z-[1] mb-[1.5rem] grid max-w-[36rem] gap-[0.6rem]"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="이름 또는 별칭으로 찾기" className="pc-field min-w-0" aria-label="캐릭터 검색" /><div className="flex flex-wrap gap-[0.4rem]" aria-label="룰로 캐릭터 필터">{ruleFilters.map(({ value, label }) => { const isSelected = selectedRule === value; return <motion.button key={value || 'all'} type="button" onClick={() => setSelectedRule(value)} className={`afterroll-meta rounded-full border px-[0.72rem] py-[0.36rem] text-[0.72rem] transition-colors ${isSelected ? 'border-[var(--atr-accent)] bg-[rgba(200,121,147,0.16)] text-[var(--atr-text)]' : 'border-[var(--atr-line)] bg-[rgba(255,255,255,0.28)] text-[var(--atr-muted)] hover:border-[var(--atr-line-strong)] hover:text-[var(--atr-text)]'}`} aria-pressed={isSelected} whileTap={{ scale: 0.96 }} animate={{ scale: isSelected ? 1.02 : 1 }} transition={{ duration: 0.16 }}>{label}</motion.button>; })}</div></div>{isPlaysLoaded && (visible.length ? <div className="relative z-[1] grid grid-cols-2 gap-x-[1rem] gap-y-[1.6rem] sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{visible.map((character, index) => <Polaroid key={character.id} revealIndex={index} character={character} sessions={sessionsByCharacter.get(character.id) ?? []} onOpen={() => setSelected(character)} onUpdated={updateSelected} onDeleted={() => deleteCharacterFromList(character.id)} />)}</div> : <p className="relative z-[1] afterroll-meta py-[4rem] text-center text-[0.78rem] text-[var(--atr-muted)]">아직 보관된 캐릭터가 없습니다.</p>)}<AnimatePresence>{selected && <CharacterDetail character={selected} sessions={sessionsByCharacter.get(selected.id) ?? []} sessionLogLinks={sessionLogLinks} onClose={() => setSelected(null)} onShowOriginal={() => setOriginalUrl(selected.portrait.original)} />}</AnimatePresence><AnimatePresence>{originalUrl && <motion.div key="lightbox" className="fixed inset-0 z-[200] flex cursor-zoom-out items-center justify-center bg-black/80" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} onClick={() => setOriginalUrl(null)}><motion.div className="relative h-[85vh] w-[85vw]" initial={{ scale: 0.96 }} animate={{ scale: 1 }} exit={{ scale: 0.96 }} transition={{ duration: 0.25 }}><Image src={originalUrl} alt="원본 사진" fill className="object-contain" /></motion.div></motion.div>}</AnimatePresence></section>;
 }
