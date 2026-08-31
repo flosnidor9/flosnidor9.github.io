@@ -550,8 +550,8 @@ export default function CharacterManagementActions({
                           )}
                         </label>
                       ))}
+                      <label><span className="pc-field-label">Color</span><input className="pc-field" value={color} onChange={(event) => setColor(event.target.value)} placeholder="#FFC0CB" /></label>
                     </div>
-                    <label className="mt-[0.65rem] block"><span className="pc-field-label">Color</span><input className="pc-field" value={color} onChange={(event) => setColor(event.target.value)} placeholder="#FFC0CB" /></label>
                     </section>
                     {isShinobigamiRule(rule) && <ShinobigamiRuleFields value={shinobigami} onChange={setShinobigami} />}
                   </>
