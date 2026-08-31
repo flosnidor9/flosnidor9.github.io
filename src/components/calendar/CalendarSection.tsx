@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import CharacterPreviewModal, { LinkedCharacterButtons } from '@/components/characters/CharacterPreviewModal';
 import { CHARACTERS, type Character } from '@/lib/data/characters';
@@ -176,16 +177,18 @@ function mergeCellItems(events: GoogleCalendarEvent[], extSlots: ExternalEventSl
 
 // ── 이벤트 상세 팝업 ───────────────────────────────────────────
 interface DetailState { event: GoogleCalendarEvent; x: number; y: number }
+export type CalendarLogLink = { calendarEventId: string; playId: string; href: string };
 
 const DETAIL_W = 240;
 const DETAIL_MAX_H = 320;
 
 function EventDetailPanel({
-  detail, onClose, characters, onSelectCharacter,
+  detail, onClose, characters, logLink, onSelectCharacter,
 }: {
   detail: DetailState;
   onClose: () => void;
   characters: Character[];
+  logLink?: CalendarLogLink;
   onSelectCharacter: (character: Character) => void;
 }) {
   const { event, x: cx, y: cy } = detail;
@@ -225,6 +228,7 @@ function EventDetailPanel({
 
       {/* 시간 */}
       <p className="afterroll-meta text-[0.78rem] text-[var(--ledger-soft)]">{timeStr}</p>
+      {logLink && <Link href={logLink.href} className="afterroll-meta mt-[0.55rem] inline-flex rounded-[0.35rem] border border-[var(--atr-line)] px-[0.5rem] py-[0.28rem] text-[0.72rem] text-[var(--ledger-muted)] transition-colors hover:border-[var(--atr-accent)] hover:text-[var(--atr-accent)]">로그 보기</Link>}
 
       {/* 메모 */}
       {event.description && (
@@ -577,7 +581,7 @@ function DailyTimeline({
 }
 
 // ── 메인 컴포넌트 ──────────────────────────────────────────────
-export default function CalendarSection() {
+export default function CalendarSection({ logLinks = [] }: { logLinks?: CalendarLogLink[] }) {
   const [baseDate, setBaseDate] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -776,6 +780,19 @@ export default function CalendarSection() {
     });
     return charactersForTitle;
   }, [plays]);
+  const charactersBySession = useMemo(() => {
+    const result = new Map<string, Character[]>();
+    CHARACTERS.forEach((character) => character.sessionKeys.forEach((sessionKey) => {
+      const linked = result.get(sessionKey) ?? [];
+      linked.push(character);
+      result.set(sessionKey, linked);
+    }));
+    return result;
+  }, []);
+  const logByCalendarEventId = useMemo(
+    () => new Map(logLinks.filter((log) => log.calendarEventId).map((log) => [log.calendarEventId, log])),
+    [logLinks],
+  );
 
   const today = new Date();
   const isThisMonth = today.getFullYear() === year && today.getMonth() === month;
@@ -1004,7 +1021,8 @@ export default function CalendarSection() {
               <EventDetailPanel
                 detail={detail}
                 onClose={() => setDetail(null)}
-                characters={charactersByTitle.get(detail.event.summary.trim()) ?? []}
+                logLink={logByCalendarEventId.get(detail.event.id)}
+                characters={(logByCalendarEventId.get(detail.event.id) && charactersBySession.get(logByCalendarEventId.get(detail.event.id)!.playId)) ?? charactersByTitle.get(detail.event.summary.trim()) ?? []}
                 onSelectCharacter={setSelectedCharacter}
               />
             </div>

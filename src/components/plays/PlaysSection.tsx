@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, Fragment } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -36,6 +37,11 @@ type PlaySession = {
   durationMinutes: number | null;
   isUpcoming: boolean;
 };
+export type PlayLogLink = { playId: string; href: string };
+
+function LogLinkButton({ href }: { href: string }) {
+  return <Link href={href} onClick={(event) => event.stopPropagation()} className="afterroll-meta inline-flex w-fit rounded-[0.35rem] border border-[var(--atr-line)] px-[0.5rem] py-[0.28rem] text-[0.72rem] text-[var(--ledger-muted)] transition-colors hover:border-[var(--atr-accent)] hover:text-[var(--atr-accent)]">로그 보기</Link>;
+}
 
 function getEventDate(e: CalendarEvent): string {
   if (e.start.date) return e.start.date;
@@ -233,7 +239,7 @@ function ColHeader({
   );
 }
 
-export default function PlaysSection() {
+export default function PlaysSection({ logLinks = [] }: { logLinks?: PlayLogLink[] }) {
   const { isAdmin, loading: authLoading } = useAuth();
   const [plays, setPlays] = useState<PlayEntry[]>([]);
   const [options, setOptions] = useState<PlaysOptions>({
@@ -364,6 +370,10 @@ export default function PlaysSection() {
     });
     return bySession;
   }, []);
+  const logByPlayId = useMemo(
+    () => new Map(logLinks.filter((log) => log.playId).map((log) => [log.playId, log.href])),
+    [logLinks],
+  );
 
   const filteredPlays = useMemo(() => {
     return plays
@@ -589,7 +599,8 @@ export default function PlaysSection() {
                   const hasParticipants = entry.participants.length > 0;
                   const hasSessions = sessions.length > 0;
                   const linkedCharacters = charactersBySession.get(entry.id) ?? [];
-                  const canExpand = hasParticipants || hasSessions || linkedCharacters.length > 0;
+                  const logHref = logByPlayId.get(entry.id);
+                  const canExpand = hasParticipants || hasSessions || linkedCharacters.length > 0 || Boolean(logHref);
                   return (
                     <article
                       key={entry.id}
@@ -685,6 +696,7 @@ export default function PlaysSection() {
                             className="overflow-hidden border-t border-[rgba(200,121,147,0.12)]"
                           >
                             <div className="flex flex-col gap-[0.6rem] px-[0.9rem] py-[0.7rem]">
+                              {logHref && <LogLinkButton href={logHref} />}
                               {hasSessions && (
                                 <div>
                                   <div className="afterroll-meta mb-[0.35rem] text-[0.7rem] text-[var(--ledger-soft)]">
@@ -780,7 +792,8 @@ export default function PlaysSection() {
                     const hasParticipants = entry.participants.length > 0;
                     const hasSessions = sessions.length > 0;
                     const linkedCharacters = charactersBySession.get(entry.id) ?? [];
-                    const canExpand = hasParticipants || hasSessions || linkedCharacters.length > 0;
+                    const logHref = logByPlayId.get(entry.id);
+                    const canExpand = hasParticipants || hasSessions || linkedCharacters.length > 0 || Boolean(logHref);
                     return (
                       <Fragment key={entry.id}>
                         <tr
@@ -866,6 +879,7 @@ export default function PlaysSection() {
                                   className="overflow-hidden"
                                 >
                                   <div className="flex flex-col gap-[0.65rem] py-[0.65rem]">
+                                    {logHref && <LogLinkButton href={logHref} />}
                                     {hasSessions && (
                                       <div>
                                         <div className="afterroll-meta mb-[0.35rem] text-[0.7rem] text-[var(--ledger-soft)]">

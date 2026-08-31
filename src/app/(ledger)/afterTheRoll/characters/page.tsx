@@ -7,6 +7,7 @@ export const dynamic = 'force-static';
 
 export default function CharactersPage() {
   const sessionLogLinks: SessionLogLink[] = getAllTrpgPosts().map((post) => ({
+    playId: post.playId,
     sessionTitle: post.title,
     date: post.date,
     href: `/afterTheRoll/archive/read/${toGalleryPath(post.fullSlug)}`,

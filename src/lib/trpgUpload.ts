@@ -21,6 +21,8 @@ type UploadFile = {
 
 export type TrpgUploadDraft = {
   title: string;
+  calendarEventId: string;
+  playId: string;
   gmName: string;
   description: string;
   date: string;
@@ -101,6 +103,8 @@ export function buildTrpgUploadFiles(draft: TrpgUploadDraft) {
   const markdown = [
     '---',
     `title: ${yamlValue(draft.title)}`,
+    `calendarEventId: ${yamlValue(draft.calendarEventId)}`,
+    `playId: ${yamlValue(draft.playId)}`,
     `description: ${yamlValue(draft.description)}`,
     `date: ${yamlValue(draft.date)}`,
     ...(draft.gmName ? [`gmName: ${yamlValue(draft.gmName)}`] : []),

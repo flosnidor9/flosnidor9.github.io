@@ -47,6 +47,7 @@ const UNLINKED_CHARACTER_PRIORITY = Number.MAX_SAFE_INTEGER;
 const HEX_COLOR = /^#[\da-f]{6}$/i;
 
 export type SessionLogLink = {
+  playId: string;
   sessionTitle: string;
   date: string;
   href: string;
@@ -57,6 +58,10 @@ function normalizedSessionTitle(title: string) {
 }
 
 function getSessionLogHref(session: PlayEntry, logLinks: SessionLogLink[]) {
+  const linkedLog = logLinks.find((log) => log.playId === session.id);
+  if (linkedLog) return linkedLog.href;
+
+  // Keep legacy logs linkable until they are re-uploaded with a play ID.
   const sessionDates = new Set([session.startDate, session.endDate].filter(Boolean));
   return logLinks.find((log) =>
     normalizedSessionTitle(log.sessionTitle) === normalizedSessionTitle(session.title)

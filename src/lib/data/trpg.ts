@@ -15,6 +15,8 @@ export type TrpgCastEntry = {
 export type TrpgPostMeta = {
   slug: string;
   title: string;
+  calendarEventId: string;
+  playId: string;
   description: string;
   date: string;
   tags: string[];
@@ -94,6 +96,8 @@ function parsePostMeta(folderSlug: string, fileName: string): TrpgPostMeta | nul
   return {
     slug: postSlug,
     title: ensureString(data.title, postSlug),
+    calendarEventId: ensureString(data.calendarEventId),
+    playId: ensureString(data.playId),
     description: ensureString(data.description),
     date: ensureString(data.date),
     tags: ensureArray(data.tags),

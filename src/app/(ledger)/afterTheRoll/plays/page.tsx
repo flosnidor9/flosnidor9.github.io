@@ -1,8 +1,15 @@
 import PlaysSection from '@/components/plays/PlaysSection';
+import { getAllTrpgPosts } from '@/lib/data/trpg';
+import { toGalleryPath } from '@/lib/galleryPath';
 
 export const dynamic = 'force-static';
 
 export default function PlaysPage() {
+  const logLinks = getAllTrpgPosts().map((post) => ({
+    playId: post.playId,
+    href: `/afterTheRoll/archive/read/${toGalleryPath(post.fullSlug)}`,
+  }));
+
   return (
     <main className="afterroll-desk min-h-screen px-[1.1rem] pb-[4rem] pt-[5.4rem] md:px-[2rem]">
       <div className="mx-auto max-w-[52rem]">
@@ -12,7 +19,7 @@ export default function PlaysPage() {
             플레이 목록
           </h1>
         </header>
-        <PlaysSection />
+        <PlaysSection logLinks={logLinks} />
       </div>
     </main>
   );

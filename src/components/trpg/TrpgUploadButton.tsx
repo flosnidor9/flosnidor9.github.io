@@ -45,11 +45,12 @@ type CastSelection = {
 };
 
 type CalendarEvent = {
+  id?: string;
   summary?: string;
   start?: { date?: string; dateTime?: string };
 };
 
-type CalendarMatch = { title: string; startDate: string; endDate: string };
+type CalendarMatch = { eventId: string; title: string; startDate: string; endDate: string };
 
 type PreparedRoll20Source = {
   html: string;
@@ -273,6 +274,7 @@ export default function TrpgUploadButton() {
   const [title, setTitle] = useState('');
   const [recommendedDateRange, setRecommendedDateRange] = useState<string | null>(null);
   const [calendarMatches, setCalendarMatches] = useState<CalendarMatch[]>([]);
+  const [selectedCalendarMatch, setSelectedCalendarMatch] = useState<CalendarMatch | null>(null);
   const [calendarSearchState, setCalendarSearchState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [gmName, setGmName] = useState('');
   const [description, setDescription] = useState('');
@@ -329,29 +331,20 @@ export default function TrpgUploadButton() {
         const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events?${params}`);
         if (!response.ok) throw new Error('Calendar request failed');
         const data = await response.json() as { items?: CalendarEvent[] };
-        const matchesByTitle = new Map<string, CalendarMatch>();
+        const matches: CalendarMatch[] = [];
         for (const event of data.items ?? []) {
           const eventTitle = event.summary?.trim() ?? '';
           const eventDate = calendarEventDate(event);
-          if (!eventTitle || !eventDate || !normalizeTitle(eventTitle).includes(normalizedTitle)) continue;
-          const current = matchesByTitle.get(eventTitle);
-          if (!current) {
-            matchesByTitle.set(eventTitle, { title: eventTitle, startDate: eventDate, endDate: eventDate });
-          } else {
-            matchesByTitle.set(eventTitle, {
-              ...current,
-              startDate: eventDate < current.startDate ? eventDate : current.startDate,
-              endDate: eventDate > current.endDate ? eventDate : current.endDate,
-            });
-          }
+          if (!event.id || !eventTitle || !eventDate || !normalizeTitle(eventTitle).includes(normalizedTitle)) continue;
+          matches.push({ eventId: event.id, title: eventTitle, startDate: eventDate, endDate: eventDate });
         }
-        const matches = [...matchesByTitle.values()]
+        const sortedMatches = matches
           .sort((a, b) => b.endDate.localeCompare(a.endDate) || a.title.localeCompare(b.title, 'ko'))
           .slice(0, 6);
-        const exactMatch = matches.find((match) => normalizeTitle(match.title) === normalizedTitle);
+        const exactMatch = sortedMatches.find((match) => normalizeTitle(match.title) === normalizedTitle);
         if (!cancelled) {
           setRecommendedDateRange(exactMatch ? formatDateRange(exactMatch.startDate, exactMatch.endDate) : null);
-          setCalendarMatches(matches);
+          setCalendarMatches(sortedMatches);
           setCalendarSearchState('idle');
         }
       } catch {
@@ -426,6 +419,7 @@ export default function TrpgUploadButton() {
     setTitle('');
     setRecommendedDateRange(null);
     setCalendarMatches([]);
+    setSelectedCalendarMatch(null);
     setCalendarSearchState('idle');
     setGmName('');
     setDescription('');
@@ -447,8 +441,15 @@ export default function TrpgUploadButton() {
   };
 
   const submit = async () => {
+    const connectedPlay = selectedCalendarMatch
+      ? plays.find((play) => normalizeTitle(play.title) === normalizeTitle(selectedCalendarMatch.title))
+      : undefined;
     if (!source || !title.trim() || !isValidDateOrRange(date)) {
       setStatus('원본 HTML, 제목, 날짜를 확인해 주세요.');
+      return;
+    }
+    if (!selectedCalendarMatch || !connectedPlay) {
+      setStatus('캘린더 일정과 연결된 플레이를 선택한 뒤 로그를 올려 주세요.');
       return;
     }
     if (locked && (!password || password !== passwordConfirm || !masterKey)) {
@@ -464,7 +465,7 @@ export default function TrpgUploadButton() {
     const roll20Source = format === 'roll20' ? await prepareRoll20Source(source.html, roll20AssetFiles) : null;
     const sourceHtml = roll20Source?.html ?? source.html;
     const draft: TrpgUploadDraft = {
-      title: title.trim(), gmName: gmName.trim(), description: description.trim(), date,
+      title: title.trim(), calendarEventId: selectedCalendarMatch.eventId, playId: connectedPlay.id, gmName: gmName.trim(), description: description.trim(), date,
       tags: buildLogTags(rule, playerCount, playType, format), format, locked,
       mainChannels: format === 'roll20' ? [] : tagsFromInput(mainChannels),
       whisperChannels: format === 'roll20' ? [] : tagsFromInput(whisperChannels),
@@ -500,7 +501,7 @@ export default function TrpgUploadButton() {
   };
 
   const previewPath = source && title && date.match(/^\d{4}/)
-    ? buildTrpgUploadFiles({ title, gmName, description, date, tags: buildLogTags(rule, playerCount, playType, format), format, locked, mainChannels: format === 'roll20' ? [] : tagsFromInput(mainChannels), whisperChannels: format === 'roll20' ? [] : tagsFromInput(whisperChannels), sourceFileName: source.name, sourceHtml: source.html, cast: castSelections.map(({ plName, pcName, imageIndex }) => ({ plName, pcName, iconSrc: imageIndex === null ? '' : imageSources[imageIndex] ?? '' })) }).folderPath
+    ? buildTrpgUploadFiles({ title, calendarEventId: selectedCalendarMatch?.eventId ?? '', playId: '', gmName, description, date, tags: buildLogTags(rule, playerCount, playType, format), format, locked, mainChannels: format === 'roll20' ? [] : tagsFromInput(mainChannels), whisperChannels: format === 'roll20' ? [] : tagsFromInput(whisperChannels), sourceFileName: source.name, sourceHtml: source.html, cast: castSelections.map(({ plName, pcName, imageIndex }) => ({ plName, pcName, iconSrc: imageIndex === null ? '' : imageSources[imageIndex] ?? '' })) }).folderPath
     : null;
 
   return (
@@ -535,15 +536,15 @@ export default function TrpgUploadButton() {
               ) : null}
               <Field label="형식"><select value={format} onChange={(event) => setFormat(event.target.value as TrpgUploadDraft['format'])}>{FORMAT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></Field>
               <Field label="제목">
-                <input value={title} onChange={(event) => setTitle(event.target.value)} autoComplete="off" />
+                <input value={title} onChange={(event) => { setTitle(event.target.value); setSelectedCalendarMatch(null); }} autoComplete="off" />
                 {calendarSearchState === 'loading' ? <p className="afterroll-meta mt-[0.35rem] text-[0.68rem] text-[var(--ledger-soft)]">캘린더 검색 중…</p> : null}
                 {calendarMatches.length > 0 ? (
                   <div className="mt-[0.35rem] overflow-hidden rounded-[0.16rem] border border-[var(--atr-line)]">
                     {calendarMatches.map((match) => (
                       <button
-                        key={match.title}
+                        key={match.eventId}
                         type="button"
-                        onClick={() => { setTitle(match.title); setDate(formatDateRange(match.startDate, match.endDate)); }}
+                        onClick={() => { setSelectedCalendarMatch(match); setTitle(match.title); setDate(formatDateRange(match.startDate, match.endDate)); }}
                         className="flex w-full items-center justify-between gap-[0.5rem] border-b border-[var(--atr-line)] px-[0.42rem] py-[0.3rem] text-left last:border-b-0 hover:bg-[rgba(88,125,163,0.1)]"
                       >
                         <span className="min-w-0 truncate text-[0.75rem] text-[var(--ledger-ink)]">{match.title}</span>
@@ -552,6 +553,7 @@ export default function TrpgUploadButton() {
                     ))}
                   </div>
                 ) : null}
+                {selectedCalendarMatch ? <p className="afterroll-meta mt-[0.35rem] text-[0.68rem] text-[var(--atr-accent)]">선택한 캘린더 일정에 연결됨</p> : null}
                 {recommendedDateRange ? <p className="afterroll-meta mt-[0.35rem] text-[0.68rem] text-[var(--atr-accent)]">같은 이름의 일정: {recommendedDateRange}</p> : null}
               </Field>
               <Field label="날짜 (YYYY.MM.DD ~ YYYY.MM.DD)"><input value={date} onChange={(event) => setDate(event.target.value)} placeholder="2026.08.28 ~ 2026.08.30" /></Field>
