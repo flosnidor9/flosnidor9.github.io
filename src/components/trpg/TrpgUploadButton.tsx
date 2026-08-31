@@ -202,6 +202,24 @@ function formatDateRange(startDate: string, endDate: string) {
   return startDate === endDate ? startDate : `${startDate} ~ ${endDate}`;
 }
 
+function groupCalendarMatches(matches: CalendarMatch[]) {
+  const sessions = new Map<string, CalendarMatch>();
+
+  for (const match of matches) {
+    const sessionKey = normalizeTitle(match.title);
+    const existing = sessions.get(sessionKey);
+    if (!existing) {
+      sessions.set(sessionKey, match);
+      continue;
+    }
+
+    existing.startDate = existing.startDate < match.startDate ? existing.startDate : match.startDate;
+    existing.endDate = existing.endDate > match.endDate ? existing.endDate : match.endDate;
+  }
+
+  return [...sessions.values()];
+}
+
 function buildLogTags(rule: string, playerCount: string, type: string, format: TrpgUploadDraft['format']) {
   const platform = format === 'roll20' ? 'Roll20' : '코코포리아';
   return [
@@ -234,7 +252,9 @@ function extractSpeakers(html: string) {
     .map((element) => element.querySelectorAll('span')[1]?.textContent);
   const ccaSpeakers = Array.from(document.querySelectorAll('article.row:not(.narrator)'))
     .map((element) => element.querySelector('.copy header b, .dice-result-card b')?.textContent);
-  const compressedCcaSpeakers = Array.from(document.querySelectorAll('div.r.row .c > header > b'))
+  // CCA's compressed export has two row headers in the wild: older archives
+  // use <header>, while current archives use the .kh (character heading) div.
+  const compressedCcaSpeakers = Array.from(document.querySelectorAll('div.r.row .c > header > b, div.r.row .c > .kh > b'))
     .map((element) => element.textContent);
 
   return uniqueNames([...icecandySpeakers, ...roll20Speakers, ...ccfoliaSpeakers, ...ccaSpeakers, ...compressedCcaSpeakers]);
@@ -338,7 +358,7 @@ export default function TrpgUploadButton() {
           if (!event.id || !eventTitle || !eventDate || !normalizeTitle(eventTitle).includes(normalizedTitle)) continue;
           matches.push({ eventId: event.id, title: eventTitle, startDate: eventDate, endDate: eventDate });
         }
-        const sortedMatches = matches
+        const sortedMatches = groupCalendarMatches(matches)
           .sort((a, b) => b.endDate.localeCompare(a.endDate) || a.title.localeCompare(b.title, 'ko'))
           .slice(0, 6);
         const exactMatch = sortedMatches.find((match) => normalizeTitle(match.title) === normalizedTitle);
