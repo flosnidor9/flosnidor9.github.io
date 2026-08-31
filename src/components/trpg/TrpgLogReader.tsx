@@ -64,7 +64,24 @@ function getCcaTabName(node: Element): string {
   return normalizeChannel(node.closest('details.fold')?.querySelector('summary')?.textContent);
 }
 
-function parseCcaEntries(html: string, avatarMap: Record<string, string>, whisperChannels: string[]): LogEntry[] {
+function isCcaAsideTab(tabName: string): boolean {
+  return tabName.includes('잡담');
+}
+
+function isCcaWhisperTab(tabName: string): boolean {
+  return tabName.includes('비밀') || tabName.includes('귓말');
+}
+
+function getCcaDiceResult(node: Element): HTMLElement | null {
+  return node.querySelector<HTMLElement>('.dice-roll-box, .dice-result-card + .dice-roll-box, [class*="dice-roll"]');
+}
+
+function parseCcaEntries(
+  html: string,
+  avatarMap: Record<string, string>,
+  whisperChannels: string[],
+  gmName: string | undefined,
+): LogEntry[] {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<html><body>${html}</body></html>`, 'text/html');
   const compressedRows = Array.from(doc.querySelectorAll<HTMLElement>('div.r.row'));
@@ -73,23 +90,38 @@ function parseCcaEntries(html: string, avatarMap: Record<string, string>, whispe
       .map((row, index): LogEntry | null => {
         const copy = row.querySelector<HTMLElement>('.c');
         const narratorText = row.querySelector<HTMLElement>('.nt');
+        const diceBox = getCcaDiceResult(row);
         const tabName = getCcaTabName(row);
-        const isWhisper = whisperChannels.includes(tabName);
-        if (!copy && !narratorText) return null;
+        const isWhisper = whisperChannels.includes(tabName) || isCcaWhisperTab(tabName);
+        if (!copy && !narratorText && !diceBox) return null;
 
         if (narratorText) {
           const contentHtml = sanitizeHtml(narratorText.innerHTML.trim());
           if (!contentHtml) return null;
           return {
             id: `cca-archive-${index}`,
-            speaker: '',
-            avatarSrc: null,
+            speaker: gmName || 'GM',
+            avatarSrc: avatarMap[gmName || 'GM'] ?? null,
             contentHtml,
-            isAside: false,
+            isAside: isCcaAsideTab(tabName) || row.closest('details.fold') !== null,
             isWhisper,
             whisperTo: tabName || undefined,
             isNarrator: true,
-            kind: 'media',
+            kind: 'chat',
+          };
+        }
+
+        if (diceBox) {
+          const speaker = row.querySelector('.dice-result-card b, .c header b, .c .kh b')?.textContent?.trim() ?? '';
+          return {
+            id: `cca-archive-${index}`,
+            speaker,
+            avatarSrc: row.querySelector('img')?.getAttribute('src') ?? avatarMap[speaker] ?? null,
+            contentHtml: sanitizeHtml(diceBox.outerHTML),
+            isAside: isCcaAsideTab(tabName) || row.closest('details.fold') !== null,
+            isWhisper,
+            whisperTo: tabName || undefined,
+            kind: 'chat',
           };
         }
 
@@ -104,7 +136,7 @@ function parseCcaEntries(html: string, avatarMap: Record<string, string>, whispe
           speaker,
           avatarSrc: row.querySelector('img')?.getAttribute('src') ?? avatarMap[speaker] ?? null,
           contentHtml,
-          isAside: row.closest('details') !== null,
+          isAside: isCcaAsideTab(tabName) || row.closest('details.fold') !== null,
           isWhisper,
           whisperTo: tabName || undefined,
           kind: 'chat',
@@ -118,9 +150,9 @@ function parseCcaEntries(html: string, avatarMap: Record<string, string>, whispe
 
   for (let i = 0; i < articles.length; i++) {
     const article = articles[i];
-    const isAside = article.closest('details.fold') !== null;
     const tabName = getCcaTabName(article);
-    const isWhisper = whisperChannels.includes(tabName);
+    const isAside = isCcaAsideTab(tabName) || article.closest('details.fold') !== null;
+    const isWhisper = whisperChannels.includes(tabName) || isCcaWhisperTab(tabName);
 
     if (article.classList.contains('narrator')) {
       const narratorText = article.querySelector('.narrator-text');
@@ -129,21 +161,21 @@ function parseCcaEntries(html: string, avatarMap: Record<string, string>, whispe
       if (!contentHtml) continue;
       entries.push({
         id: `cca-${i}`,
-        speaker: '',
-        avatarSrc: null,
+        speaker: gmName || 'GM',
+        avatarSrc: avatarMap[gmName || 'GM'] ?? null,
         contentHtml,
         isAside,
         isWhisper,
         whisperTo: tabName || undefined,
         isNarrator: true,
-        kind: 'media',
+        kind: 'chat',
       });
       continue;
     }
 
-    if (article.classList.contains('dice-result-row')) {
-      const speaker = article.querySelector('.dice-result-card b')?.textContent?.trim() ?? '';
-      const diceBox = article.querySelector('.dice-roll-box');
+    const diceBox = getCcaDiceResult(article);
+    if (article.classList.contains('dice-result-row') || diceBox) {
+      const speaker = article.querySelector('.dice-result-card b, .copy header b, .copy .kh b')?.textContent?.trim() ?? '';
       if (!diceBox) continue;
       entries.push({
         id: `cca-${i}`,
@@ -516,10 +548,10 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
     if (format === 'icecandy-roll20') return parseIcecandyRoll20Entries(html);
     const normalizedMainChannels = mainChannels.map(normalizeChannel);
     const normalizedWhisperChannels = whisperChannels.map(normalizeChannel);
-    if (format === 'cca') return parseCcaEntries(html, avatarMap, normalizedWhisperChannels);
+    if (format === 'cca') return parseCcaEntries(html, avatarMap, normalizedWhisperChannels, gmName);
     if (format === 'ccfolia') return parseCcfoliaEntries(html, avatarMap, normalizedMainChannels, normalizedWhisperChannels);
     return parseEntries(html, htmlUrl);
-  }, [html, avatarMap, mainChannels, whisperChannels, htmlUrl]);
+  }, [html, avatarMap, mainChannels, whisperChannels, htmlUrl, gmName]);
   const visibleEntries = useMemo(
     () => (showAside ? entries : entries.filter((entry) => !entry.isAside)),
     [entries, showAside],
@@ -664,7 +696,7 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
                 ? 'trpg-log-row trpg-log-media-row px-[0.25rem] py-[0.5rem] text-center md:px-[0.35rem] md:py-[0.6rem]'
                 : `trpg-log-row grid grid-cols-[3.75rem_minmax(0,1fr)] gap-[0.65rem] px-[0.25rem] py-[0.5rem] md:grid-cols-[4.1rem_minmax(0,1fr)] md:px-[0.35rem] md:py-[0.6rem] ${
                     entry.isAside ? 'trpg-log-row-aside' : ''
-                  } ${entry.isWhisper ? 'trpg-log-row-whisper' : ''}`
+                  } ${entry.isWhisper ? 'trpg-log-row-whisper' : ''} ${entry.isNarrator ? 'trpg-log-row-cca-narrator' : ''}`
             }
           >
             {entry.kind === 'media' ? (
@@ -713,7 +745,7 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
                   >
                     {entry.isWhisper ? (
                       <p className="afterroll-meta mb-[0.34rem] text-[0.68rem] uppercase tracking-[0.1em] text-[var(--atr-text)]">
-                        TO {entry.whisperTo || 'UNKNOWN'}
+                        귓말
                       </p>
                     ) : null}
                     <div className="trpg-entry-content min-w-0" dangerouslySetInnerHTML={{ __html: entry.contentHtml }} />
@@ -783,6 +815,12 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
           border-left: 0.16rem solid rgba(157, 79, 118, 0.42);
           background: rgba(227, 190, 210, 0.14) !important;
           padding-left: 0.55rem;
+        }
+
+        .trpg-log-reader .trpg-log-row-cca-narrator .trpg-entry-content,
+        .trpg-log-reader .trpg-log-row-cca-narrator .trpg-entry-content * {
+          font-weight: 400 !important;
+          text-align: left !important;
         }
 
         .trpg-log-reader .trpg-log-row:first-child {
