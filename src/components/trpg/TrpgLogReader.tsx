@@ -51,7 +51,7 @@ function sanitizeHtml(html: string): string {
 
 function detectFormat(html: string): 'icecandy-roll20' | 'roll20' | 'ccfolia' | 'cca' {
   if (/class=["'][^"']*icecandy-export/.test(html) && /data-skin=["']roll20/.test(html)) return 'icecandy-roll20';
-  if (/class="cca-wrap"/.test(html) || (/class=["'][^"']*\br\s+row\b/.test(html) && /class=["'][^"']*\bc\b/.test(html))) return 'cca';
+  if (/class=["'][^"']*\bcca-wrap\b/.test(html) || (/class=["'][^"']*\br\s+row\b/.test(html) && /class=["'][^"']*\bc\b/.test(html))) return 'cca';
   if (/class="message\s/i.test(html)) return 'roll20';
   return 'ccfolia';
 }
@@ -61,7 +61,8 @@ function normalizeChannel(value: string | null | undefined): string {
 }
 
 function getCcaTabName(node: Element): string {
-  return normalizeChannel(node.closest('details.fold')?.querySelector('summary')?.textContent);
+  const rowChannel = node.querySelector<HTMLElement>(':scope > .t, :scope > .c > .kh > .t')?.textContent;
+  return normalizeChannel(rowChannel || node.closest('details')?.querySelector('summary')?.textContent);
 }
 
 function isCcaAsideTab(tabName: string): boolean {
@@ -69,11 +70,11 @@ function isCcaAsideTab(tabName: string): boolean {
 }
 
 function isCcaWhisperTab(tabName: string): boolean {
-  return tabName.includes('비밀') || tabName.includes('귓말');
+  return tabName.includes('비밀') || tabName.includes('귓말') || tabName.includes('개인방') || tabName.includes('gm');
 }
 
 function getCcaDiceResult(node: Element): HTMLElement | null {
-  return node.querySelector<HTMLElement>('.dice-roll-box, .dice-result-card + .dice-roll-box, [class*="dice-roll"]');
+  return node.querySelector<HTMLElement>('.dice-roll-box, .dice-result-card + .dice-roll-box, .dc > .db, [class*="dice-roll"]');
 }
 
 function parseCcaEntries(
@@ -85,8 +86,7 @@ function parseCcaEntries(
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<html><body>${html}</body></html>`, 'text/html');
   const compressedRows = Array.from(doc.querySelectorAll<HTMLElement>('div.r.row'));
-  if (compressedRows.length > 0) {
-    return compressedRows
+  const compressedEntries = compressedRows
       .map((row, index): LogEntry | null => {
         const copy = row.querySelector<HTMLElement>('.c');
         const narratorText = row.querySelector<HTMLElement>('.nt');
@@ -98,36 +98,38 @@ function parseCcaEntries(
         if (narratorText) {
           const contentHtml = sanitizeHtml(narratorText.innerHTML.trim());
           if (!contentHtml) return null;
+          const isAside = isCcaAsideTab(tabName) || row.closest('details') !== null;
+          const isChatRow = isAside || isWhisper;
           return {
             id: `cca-archive-${index}`,
-            speaker: gmName || 'GM',
-            avatarSrc: avatarMap[gmName || 'GM'] ?? null,
+            speaker: isChatRow ? gmName || 'GM' : '',
+            avatarSrc: isChatRow ? avatarMap[gmName || 'GM'] ?? null : null,
             contentHtml,
-            isAside: isCcaAsideTab(tabName) || row.closest('details.fold') !== null,
+            isAside,
             isWhisper,
             whisperTo: tabName || undefined,
             isNarrator: true,
-            kind: 'chat',
+            kind: isChatRow ? 'chat' : 'media',
           };
         }
 
         if (diceBox) {
-          const speaker = row.querySelector('.dice-result-card b, .c header b, .c .kh b')?.textContent?.trim() ?? '';
+          const speaker = row.querySelector('.dice-result-card b, .dc > b, .c header b, .c .kh b')?.textContent?.trim() ?? '';
           return {
             id: `cca-archive-${index}`,
             speaker,
             avatarSrc: row.querySelector('img')?.getAttribute('src') ?? avatarMap[speaker] ?? null,
             contentHtml: sanitizeHtml(diceBox.outerHTML),
-            isAside: isCcaAsideTab(tabName) || row.closest('details.fold') !== null,
+            isAside: isCcaAsideTab(tabName) || row.closest('details') !== null,
             isWhisper,
             whisperTo: tabName || undefined,
             kind: 'chat',
           };
         }
 
-        const speaker = copy?.querySelector('header b')?.textContent?.trim() ?? '';
+        const speaker = copy?.querySelector('header b, .kh b')?.textContent?.trim() ?? '';
         const content = copy?.cloneNode(true) as HTMLElement | undefined;
-        content?.querySelector('header')?.remove();
+        content?.querySelectorAll('header, .kh').forEach((header) => header.remove());
         const contentHtml = sanitizeHtml(content?.innerHTML.trim() ?? '');
         if (!contentHtml) return null;
 
@@ -136,14 +138,13 @@ function parseCcaEntries(
           speaker,
           avatarSrc: row.querySelector('img')?.getAttribute('src') ?? avatarMap[speaker] ?? null,
           contentHtml,
-          isAside: isCcaAsideTab(tabName) || row.closest('details.fold') !== null,
+          isAside: isCcaAsideTab(tabName) || row.closest('details') !== null,
           isWhisper,
           whisperTo: tabName || undefined,
           kind: 'chat',
         };
       })
       .filter((entry): entry is LogEntry => Boolean(entry));
-  }
 
   const articles = Array.from(doc.querySelectorAll('article.row'));
   const entries: LogEntry[] = [];
@@ -151,7 +152,7 @@ function parseCcaEntries(
   for (let i = 0; i < articles.length; i++) {
     const article = articles[i];
     const tabName = getCcaTabName(article);
-    const isAside = isCcaAsideTab(tabName) || article.closest('details.fold') !== null;
+    const isAside = isCcaAsideTab(tabName) || article.closest('details') !== null;
     const isWhisper = whisperChannels.includes(tabName) || isCcaWhisperTab(tabName);
 
     if (article.classList.contains('narrator')) {
@@ -159,16 +160,17 @@ function parseCcaEntries(
       if (!narratorText) continue;
       const contentHtml = sanitizeHtml(narratorText.innerHTML.trim());
       if (!contentHtml) continue;
+      const isChatRow = isAside || isWhisper;
       entries.push({
         id: `cca-${i}`,
-        speaker: gmName || 'GM',
-        avatarSrc: avatarMap[gmName || 'GM'] ?? null,
+        speaker: isChatRow ? gmName || 'GM' : '',
+        avatarSrc: isChatRow ? avatarMap[gmName || 'GM'] ?? null : null,
         contentHtml,
         isAside,
         isWhisper,
         whisperTo: tabName || undefined,
         isNarrator: true,
-        kind: 'chat',
+        kind: isChatRow ? 'chat' : 'media',
       });
       continue;
     }
@@ -209,7 +211,7 @@ function parseCcaEntries(
     });
   }
 
-  return entries;
+  return [...compressedEntries, ...entries];
 }
 
 function buildAvatarMap(
