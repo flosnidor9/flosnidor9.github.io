@@ -2,9 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
 import { getAllFolderSlugs } from '@/lib/data/folders';
+import { TRPG_ARCHIVE_ROOT, TRPG_ASSET_PREFIX, TRPG_PUBLIC_ROOT } from '@/lib/trpgSource';
 
-const PUBLIC_ROOT = path.join(process.cwd(), 'public');
-const TRPG_ROOT = path.join(PUBLIC_ROOT, 'images', 'afterTheRoll');
+const TRPG_ROOT = TRPG_ARCHIVE_ROOT;
 
 export type TrpgCastEntry = {
   plName: string;
@@ -116,8 +116,8 @@ function parsePostMeta(folderSlug: string, fileName: string): TrpgPostMeta | nul
 function toTrpgPublicUrl(folderSlug: string, htmlPath: string): string {
   const normalizedFolder = normalizeSlug(folderSlug);
   const normalizedPath = htmlPath.replace(/\\/g, '/').replace(/^\/+/, '');
-  if (normalizedPath.startsWith('images/')) return `/${normalizedPath}`;
-  return `/images/afterTheRoll/${normalizedFolder}/${normalizedPath}`;
+  if (normalizedPath.startsWith('images/')) return `${TRPG_ASSET_PREFIX}/${normalizedPath.slice('images/'.length)}`;
+  return `${TRPG_ASSET_PREFIX}/afterTheRoll/${normalizedFolder}/${normalizedPath}`;
 }
 
 export function getTrpgPosts(folderSlug: string): TrpgPostMeta[] {
@@ -144,11 +144,11 @@ export function getTrpgPost(folderSlug: string, postSlug: string): TrpgPostMeta 
 function resolvePublicHtmlAbs(folderSlug: string, htmlPath: string): string | null {
   const normalized = htmlPath.replace(/\\/g, '/');
   const absPath = normalized.startsWith('/')
-    ? path.join(PUBLIC_ROOT, normalized.replace(/^\/+/, ''))
+    ? path.join(TRPG_PUBLIC_ROOT, normalized.replace(/^\/+/, ''))
     : path.join(toFolderAbs(folderSlug), normalized);
 
   const resolved = path.resolve(absPath);
-  if (!resolved.startsWith(path.resolve(PUBLIC_ROOT))) return null;
+  if (!resolved.startsWith(path.resolve(TRPG_ARCHIVE_ROOT))) return null;
   if (!fs.existsSync(resolved)) return null;
   return resolved;
 }

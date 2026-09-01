@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import sizeOf from 'image-size';
+import { TRPG_ARCHIVE_ROOT, TRPG_ASSET_PREFIX } from '@/lib/trpgSource';
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif']);
 const PUBLIC_ROOT = path.join(process.cwd(), 'public');
@@ -11,7 +12,7 @@ const IGNORED_FOLDER_NAMES = new Set(['media']);
 const GALLERY_ROOTS = {
   bubble: path.join(PUBLIC_ROOT, 'images', 'bubble'),
   film: path.join(PUBLIC_ROOT, 'images', 'film'),
-  trpg: path.join(PUBLIC_ROOT, 'images', 'afterTheRoll'),
+  trpg: TRPG_ARCHIVE_ROOT,
 } as const;
 
 export type GalleryType = keyof typeof GALLERY_ROOTS;
@@ -152,8 +153,8 @@ function listDirectPostSlugs(absDir: string): string[] {
   return Array.from(slugs);
 }
 
-function getGalleryPrefix(galleryType: GalleryType): 'bubble' | 'film' | 'afterTheRoll' {
-  if (galleryType === 'trpg') return 'afterTheRoll';
+function getGalleryPrefix(galleryType: GalleryType): string {
+  if (galleryType === 'trpg') return TRPG_ASSET_PREFIX.slice(1) + '/afterTheRoll';
   return galleryType;
 }
 
@@ -261,7 +262,7 @@ export function getFolderImages(slug: string, galleryType: GalleryType = 'bubble
   return fs
     .readdirSync(base, { withFileTypes: true })
     .filter((d) => d.isFile() && IMAGE_EXTS.has(path.extname(d.name).toLowerCase()))
-    .map((d) => `/images/${galleryPrefix}/${normalized}/${d.name}`);
+    .map((d) => `/${galleryPrefix}/${normalized}/${d.name}`);
 }
 
 export function getFolderContent(slug: string, galleryType: GalleryType = 'bubble'): string | null {
@@ -312,7 +313,7 @@ export function getFolderPosts(folderSlug: string, galleryType: GalleryType = 'b
     if (IMAGE_EXTS.has(ext)) {
       const imageAbsPath = path.join(base, file);
       const { width, height } = sizeOf(fs.readFileSync(imageAbsPath));
-      post.image = `/images/${galleryPrefix}/${normalized}/${file}`;
+      post.image = `/${galleryPrefix}/${normalized}/${file}`;
       post.width = width;
       post.height = height;
     } else if (ext === '.md') {

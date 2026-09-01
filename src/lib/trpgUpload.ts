@@ -46,6 +46,13 @@ export type DeploymentUploadDraft = {
   encryptedContent?: string;
 };
 
+export type DeploymentEditDraft = DeploymentUploadDraft & {
+  year: string;
+  slug: string;
+  previousPrivatePath?: string;
+  privateAction: 'keep' | 'replace' | 'remove';
+};
+
 function yamlValue(value: string) {
   return JSON.stringify(value);
 }
@@ -176,6 +183,41 @@ export function buildDeploymentUploadFiles(draft: DeploymentUploadDraft) {
       { path: `${folderPath}/${postSlug}.md`, content: markdown },
       ...(hasPrivateContent ? [{ path: `${folderPath}/${privateFileName}`, content: draft.encryptedContent! }] : []),
     ] as UploadFile[],
+  };
+}
+
+function buildDeploymentEditFiles(draft: DeploymentEditDraft) {
+  const folderPath = `${TRPG_UPLOAD_ROOT}/deployments/${draft.year}/${draft.slug}`;
+  const privateFileName = `${draft.slug}.private.json`;
+  const hasPrivateContent = draft.privateAction === 'replace' && Boolean(draft.encryptedContent);
+  const keepsPrivateContent = draft.privateAction === 'keep' && Boolean(draft.previousPrivatePath);
+  const privatePath = hasPrivateContent ? privateFileName : keepsPrivateContent ? draft.previousPrivatePath : undefined;
+  const markdown = [
+    '---',
+    `title: ${yamlValue(draft.title)}`,
+    `date: ${yamlValue(draft.date)}`,
+    `description: ${yamlValue(draft.description)}`,
+    'tags:',
+    ...draft.tags.filter(Boolean).map((tag) => `  - ${yamlValue(tag)}`),
+    ...(privatePath ? [`privatePath: ${yamlValue(privatePath)}`] : []),
+    '---',
+    '',
+    draft.publicContent.trim(),
+    '',
+  ].join('\n');
+
+  return {
+    folderPath,
+    passwordKey: `deployments/${draft.year}/${draft.slug}/${draft.slug}`,
+    files: [
+      { path: `${folderPath}/${draft.slug}.md`, content: markdown },
+      ...(hasPrivateContent ? [{ path: `${folderPath}/${privateFileName}`, content: draft.encryptedContent! }] : []),
+    ] as UploadFile[],
+    removals: draft.privateAction === 'remove' && draft.previousPrivatePath
+      ? [`${folderPath}/${draft.previousPrivatePath}`]
+      : draft.privateAction === 'replace' && draft.previousPrivatePath && draft.previousPrivatePath !== privateFileName
+        ? [`${folderPath}/${draft.previousPrivatePath}`]
+        : [],
   };
 }
 
@@ -349,7 +391,7 @@ export async function resolveTrpgUploadTitle(token: string, draft: TrpgUploadDra
   }
 }
 
-export async function saveTrpgPassword(token: string, masterKey: string, passwordKey: string, password: string) {
+export async function saveTrpgPassword(token: string, masterKey: string, passwordKey: string, password?: string) {
   const response = await fetch(githubContentsUrl(TRPG_SITE_REPOSITORY, 'passwords.enc.json'), {
     headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}` },
   });
@@ -364,12 +406,13 @@ export async function saveTrpgPassword(token: string, masterKey: string, passwor
   } catch {
     throw new Error('마스터키가 올바르지 않습니다.');
   }
-  passwords[passwordKey] = password;
+  if (password) passwords[passwordKey] = password;
+  else delete passwords[passwordKey];
   const content = JSON.stringify(await encryptWithMasterKey(JSON.stringify(passwords, null, 2), masterKey), null, 2);
   const saveResponse = await fetch(githubContentsUrl(TRPG_SITE_REPOSITORY, 'passwords.enc.json'), {
     method: 'PUT',
     headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: `Add password for TRPG log: ${passwordKey}`, content: encodeUtf8Base64(content), sha: file.sha }),
+    body: JSON.stringify({ message: `${password ? 'Save' : 'Remove'} password for TRPG log: ${passwordKey}`, content: encodeUtf8Base64(content), sha: file.sha }),
   });
   if (!saveResponse.ok) throw new Error('암호화된 비밀번호 목록을 저장하지 못했습니다.');
 }
@@ -379,7 +422,7 @@ async function ensureAtomicUploadPathsAreAvailable(token: string, files: UploadF
   if (existing.some(Boolean)) throw new Error('같은 이름의 로그가 이미 있습니다. 제목을 바꿔 다시 올려 주세요.');
 }
 
-async function createAtomicUploadCommit(token: string, files: UploadFile[], message: string) {
+async function createAtomicUploadCommit(token: string, files: UploadFile[], message: string, removals: string[] = []) {
   const headers = { ...githubHeaders(token), 'Content-Type': 'application/json' };
   const parentSha = await getOrCreateIncomingBranch(token);
 
@@ -387,7 +430,7 @@ async function createAtomicUploadCommit(token: string, files: UploadFile[], mess
   const parent = (await parentResponse.json().catch(() => null)) as { tree?: { sha?: string } } | null;
   if (!parentResponse.ok || !parent?.tree?.sha) throw new Error('업로드 저장소의 기존 트리를 읽지 못했습니다.');
 
-  const tree: Array<{ path: string; mode: string; type: string; sha: string }> = [];
+  const tree: Array<{ path: string; mode?: string; type?: string; sha: string | null }> = [];
   // A large log has many small parts. Keep these requests serial so GitHub
   // never treats the upload as a burst of concurrent API traffic.
   for (const file of files) {
@@ -407,6 +450,7 @@ async function createAtomicUploadCommit(token: string, files: UploadFile[], mess
     }
     tree.push({ path: file.path, mode: '100644', type: 'blob', sha: blob.sha });
   }
+  for (const path of removals) tree.push({ path, sha: null });
 
   const treeResponse = await fetch(githubApiUrl(TRPG_UPLOAD_REPOSITORY, '/git/trees'), {
     method: 'POST', headers, body: JSON.stringify({ base_tree: parent.tree.sha, tree }),
@@ -457,4 +501,21 @@ export async function commitDeploymentUploadAtomically(token: string, draft: Dep
     if (await createAtomicUploadCommit(token, upload.files, `Add deployment post: ${draft.title}`)) return upload.folderPath;
   }
   throw new Error('다른 업로드와 충돌했습니다. 잠시 후 다시 시도해 주세요.');
+}
+
+export async function commitDeploymentEditAtomically(token: string, draft: DeploymentEditDraft) {
+  const edit = buildDeploymentEditFiles(draft);
+  for (let attempt = 0; attempt < UPLOAD_COMMIT_RETRIES; attempt += 1) {
+    if (await createAtomicUploadCommit(token, edit.files, `Update deployment post: ${draft.slug}`, edit.removals)) return edit.folderPath;
+  }
+  throw new Error('다른 수정과 충돌했습니다. 잠시 뒤 다시 시도해 주세요.');
+}
+
+export async function deleteDeploymentAtomically(token: string, post: Pick<DeploymentEditDraft, 'year' | 'slug' | 'previousPrivatePath'>) {
+  const folderPath = `${TRPG_UPLOAD_ROOT}/deployments/${post.year}/${post.slug}`;
+  const removals = [`${folderPath}/${post.slug}.md`, ...(post.previousPrivatePath ? [`${folderPath}/${post.previousPrivatePath}`] : [])];
+  for (let attempt = 0; attempt < UPLOAD_COMMIT_RETRIES; attempt += 1) {
+    if (await createAtomicUploadCommit(token, [], `Delete deployment post: ${post.slug}`, removals)) return;
+  }
+  throw new Error('다른 수정과 충돌했습니다. 잠시 뒤 다시 시도해 주세요.');
 }

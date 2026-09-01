@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/link-trpg-logs.mjs && next dev",
+    "prebuild": "node scripts/unlink-trpg-logs.mjs",
     "build": "next build",
     "postbuild": "node scripts/encrypt-logs.mjs",
     "start": "next start",

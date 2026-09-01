@@ -1,5 +1,6 @@
 import CalendarSection from '@/components/calendar/CalendarSection';
 import { getAllTrpgPosts } from '@/lib/data/trpg';
+import { getCharacters } from '@/lib/data/characters';
 import { toGalleryPath } from '@/lib/galleryPath';
 
 export const dynamic = 'force-static';
@@ -11,5 +12,5 @@ export default function AfterTheRollCalendarPage() {
     href: `/afterTheRoll/archive/read/${toGalleryPath(post.fullSlug)}`,
   }));
 
-  return <CalendarSection logLinks={logLinks} />;
+  return <CalendarSection logLinks={logLinks} characters={getCharacters()} />;
 }

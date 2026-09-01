@@ -1,5 +1,5 @@
 import CharactersSection, { type SessionLogLink } from '@/components/characters/CharactersSection';
-import { CHARACTERS } from '@/lib/data/characters';
+import { getCharacters } from '@/lib/data/characters';
 import { getAllTrpgPosts } from '@/lib/data/trpg';
 import { toGalleryPath } from '@/lib/galleryPath';
 
@@ -13,5 +13,5 @@ export default function CharactersPage() {
     href: `/afterTheRoll/archive/read/${toGalleryPath(post.fullSlug)}`,
   }));
 
-  return <CharactersSection characters={CHARACTERS} sessionLogLinks={sessionLogLinks} />;
+  return <CharactersSection characters={getCharacters()} sessionLogLinks={sessionLogLinks} />;
 }

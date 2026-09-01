@@ -9,10 +9,12 @@ import {
   resolveDeploymentUploadTitle,
   saveTrpgPassword,
 } from '@/lib/trpgUpload';
+import { useAuth } from '@/contexts/AuthContext';
 
 const FIELD_CLASS = 'mt-[0.3rem] w-full rounded-[0.3rem] border border-[var(--atr-line)] bg-white px-[0.65rem] py-[0.45rem] text-[0.86rem] text-[var(--atr-text)]';
 
 export default function DeploymentUploadButton() {
+  const { isAdmin, loading } = useAuth();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
@@ -33,6 +35,10 @@ export default function DeploymentUploadButton() {
   }
 
   async function submit() {
+    if (!isAdmin) {
+      setStatus('관리자 로그인 후에만 글을 등록할 수 있습니다.');
+      return;
+    }
     if (!title.trim() || !date.trim() || !publicContent.trim() || !token.trim()) {
       setStatus('제목, 날짜, 공개 본문, GitHub 토큰을 입력해 주세요.');
       return;
@@ -63,6 +69,8 @@ export default function DeploymentUploadButton() {
       setSubmitting(false);
     }
   }
+
+  if (loading || !isAdmin) return null;
 
   return <>
     <motion.button type="button" whileTap={{ scale: 0.98 }} onClick={() => setOpen(true)} className="ledger-stamp rounded-[0.2rem] px-[0.78rem] py-[0.42rem] text-[0.78rem]">글 등록</motion.button>

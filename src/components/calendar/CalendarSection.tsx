@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import CharacterPreviewModal, { LinkedCharacterButtons } from '@/components/characters/CharacterPreviewModal';
-import { CHARACTERS, type Character } from '@/lib/data/characters';
+import type { Character } from '@/lib/data/characters';
 import { subscribeToPlays, type PlayEntry } from '@/lib/data/firebasePlays';
 
 function Portal({ children }: { children: React.ReactNode }) {
@@ -581,7 +581,7 @@ function DailyTimeline({
 }
 
 // ── 메인 컴포넌트 ──────────────────────────────────────────────
-export default function CalendarSection({ logLinks = [] }: { logLinks?: CalendarLogLink[] }) {
+export default function CalendarSection({ logLinks = [], characters = [] }: { logLinks?: CalendarLogLink[]; characters?: Character[] }) {
   const [baseDate, setBaseDate] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -774,7 +774,7 @@ export default function CalendarSection({ logLinks = [] }: { logLinks?: Calendar
   const charactersByTitle = useMemo(() => {
     const charactersForTitle = new Map<string, Character[]>();
     const charactersBySession = new Map<string, Character[]>();
-    CHARACTERS.forEach((character) => character.sessionKeys.forEach((sessionKey) => {
+    characters.forEach((character) => character.sessionKeys.forEach((sessionKey) => {
       const linked = charactersBySession.get(sessionKey) ?? [];
       linked.push(character);
       charactersBySession.set(sessionKey, linked);
@@ -784,16 +784,16 @@ export default function CalendarSection({ logLinks = [] }: { logLinks?: Calendar
       if (linked.length) charactersForTitle.set(play.title.trim(), linked);
     });
     return charactersForTitle;
-  }, [plays]);
+  }, [characters, plays]);
   const charactersBySession = useMemo(() => {
     const result = new Map<string, Character[]>();
-    CHARACTERS.forEach((character) => character.sessionKeys.forEach((sessionKey) => {
+    characters.forEach((character) => character.sessionKeys.forEach((sessionKey) => {
       const linked = result.get(sessionKey) ?? [];
       linked.push(character);
       result.set(sessionKey, linked);
     }));
     return result;
-  }, []);
+  }, [characters]);
   const logByCalendarEventId = useMemo(
     () => new Map(logLinks.filter((log) => log.calendarEventId).map((log) => [log.calendarEventId, log])),
     [logLinks],

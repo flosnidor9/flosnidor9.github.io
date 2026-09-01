@@ -1,4 +1,6 @@
-import characterArchive from '@/content/characters.json';
+import fs from 'fs';
+import path from 'path';
+import { TRPG_ASSET_PREFIX, TRPG_PUBLIC_ROOT } from '@/lib/trpgSource';
 
 export type CharacterCrop = { x: number; y: number; zoom: number };
 export type CharacterLink = { name: string; url: string };
@@ -56,4 +58,29 @@ export type Character = {
   updatedAt: string;
 };
 
-export const CHARACTERS = characterArchive.characters as Character[];
+const CHARACTER_ARCHIVE_PATH = path.join(TRPG_PUBLIC_ROOT, 'characters', 'characters.json');
+const CHARACTER_IMAGE_PATH_PREFIX = '/images/characters/';
+
+function toCharacterAssetUrl(value: string) {
+  if (!value.startsWith(CHARACTER_IMAGE_PATH_PREFIX)) return value;
+  return `${TRPG_ASSET_PREFIX}/characters/${value.slice(CHARACTER_IMAGE_PATH_PREFIX.length)}`;
+}
+
+export function getCharacters(): Character[] {
+  try {
+    const archive = JSON.parse(fs.readFileSync(CHARACTER_ARCHIVE_PATH, 'utf8')) as { characters?: unknown };
+    if (!Array.isArray(archive.characters)) return [];
+
+    return (archive.characters as Character[]).map((character) => ({
+      ...character,
+      portrait: {
+        ...character.portrait,
+        original: toCharacterAssetUrl(character.portrait.original),
+        cropped: toCharacterAssetUrl(character.portrait.cropped),
+      },
+      stickers: character.stickers?.map((sticker) => ({ ...sticker, src: toCharacterAssetUrl(sticker.src) })),
+    }));
+  } catch {
+    return [];
+  }
+}

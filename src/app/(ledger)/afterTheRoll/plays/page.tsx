@@ -1,5 +1,6 @@
 import PlaysSection from '@/components/plays/PlaysSection';
 import { getAllTrpgPosts } from '@/lib/data/trpg';
+import { getCharacters } from '@/lib/data/characters';
 import { toGalleryPath } from '@/lib/galleryPath';
 
 export const dynamic = 'force-static';
@@ -19,7 +20,7 @@ export default function PlaysPage() {
             플레이 목록
           </h1>
         </header>
-        <PlaysSection logLinks={logLinks} />
+        <PlaysSection logLinks={logLinks} characters={getCharacters()} />
       </div>
     </main>
   );

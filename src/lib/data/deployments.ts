@@ -1,8 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
+import { TRPG_ARCHIVE_ROOT, trpgAssetUrl } from '@/lib/trpgSource';
 
-const DEPLOYMENTS_ROOT = path.join(process.cwd(), 'public', 'images', 'afterTheRoll', 'deployments');
+const DEPLOYMENTS_ROOT = path.join(TRPG_ARCHIVE_ROOT, 'deployments');
 
 export type DeploymentPost = {
   slug: string;
@@ -12,6 +13,7 @@ export type DeploymentPost = {
   description: string;
   tags: string[];
   content: string;
+  privatePath?: string;
   privateUrl?: string;
 };
 
@@ -37,7 +39,8 @@ function postFromFile(year: string, filePath: string): DeploymentPost | null {
     description: stringValue(data.description),
     tags: stringArray(data.tags),
     content,
-    privateUrl: privatePath ? `/images/afterTheRoll/deployments/${encodeURIComponent(year)}/${encodeURIComponent(slug)}/${encodeURIComponent(privatePath)}` : undefined,
+    privatePath: privatePath || undefined,
+    privateUrl: privatePath ? trpgAssetUrl('afterTheRoll', 'deployments', year, slug, privatePath) : undefined,
   };
 }
 
@@ -64,4 +67,3 @@ export function getDeploymentPost(year: string, slug: string) {
   const postPath = path.join(DEPLOYMENTS_ROOT, year, slug, `${slug}.md`);
   return fs.existsSync(postPath) ? postFromFile(year, postPath) : null;
 }
-

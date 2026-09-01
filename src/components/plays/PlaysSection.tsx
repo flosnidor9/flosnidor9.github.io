@@ -16,7 +16,7 @@ import PlaysComposer from './PlaysComposer';
 import PlaysStats from './PlaysStats';
 import CharacterPreviewModal from '@/components/characters/CharacterPreviewModal';
 import Image from '@/components/ArchiveImage';
-import { CHARACTERS, type Character } from '@/lib/data/characters';
+import type { Character } from '@/lib/data/characters';
 
 const CALENDAR_ID =
   '848efa2587af083c615b7c3581e818075a6489d1d0ce70c4ac3ef60880d0fbae%40group.calendar.google.com';
@@ -337,7 +337,7 @@ function ColHeader({
   );
 }
 
-export default function PlaysSection({ logLinks = [] }: { logLinks?: PlayLogLink[] }) {
+export default function PlaysSection({ logLinks = [], characters = [] }: { logLinks?: PlayLogLink[]; characters?: Character[] }) {
   const { isAdmin, loading: authLoading } = useAuth();
   const [plays, setPlays] = useState<PlayEntry[]>([]);
   const [options, setOptions] = useState<PlaysOptions>({
@@ -459,7 +459,7 @@ export default function PlaysSection({ logLinks = [] }: { logLinks?: PlayLogLink
 
   const charactersBySession = useMemo(() => {
     const bySession = new Map<string, Character[]>();
-    CHARACTERS.forEach((character) => {
+    characters.forEach((character) => {
       character.sessionKeys.forEach((sessionKey) => {
         const linked = bySession.get(sessionKey) ?? [];
         linked.push(character);
@@ -467,7 +467,7 @@ export default function PlaysSection({ logLinks = [] }: { logLinks?: PlayLogLink
       });
     });
     return bySession;
-  }, []);
+  }, [characters]);
   const logByPlayId = useMemo(
     () => new Map(logLinks.filter((log) => log.playId).map((log) => [log.playId, log.href])),
     [logLinks],
