@@ -139,6 +139,16 @@ export const DEFAULT_TENDENCY_PROFILE: TendencyProfileInput = {
       ],
     },
     {
+      id: 'game-style',
+      title: '게임 성향',
+      items: [
+        { label: '연애요소' },
+        { label: 'PVP' },
+        { label: 'RP' },
+        { label: 'G' },
+      ],
+    },
+    {
       id: 'etc',
       title: '기타 성향',
       items: [
@@ -148,10 +158,6 @@ export const DEFAULT_TENDENCY_PROFILE: TendencyProfileInput = {
         { label: '디자인' },
         { label: '덕질' },
         { label: '캐릭터성' },
-        { label: '연애요소' },
-        { label: 'PVP' },
-        { label: 'RP' },
-        { label: 'G' },
       ],
     },
   ],

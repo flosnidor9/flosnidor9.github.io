@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from '@/components/ArchiveImage';
 import { useAuth } from '@/contexts/AuthContext';
@@ -738,7 +738,7 @@ export default function TendencySection() {
     return () => unsubscribe();
   }, []);
 
-  const primarySections = useMemo(() => profile.sections.slice(0, 5), [profile.sections]);
+  const primarySections = profile.sections;
 
   return (
     <main className="afterroll-desk min-h-screen px-[1.1rem] pb-[3rem] pt-[1rem] text-[var(--atr-text)] md:px-[2rem]">
