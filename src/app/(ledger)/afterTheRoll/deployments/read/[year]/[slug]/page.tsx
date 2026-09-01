@@ -9,6 +9,14 @@ const EMPTY_PARAMS = { year: '__empty__', slug: '__empty__' };
 
 type Props = { params: Promise<{ year: string; slug: string }> };
 
+function decodeSegment(segment: string) {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return null;
+  }
+}
+
 export const dynamicParams = false;
 
 export async function generateStaticParams() {
@@ -17,7 +25,10 @@ export async function generateStaticParams() {
 }
 
 export default async function DeploymentReadPage({ params }: Props) {
-  const { year, slug } = await params;
+  const raw = await params;
+  const year = decodeSegment(raw.year);
+  const slug = decodeSegment(raw.slug);
+  if (!year || !slug) notFound();
   if (year === EMPTY_PARAMS.year && slug === EMPTY_PARAMS.slug) redirect('/afterTheRoll/deployments');
   const post = getDeploymentPost(year, slug);
   if (!post) notFound();
