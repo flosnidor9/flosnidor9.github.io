@@ -63,7 +63,7 @@ export default function ProtectedDeploymentContent({ privateUrl }: { privateUrl:
       <p className="afterroll-meta text-[0.75rem] uppercase tracking-[0.12em] text-[var(--atr-accent)]">Protected section</p>
       <p className="afterroll-body mt-[0.35rem] text-[0.92rem] text-[var(--atr-muted)]">비밀번호를 아는 사람에게만 열리는 내용입니다.</p>
       <form onSubmit={handleSubmit} className="mt-[0.8rem] flex max-w-[28rem] gap-[0.5rem]">
-        <input aria-label="비밀번호" type="password" value={password} onChange={(event) => { setPassword(event.target.value); setError(false); }} className="min-w-0 flex-1 rounded-[0.3rem] border border-[var(--atr-line)] px-[0.65rem] py-[0.45rem] text-[0.86rem]" />
+        <input aria-label="비밀번호" type="text" value={password} onChange={(event) => { setPassword(event.target.value); setError(false); }} className="min-w-0 flex-1 rounded-[0.3rem] border border-[var(--atr-line)] px-[0.65rem] py-[0.45rem] text-[0.86rem]" />
         <motion.button type="submit" whileTap={{ scale: 0.98 }} disabled={loading} className="ledger-stamp rounded-[0.3rem] px-[0.8rem] py-[0.45rem] text-[0.82rem] disabled:opacity-50">{loading ? '확인 중' : '열기'}</motion.button>
       </form>
       {error ? <p className="mt-[0.45rem] text-[0.78rem] text-[var(--atr-warn)]">비밀번호가 맞지 않거나 보호 내용을 불러오지 못했습니다.</p> : null}

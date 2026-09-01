@@ -291,6 +291,15 @@ body.after-roll-theme {
   margin-top: 1rem;
 }
 
+.deployment-prose .deployment-blank-line {
+  height: 1lh;
+  margin-top: 0;
+}
+
+.deployment-prose .deployment-blank-line + * {
+  margin-top: 0;
+}
+
 .deployment-prose h1,
 .deployment-prose h2,
 .deployment-prose h3 {
