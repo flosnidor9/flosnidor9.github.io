@@ -37,6 +37,15 @@ export type TrpgUploadDraft = {
   cast: TrpgUploadCastEntry[];
 };
 
+export type DeploymentUploadDraft = {
+  title: string;
+  date: string;
+  description: string;
+  tags: string[];
+  publicContent: string;
+  encryptedContent?: string;
+};
+
 function yamlValue(value: string) {
   return JSON.stringify(value);
 }
@@ -136,6 +145,37 @@ export function buildTrpgUploadFiles(draft: TrpgUploadDraft) {
       ...logMediaFiles,
       ...castImageFiles,
     ],
+  };
+}
+
+export function buildDeploymentUploadFiles(draft: DeploymentUploadDraft) {
+  const year = draft.date.match(/^\d{4}/)?.[0] ?? new Date().getFullYear().toString();
+  const postSlug = safeSegment(draft.title, 'untitled-deployment');
+  const folderPath = `${TRPG_UPLOAD_ROOT}/deployments/${year}/${postSlug}`;
+  const privateFileName = `${postSlug}.private.json`;
+  const hasPrivateContent = Boolean(draft.encryptedContent);
+  const markdown = [
+    '---',
+    `title: ${yamlValue(draft.title)}`,
+    `date: ${yamlValue(draft.date)}`,
+    `description: ${yamlValue(draft.description)}`,
+    'tags:',
+    ...draft.tags.filter(Boolean).map((tag) => `  - ${yamlValue(tag)}`),
+    ...(hasPrivateContent ? [`privatePath: ${yamlValue(privateFileName)}`] : []),
+    '---',
+    '',
+    draft.publicContent.trim(),
+    '',
+  ].join('\n');
+
+  return {
+    folderPath,
+    postSlug,
+    passwordKey: `deployments/${year}/${postSlug}/${postSlug}`,
+    files: [
+      { path: `${folderPath}/${postSlug}.md`, content: markdown },
+      ...(hasPrivateContent ? [{ path: `${folderPath}/${privateFileName}`, content: draft.encryptedContent! }] : []),
+    ] as UploadFile[],
   };
 }
 
@@ -393,6 +433,28 @@ export async function commitTrpgUploadAtomically(token: string, draft: TrpgUploa
   for (let attempt = 0; attempt < UPLOAD_COMMIT_RETRIES; attempt += 1) {
     await ensureAtomicUploadPathsAreAvailable(token, upload.files);
     if (await createAtomicUploadCommit(token, upload.files, `Add TRPG log: ${draft.title}`)) return upload.folderPath;
+  }
+  throw new Error('다른 업로드와 충돌했습니다. 잠시 후 다시 시도해 주세요.');
+}
+
+export async function resolveDeploymentUploadTitle(token: string, draft: DeploymentUploadDraft) {
+  const year = draft.date.match(/^\d{4}/)?.[0] ?? new Date().getFullYear().toString();
+  const baseTitle = safeSegment(draft.title, 'untitled-deployment');
+  let index = 1;
+
+  while (true) {
+    const title = index === 1 ? baseTitle : `${baseTitle} ${index}`;
+    const folderPath = `${TRPG_UPLOAD_ROOT}/deployments/${year}/${title}`;
+    if (!(await pathExists(token, folderPath))) return { ...draft, title };
+    index += 1;
+  }
+}
+
+export async function commitDeploymentUploadAtomically(token: string, draft: DeploymentUploadDraft) {
+  const upload = buildDeploymentUploadFiles(draft);
+  for (let attempt = 0; attempt < UPLOAD_COMMIT_RETRIES; attempt += 1) {
+    await ensureAtomicUploadPathsAreAvailable(token, upload.files);
+    if (await createAtomicUploadCommit(token, upload.files, `Add deployment post: ${draft.title}`)) return upload.folderPath;
   }
   throw new Error('다른 업로드와 충돌했습니다. 잠시 후 다시 시도해 주세요.');
 }
