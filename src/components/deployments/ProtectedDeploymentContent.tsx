@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import { motion } from 'framer-motion';
-import ReactMarkdown from 'react-markdown';
+import DeploymentMarkdown from './DeploymentMarkdown';
 
 type EncryptedData = { salt: string; iv: string; ciphertext: string; authTag: string };
 
@@ -55,7 +55,7 @@ export default function ProtectedDeploymentContent({ privateUrl }: { privateUrl:
   }
 
   if (content !== null) {
-    return <section className="deployment-prose mt-[2rem] border-t border-[var(--atr-line)] pt-[1.5rem]"><ReactMarkdown>{content}</ReactMarkdown></section>;
+    return <section className="deployment-prose mt-[2rem] border-t border-[var(--atr-line)] pt-[1.5rem]"><DeploymentMarkdown content={content} /></section>;
   }
 
   return (
