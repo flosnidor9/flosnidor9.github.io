@@ -2357,6 +2357,21 @@ body.after-roll-theme::after {
   box-shadow: 0 0.18rem 0.48rem rgba(76, 51, 61, 0.16);
 }
 
+/* Panoramas are one image split by the book spine, so their right leaf can turn normally. */
+.album-reader-photo-wide > img {
+  right: auto !important;
+  width: 200% !important;
+  max-width: none !important;
+}
+
+.album-reader-photo-wide-left > img {
+  left: 0 !important;
+}
+
+.album-reader-photo-wide-right > img {
+  left: -100% !important;
+}
+
 .album-reader-credit,
 .album-reader-empty {
   display: block;
@@ -2416,6 +2431,7 @@ body.after-roll-theme::after {
   .album-reader-photo {
     border-width: 0.18rem;
   }
+
 }
 
 .atr-file-shell {

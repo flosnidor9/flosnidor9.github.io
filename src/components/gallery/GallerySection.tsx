@@ -2,6 +2,7 @@
 
 import Image from '@/components/ArchiveImage';
 import AlbumReader from '@/components/gallery/AlbumReader';
+import GalleryManagementActions from '@/components/gallery/GalleryManagementActions';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,7 +21,7 @@ export default function GallerySection({ albums }: { albums: GalleryAlbum[] }) {
           <p className="afterroll-meta text-[0.74rem] uppercase tracking-[0.14em] text-[var(--atr-soft)]">Photo Archive</p>
           <h1 className="afterroll-title mt-[0.18rem] text-[2.4rem] leading-none text-[var(--atr-text)]">갤러리</h1>
         </div>
-        {isAdmin && !loading ? <p className="afterroll-meta text-[0.72rem] text-[var(--atr-soft)]">앨범 편집은 관리 도구에서 할 수 있습니다.</p> : null}
+        {isAdmin && !loading ? <GalleryManagementActions /> : null}
       </header>
       {albums.length ? (
         <div className="grid grid-cols-2 gap-[0.9rem] sm:grid-cols-3 lg:grid-cols-4">
@@ -34,6 +35,7 @@ export default function GallerySection({ albums }: { albums: GalleryAlbum[] }) {
                   </div>
                   <div className="p-[0.65rem]"><h2 className="afterroll-title truncate text-[1.2rem] text-[var(--atr-text)]">{album.title}</h2><p className="afterroll-meta mt-[0.2rem] text-[0.68rem] text-[var(--atr-soft)]">{album.photos.length}장의 사진</p></div>
                 </button>
+                {isAdmin && !loading ? <div className="absolute bottom-[0.5rem] right-[0.5rem] z-[1]"><GalleryManagementActions album={album} /></div> : null}
               </motion.article>
             );
           })}
