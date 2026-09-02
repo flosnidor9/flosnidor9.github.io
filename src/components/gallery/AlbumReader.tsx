@@ -132,7 +132,13 @@ export default function AlbumReader({ album, onClose }: Props) {
   const [direction, setDirection] = useState(1);
   const [turning, setTurning] = useState(false);
   const [targetSpreadRevealed, setTargetSpreadRevealed] = useState(false);
-  const [dimensions, setDimensions] = useState<PhotoDimensions>({});
+  const [dimensions, setDimensions] = useState<PhotoDimensions>(() =>
+    Object.fromEntries(
+      album.photos
+        .filter((p) => p.width && p.height)
+        .map((p) => [p.id, { width: p.width!, height: p.height! }])
+    )
+  );
   const readerPages = useMemo(() => makeReaderPages(album.photos, dimensions), [album.photos, dimensions]);
   const maxPage = Math.max(0, Math.ceil(readerPages.length / 2) - 1);
   const currentPage = Math.min(page, maxPage);
