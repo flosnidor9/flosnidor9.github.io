@@ -2,7 +2,7 @@
 
 import Image from '@/components/ArchiveImage';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { GalleryAlbum, GalleryPhoto } from '@/lib/data/gallery';
 
 type Props = { album: GalleryAlbum; onClose: () => void };
@@ -47,15 +47,46 @@ function makeReaderPages(photos: GalleryPhoto[], dimensions: PhotoDimensions): R
   return pages;
 }
 
-function PhotoPage({ album, page, side }: { album: GalleryAlbum; page?: ReaderPage; side: 'left' | 'right' }) {
+function PhotoPage({ album, dimensions, page, side }: { album: GalleryAlbum; dimensions: PhotoDimensions; page?: ReaderPage; side: 'left' | 'right' }) {
   const photo = page?.photo;
   const wideHalf = page?.wideHalf;
+  const size = photo ? dimensions[photo.id] : undefined;
+  const photoWidth = size?.width ?? 1600;
+  const photoHeight = size?.height ?? 1200;
+  const photoAreaRef = useRef<HTMLDivElement>(null);
+  const [frameSize, setFrameSize] = useState<{ width: number; height: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const area = photoAreaRef.current;
+    if (!area) return;
+
+    const fitFrame = () => {
+      const { width, height } = area.getBoundingClientRect();
+      if (!width || !height) return;
+      const framePhotoWidth = wideHalf ? photoWidth / 2 : photoWidth;
+      const scale = Math.min(width / framePhotoWidth, height / photoHeight);
+      setFrameSize({ width: (framePhotoWidth * scale / width) * 100, height: (photoHeight * scale / height) * 100 });
+    };
+
+    fitFrame();
+    const observer = new ResizeObserver(fitFrame);
+    observer.observe(area);
+    return () => observer.disconnect();
+  }, [photoHeight, photoWidth, wideHalf]);
 
   return (
     <div className={`album-reader-page album-reader-page-${side}${wideHalf ? ' album-reader-page-wide' : ''}`}>
       {photo ? <>
-        <div className={`album-reader-photo${wideHalf ? ` album-reader-photo-wide album-reader-photo-wide-${wideHalf}` : ''}`}>
-          <Image src={photo.src} alt={photo.alt || `${album.title} 사진`} fill sizes="(max-width: 640px) 44vw, 34rem" className="object-contain" />
+        <div ref={photoAreaRef} className={`album-reader-photo${wideHalf ? ` album-reader-photo-wide album-reader-photo-wide-${wideHalf}` : ''}`}>
+          {wideHalf ? (
+            <div className={`album-reader-photo-frame album-reader-photo-wide-frame album-reader-photo-wide-frame-${wideHalf}`} style={frameSize ? { width: `${frameSize.width}%`, height: `${frameSize.height}%` } : undefined}>
+              <Image src={photo.src} alt={photo.alt || `${album.title} 사진`} fill sizes="(max-width: 640px) 44vw, 34rem" className="object-contain" />
+            </div>
+          ) : (
+            <div className="album-reader-photo-frame" style={frameSize ? { width: `${frameSize.width}%`, height: `${frameSize.height}%` } : undefined}>
+              <Image src={photo.src} alt={photo.alt || `${album.title} 사진`} fill sizes="(max-width: 640px) 44vw, 34rem" className="object-contain" />
+            </div>
+          )}
         </div>
         <p className="album-reader-credit">
           {photo.copyright.url ? <a href={photo.copyright.url} target="_blank" rel="noreferrer">© {photo.copyright.name}</a> : `© ${photo.copyright.name}`}
@@ -65,19 +96,51 @@ function PhotoPage({ album, page, side }: { album: GalleryAlbum; page?: ReaderPa
   );
 }
 
+function Panorama({ album, dimensions, photo }: { album: GalleryAlbum; dimensions: PhotoDimensions; photo: GalleryPhoto }) {
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [frameSize, setFrameSize] = useState<{ width: number; height: number } | null>(null);
+  const size = dimensions[photo.id];
+  const photoWidth = size?.width ?? 1600;
+  const photoHeight = size?.height ?? 900;
+
+  useLayoutEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const fitFrame = () => {
+      const { width, height } = stage.getBoundingClientRect();
+      if (!width || !height) return;
+      const scale = Math.min(width / photoWidth, height / photoHeight);
+      setFrameSize({ width: (photoWidth * scale / width) * 100, height: (photoHeight * scale / height) * 100 });
+    };
+    fitFrame();
+    const observer = new ResizeObserver(fitFrame);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, [photoHeight, photoWidth]);
+
+  return (
+    <div ref={stageRef} className="album-reader-panorama">
+      <div className="album-reader-photo-frame" style={frameSize ? { width: `${frameSize.width}%`, height: `${frameSize.height}%` } : undefined}>
+        <Image src={photo.src} alt={photo.alt || `${album.title} 사진`} fill sizes="(max-width: 640px) 88vw, 68rem" className="object-contain" />
+      </div>
+    </div>
+  );
+}
+
 export default function AlbumReader({ album, onClose }: Props) {
   const [page, setPage] = useState(0);
   const [direction, setDirection] = useState(1);
   const [turning, setTurning] = useState(false);
+  const [targetSpreadRevealed, setTargetSpreadRevealed] = useState(false);
   const [dimensions, setDimensions] = useState<PhotoDimensions>({});
   const readerPages = useMemo(() => makeReaderPages(album.photos, dimensions), [album.photos, dimensions]);
   const maxPage = Math.max(0, Math.ceil(readerPages.length / 2) - 1);
   const currentPage = Math.min(page, maxPage);
-  const firstPhotoIndex = currentPage * 2;
-  const isForwardTurn = turning && direction > 0;
-  const isBackwardTurn = turning && direction < 0;
-  const leftPage = readerPages[isBackwardTurn ? firstPhotoIndex - 2 : firstPhotoIndex];
-  const rightPage = readerPages[isForwardTurn ? firstPhotoIndex + 3 : firstPhotoIndex + 1];
+  const currentFirstPhotoIndex = currentPage * 2;
+  const spreadPage = turning && targetSpreadRevealed ? currentPage + direction : currentPage;
+  const firstPhotoIndex = spreadPage * 2;
+  const leftPage = readerPages[firstPhotoIndex];
+  const rightPage = readerPages[firstPhotoIndex + 1];
   const isWideSpread = leftPage?.wideHalf === 'left'
     && rightPage?.wideHalf === 'right'
     && leftPage.photo?.id === rightPage.photo?.id;
@@ -102,12 +165,19 @@ export default function AlbumReader({ album, onClose }: Props) {
     if (turning || next < 0 || next > maxPage || next === currentPage) return;
     const nextDirection = next > currentPage ? 1 : -1;
     setDirection(nextDirection);
+    setTargetSpreadRevealed(false);
     setTurning(true);
   }, [currentPage, maxPage, turning]);
 
   const finishTurn = () => {
     setPage((current) => Math.min(maxPage, Math.max(0, current + direction)));
+    setTargetSpreadRevealed(false);
     setTurning(false);
+  };
+
+  const revealTargetSpreadAtFold = (latest: Record<string, string | number>) => {
+    const rotation = latest.rotateY;
+    if (typeof rotation === 'number' && Math.abs(rotation) >= 90) setTargetSpreadRevealed(true);
   };
 
   useEffect(() => {
@@ -126,12 +196,13 @@ export default function AlbumReader({ album, onClose }: Props) {
         <motion.section className="album-reader" initial={{ opacity: 0, scale: 0.9, rotateX: 8 }} animate={{ opacity: 1, scale: 1, rotateX: 0 }} exit={{ opacity: 0, scale: 0.92, rotateX: 6 }} transition={{ type: 'spring', stiffness: 230, damping: 25 }} aria-label={`${album.title} 앨범`} onClick={(event) => event.stopPropagation()}>
           <div className={`album-reader-book${isWideSpread ? ' album-reader-book-wide-spread' : ''}`}>
             <div className="album-reader-spread">
-              <PhotoPage album={album} page={leftPage} side="left" />
-              <PhotoPage album={album} page={rightPage} side="right" />
+              <PhotoPage album={album} dimensions={dimensions} page={leftPage} side="left" />
+              <PhotoPage album={album} dimensions={dimensions} page={rightPage} side="right" />
+              {isWideSpread && leftPage.photo ? <Panorama album={album} dimensions={dimensions} photo={leftPage.photo} /> : null}
             </div>
-            {turning ? <motion.div className={`album-reader-flip ${direction > 0 ? 'album-reader-flip-forward' : 'album-reader-flip-backward'}`} initial={{ rotateY: 0 }} animate={{ rotateY: direction > 0 ? -180 : 180 }} transition={{ duration: PAGE_TURN_DURATION, ease: PAGE_TURN_EASING }} onAnimationComplete={finishTurn}>
-              <div className="album-reader-flip-face album-reader-flip-front"><PhotoPage album={album} page={readerPages[direction > 0 ? firstPhotoIndex + 1 : firstPhotoIndex]} side={direction > 0 ? 'right' : 'left'} /></div>
-              <div className="album-reader-flip-face album-reader-flip-back"><PhotoPage album={album} page={readerPages[direction > 0 ? firstPhotoIndex + 2 : firstPhotoIndex - 1]} side={direction > 0 ? 'left' : 'right'} /></div>
+            {turning ? <motion.div className={`album-reader-flip ${direction > 0 ? 'album-reader-flip-forward' : 'album-reader-flip-backward'}`} initial={{ rotateY: 0 }} animate={{ rotateY: direction > 0 ? -180 : 180 }} transition={{ duration: PAGE_TURN_DURATION, ease: PAGE_TURN_EASING }} onUpdate={revealTargetSpreadAtFold} onAnimationComplete={finishTurn}>
+              <div className="album-reader-flip-face album-reader-flip-front"><PhotoPage album={album} dimensions={dimensions} page={readerPages[direction > 0 ? currentFirstPhotoIndex + 1 : currentFirstPhotoIndex]} side={direction > 0 ? 'right' : 'left'} /></div>
+              <div className="album-reader-flip-face album-reader-flip-back"><PhotoPage album={album} dimensions={dimensions} page={readerPages[direction > 0 ? currentFirstPhotoIndex + 2 : currentFirstPhotoIndex - 1]} side={direction > 0 ? 'left' : 'right'} /></div>
             </motion.div> : null}
             <button type="button" className="album-reader-turn album-reader-turn-previous" onClick={() => turnPage(currentPage - 1)} disabled={currentPage === 0 || turning} aria-label="이전 페이지" />
             <button type="button" className="album-reader-turn album-reader-turn-next" onClick={() => turnPage(currentPage + 1)} disabled={currentPage === maxPage || turning} aria-label="다음 페이지" />

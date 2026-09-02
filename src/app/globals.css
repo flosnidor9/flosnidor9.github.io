@@ -2281,8 +2281,12 @@ body.after-roll-theme::after {
 }
 
 .album-reader-book {
+  --album-reader-height: min(78vh, 36rem);
   position: relative;
-  min-height: min(78vh, 36rem);
+  height: var(--album-reader-height);
+  min-height: var(--album-reader-height);
+  max-height: var(--album-reader-height);
+  overflow: hidden;
   perspective: 75rem;
   filter: drop-shadow(0 1.35rem 1.3rem rgba(31, 20, 25, 0.36));
 }
@@ -2307,10 +2311,24 @@ body.after-roll-theme::after {
   display: none;
 }
 
+.album-reader-book-wide-spread .album-reader-photo-wide > * {
+  visibility: hidden;
+}
+
+/* A turning leaf needs its own half of a panorama on each face. */
+.album-reader-flip .album-reader-photo-wide > * {
+  visibility: visible;
+}
+
 .album-reader-spread {
+  position: absolute;
+  inset: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  min-height: inherit;
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
   transform-style: preserve-3d;
   transform-origin: center center;
 }
@@ -2347,11 +2365,21 @@ body.after-roll-theme::after {
 
 .album-reader-flip .album-reader-page {
   height: 100%;
-  backface-visibility: hidden;
+  /* The face wrapper owns the 3D culling. A second rotation on the page can
+     make its photograph disappear while the leaf is edge-on. */
+  transform: none;
+  backface-visibility: visible;
+}
+
+.album-reader-flip .album-reader-photo-wide > * {
+  visibility: visible !important;
 }
 
 .album-reader-page {
   display: flex;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
   min-width: 0;
   flex-direction: column;
   padding: 1rem;
@@ -2379,12 +2407,31 @@ body.after-roll-theme::after {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+
+/* Keep the frame on the rendered photograph rather than on the unused page area. */
+.album-reader-photo-frame {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
   border: 0.35rem solid #fff;
   box-shadow: 0 0.18rem 0.48rem rgba(76, 51, 61, 0.16);
 }
 
-/* Panoramas are one image split by the book spine, so their right leaf can turn normally. */
-.album-reader-photo-wide > img {
+.album-reader-panorama {
+  position: absolute;
+  z-index: 3;
+  inset: 1rem 1rem 2.4rem;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+/* Panoramas remain split only for page-turning, but share one outer frame. */
+.album-reader-photo-wide-frame > img {
   right: auto !important;
   width: 200% !important;
   max-width: none !important;
@@ -2407,20 +2454,32 @@ body.after-roll-theme::after {
   box-shadow: none;
 }
 
-.album-reader-photo-wide-left {
+.album-reader-photo-wide-frame {
+  border-top: 0.35rem solid #fff;
   border-right: 0;
-}
-
-.album-reader-photo-wide-right {
+  border-bottom: 0.35rem solid #fff;
   border-left: 0;
+  box-shadow: none;
 }
 
-.album-reader-photo-wide-left > img {
+.album-reader-photo-wide-frame-left {
+  border-left: 0.35rem solid #fff;
+}
+
+.album-reader-photo-wide-frame-right {
+  border-right: 0.35rem solid #fff;
+}
+
+.album-reader-photo-wide-frame-left > img {
   left: 0 !important;
 }
 
-.album-reader-photo-wide-right > img {
+.album-reader-photo-wide-frame-right > img {
   left: -100% !important;
+}
+
+.album-reader-photo-wide-frame > img {
+  object-fit: contain !important;
 }
 
 .album-reader-credit,
@@ -2472,7 +2531,7 @@ body.after-roll-theme::after {
   }
 
   .album-reader-book {
-    min-height: 70vh;
+    --album-reader-height: 70vh;
   }
 
   .album-reader-page {
@@ -2490,7 +2549,30 @@ body.after-roll-theme::after {
   }
 
   .album-reader-photo {
+    border-width: 0;
+  }
+
+  .album-reader-photo-frame {
     border-width: 0.18rem;
+  }
+
+  .album-reader-photo-wide-frame {
+    border-top-width: 0.18rem;
+    border-right-width: 0;
+    border-bottom-width: 0.18rem;
+    border-left-width: 0;
+  }
+
+  .album-reader-photo-wide-frame-left {
+    border-left-width: 0.18rem;
+  }
+
+  .album-reader-photo-wide-frame-right {
+    border-right-width: 0.18rem;
+  }
+
+  .album-reader-panorama {
+    inset: 0.45rem 0.45rem 1.8rem;
   }
 
 }
