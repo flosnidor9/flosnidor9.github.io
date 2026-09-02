@@ -24,20 +24,23 @@ export default function GalleryManagementActions({ album }: { album?: GalleryAlb
   const { isAdmin, loading } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<'create' | 'edit'>('create');
   const [draft, setDraft] = useState<GalleryAlbum>(EMPTY_ALBUM);
   const [newFiles, setNewFiles] = useState<Array<{ photo: GalleryPhoto; file: File; previewSrc: string }>>([]);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [token, setToken] = useState('');
   const [status, setStatus] = useState('');
   const [saving, setSaving] = useState(false);
-  const editing = Boolean(draft.id);
+  const editing = mode === 'edit';
   const newPhotos = useMemo(() => newFiles.map(({ photo }) => photo), [newFiles]);
 
   function beginCreate() {
+    setMode('create');
     setDraft({ ...EMPTY_ALBUM, id: makeId(), createdAt: now(), updatedAt: now() });
     setNewFiles([]); setToken(''); setStatus(''); setOpen(true);
   }
   function beginEdit(target: GalleryAlbum) {
+    setMode('edit');
     setDraft({ ...target, description: target.description ?? '' });
     setNewFiles([]); setToken(''); setStatus(''); setOpen(true);
   }
