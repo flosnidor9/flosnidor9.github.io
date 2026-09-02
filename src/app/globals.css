@@ -2464,10 +2464,15 @@ body.after-roll-theme::after {
 
 .album-reader-photo-wide-frame-left {
   border-left: 0.35rem solid #fff;
+  /* A height-fitted panorama half is narrower than its page. Anchor it to
+     the fold instead of centering it in the leaf, so both halves share the
+     same centre line while the page is turning. */
+  justify-self: end;
 }
 
 .album-reader-photo-wide-frame-right {
   border-right: 0.35rem solid #fff;
+  justify-self: start;
 }
 
 .album-reader-photo-wide-frame-left > img {
