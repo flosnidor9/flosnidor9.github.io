@@ -2221,22 +2221,6 @@ body.after-roll-theme::after {
   padding: 0.56rem 0.68rem 0.72rem 0.82rem;
 }
 
-.afterroll-desk > .grid > article.group .album-cover::after {
-  position: absolute;
-  z-index: 1;
-  inset: 0;
-  content: '';
-  pointer-events: none;
-  background: color-mix(in srgb, var(--album-theme) 18%, transparent);
-  mix-blend-mode: color;
-  opacity: 0.7;
-  transition: opacity 180ms ease;
-}
-
-.afterroll-desk > .grid > article.group:hover .album-cover::after {
-  opacity: 0.9;
-}
-
 .afterroll-desk > .grid > article.group:hover {
   box-shadow: 0.56rem 0.92rem 1.18rem rgba(76, 51, 61, 0.29), 0.9rem 1.2rem 1.6rem rgba(76, 51, 61, 0.13);
 }
@@ -2316,6 +2300,11 @@ body.after-roll-theme::after {
   background: linear-gradient(90deg, rgba(76, 51, 61, 0.18), rgba(255, 255, 255, 0.7), rgba(76, 51, 61, 0.22));
   box-shadow: 0 0 0.32rem rgba(76, 51, 61, 0.16);
   pointer-events: none;
+}
+
+/* Panoramas are a single photograph across the open spread, not two framed images. */
+.album-reader-book-wide-spread::before {
+  display: none;
 }
 
 .album-reader-spread {
@@ -2401,6 +2390,31 @@ body.after-roll-theme::after {
   max-width: none !important;
 }
 
+.album-reader-page-wide {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.album-reader-page-wide.album-reader-page-left {
+  padding-left: 1rem;
+}
+
+.album-reader-page-wide.album-reader-page-right {
+  padding-right: 1rem;
+}
+
+.album-reader-photo-wide {
+  box-shadow: none;
+}
+
+.album-reader-photo-wide-left {
+  border-right: 0;
+}
+
+.album-reader-photo-wide-right {
+  border-left: 0;
+}
+
 .album-reader-photo-wide-left > img {
   left: 0 !important;
 }
@@ -2463,6 +2477,16 @@ body.after-roll-theme::after {
 
   .album-reader-page {
     padding: 0.45rem;
+  }
+
+  .album-reader-page-wide.album-reader-page-left {
+    padding-right: 0;
+    padding-left: 0.45rem;
+  }
+
+  .album-reader-page-wide.album-reader-page-right {
+    padding-right: 0.45rem;
+    padding-left: 0;
   }
 
   .album-reader-photo {

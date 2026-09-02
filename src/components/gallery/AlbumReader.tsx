@@ -7,7 +7,7 @@ import type { GalleryAlbum, GalleryPhoto } from '@/lib/data/gallery';
 
 type Props = { album: GalleryAlbum; onClose: () => void };
 type PhotoDimensions = Record<string, { width: number; height: number }>;
-type ReaderPage = { photo: GalleryPhoto; wideHalf?: 'left' | 'right' };
+type ReaderPage = { photo?: GalleryPhoto; wideHalf?: 'left' | 'right' };
 
 const WIDE_SPREAD_ASPECT_RATIO = 1.65;
 const PAGE_TURN_DURATION = 0.96;
@@ -19,9 +19,32 @@ function isWidePhoto(photo: GalleryPhoto, dimensions: PhotoDimensions) {
 }
 
 function makeReaderPages(photos: GalleryPhoto[], dimensions: PhotoDimensions): ReaderPage[] {
-  return photos.flatMap((photo) => isWidePhoto(photo, dimensions)
-    ? [{ photo, wideHalf: 'left' as const }, { photo, wideHalf: 'right' as const }]
-    : [{ photo }]);
+  const pages: ReaderPage[] = [];
+  const remaining = [...photos];
+
+  while (remaining.length > 0) {
+    const photo = remaining.shift()!;
+    if (!isWidePhoto(photo, dimensions)) {
+      pages.push({ photo });
+      continue;
+    }
+
+    // A panorama must begin on a left leaf. Pull the next single image forward
+    // to fill an unfinished spread before it, rather than splitting the panorama
+    // across two page turns.
+    if (pages.length % 2 !== 0) {
+      const nextSingleIndex = remaining.findIndex((candidate) => !isWidePhoto(candidate, dimensions));
+      const nextSingle = nextSingleIndex === -1 ? undefined : remaining.splice(nextSingleIndex, 1)[0];
+      pages.push(nextSingle ? { photo: nextSingle } : {});
+    }
+
+    pages.push(
+      { photo, wideHalf: 'left' },
+      { photo, wideHalf: 'right' },
+    );
+  }
+
+  return pages;
 }
 
 function PhotoPage({ album, page, side }: { album: GalleryAlbum; page?: ReaderPage; side: 'left' | 'right' }) {
@@ -29,7 +52,7 @@ function PhotoPage({ album, page, side }: { album: GalleryAlbum; page?: ReaderPa
   const wideHalf = page?.wideHalf;
 
   return (
-    <div className={`album-reader-page album-reader-page-${side}`}>
+    <div className={`album-reader-page album-reader-page-${side}${wideHalf ? ' album-reader-page-wide' : ''}`}>
       {photo ? <>
         <div className={`album-reader-photo${wideHalf ? ` album-reader-photo-wide album-reader-photo-wide-${wideHalf}` : ''}`}>
           <Image src={photo.src} alt={photo.alt || `${album.title} 사진`} fill sizes="(max-width: 640px) 44vw, 34rem" className="object-contain" />
@@ -55,6 +78,9 @@ export default function AlbumReader({ album, onClose }: Props) {
   const isBackwardTurn = turning && direction < 0;
   const leftPage = readerPages[isBackwardTurn ? firstPhotoIndex - 2 : firstPhotoIndex];
   const rightPage = readerPages[isForwardTurn ? firstPhotoIndex + 3 : firstPhotoIndex + 1];
+  const isWideSpread = leftPage?.wideHalf === 'left'
+    && rightPage?.wideHalf === 'right'
+    && leftPage.photo?.id === rightPage.photo?.id;
 
   useEffect(() => {
     let cancelled = false;
@@ -98,7 +124,7 @@ export default function AlbumReader({ album, onClose }: Props) {
     <AnimatePresence>
       <motion.div className="album-reader-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
         <motion.section className="album-reader" initial={{ opacity: 0, scale: 0.9, rotateX: 8 }} animate={{ opacity: 1, scale: 1, rotateX: 0 }} exit={{ opacity: 0, scale: 0.92, rotateX: 6 }} transition={{ type: 'spring', stiffness: 230, damping: 25 }} aria-label={`${album.title} 앨범`} onClick={(event) => event.stopPropagation()}>
-          <div className="album-reader-book">
+          <div className={`album-reader-book${isWideSpread ? ' album-reader-book-wide-spread' : ''}`}>
             <div className="album-reader-spread">
               <PhotoPage album={album} page={leftPage} side="left" />
               <PhotoPage album={album} page={rightPage} side="right" />
