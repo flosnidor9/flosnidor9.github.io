@@ -39,6 +39,7 @@ passwords.json
 
 # TRPG 원본 로그/이미지 (private Trpg-Logs 저장소에서 빌드 시 복사)
 /public/images/afterTheRoll/
+/public/images/gallery/
 
 # Local directory junction to the sibling private Trpg-Logs repository.
 /public/trpg-logs/

@@ -11,6 +11,7 @@ import {
   CubeIcon,
   FaceSmileIcon,
   IdentificationIcon,
+  PhotoIcon,
   SparklesIcon,
   TicketIcon,
 } from '@heroicons/react/24/solid';
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { label: '도토리 목록', href: '/afterTheRoll/acorns', exact: false, icon: SparklesIcon },
   { label: '공수표 목록', href: '/afterTheRoll/promises', exact: false, icon: TicketIcon },
   { label: '캐릭터 목록', href: '/afterTheRoll/characters', exact: false, icon: IdentificationIcon },
+  { label: '갤러리', href: '/afterTheRoll/gallery', exact: false, icon: PhotoIcon },
   { label: '로그', href: '/afterTheRoll/logs', exact: false, icon: BookOpenIcon },
   { label: '배포', href: '/afterTheRoll/deployments', exact: false, icon: ChatBubbleLeftRightIcon },
   { label: '방명록', href: '/afterTheRoll/guestbook', exact: false, icon: ChatBubbleLeftRightIcon },
