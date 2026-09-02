@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import bundledCharacterArchive from '@/content/characters.json';
 import { TRPG_ASSET_PREFIX, TRPG_PUBLIC_ROOT } from '@/lib/trpgSource';
 
 export type CharacterCrop = { x: number; y: number; zoom: number };
@@ -61,14 +62,21 @@ export type Character = {
 const CHARACTER_ARCHIVE_PATH = path.join(TRPG_PUBLIC_ROOT, 'characters', 'characters.json');
 const CHARACTER_IMAGE_PATH_PREFIX = '/images/characters/';
 
+type CharacterArchive = { characters?: Character[] };
+
 function toCharacterAssetUrl(value: string) {
   if (!value.startsWith(CHARACTER_IMAGE_PATH_PREFIX)) return value;
   return `${TRPG_ASSET_PREFIX}/characters/${value.slice(CHARACTER_IMAGE_PATH_PREFIX.length)}`;
 }
 
 export function getCharacters(): Character[] {
+  // The deploy workflow deliberately stages the public character index in
+  // src/content. The live archive remains the source only while developing,
+  // so production static exports do not depend on a file outside the bundle.
   try {
-    const archive = JSON.parse(fs.readFileSync(CHARACTER_ARCHIVE_PATH, 'utf8')) as { characters?: unknown };
+    const archive: CharacterArchive = process.env.NODE_ENV === 'development'
+      ? JSON.parse(fs.readFileSync(CHARACTER_ARCHIVE_PATH, 'utf8'))
+      : bundledCharacterArchive;
     if (!Array.isArray(archive.characters)) return [];
 
     return (archive.characters as Character[]).map((character) => ({
