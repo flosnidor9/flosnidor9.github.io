@@ -10,7 +10,15 @@ type UploadFile = { path: string; content: string; encoding: 'base64' | 'utf-8' 
 const api = (path: string) => `https://api.github.com/repos/${REPOSITORY}${path}`;
 const headers = (token: string) => ({ Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}` });
 const encoded = (value: string) => new TextDecoder().decode(Uint8Array.from(atob(value.replace(/\n/g, '')), (char) => char.charCodeAt(0)));
-async function base64(file: Blob) { return btoa(String.fromCharCode(...new Uint8Array(await file.arrayBuffer()))); }
+async function base64(file: Blob) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const chunkSize = 0x8000;
+  let binary = '';
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return btoa(binary);
+}
 
 async function ref(token: string, branch: string) {
   const response = await fetch(api(`/git/ref/heads/${branch}`), { headers: headers(token) });
