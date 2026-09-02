@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import bundledGalleryArchive from '@/content/gallery.json';
+export { DEFAULT_GALLERY_ALBUM_THEME_COLOR, galleryAlbumThemeColor } from '@/lib/galleryTheme';
 import { TRPG_ASSET_PREFIX, TRPG_PUBLIC_ROOT } from '@/lib/trpgSource';
 
 export type GalleryCopyright = { name: string; url?: string };
@@ -15,6 +16,7 @@ export type GalleryAlbum = {
   id: string;
   title: string;
   description?: string;
+  themeColor?: string;
   coverPhotoId?: string;
   photos: GalleryPhoto[];
   createdAt: string;

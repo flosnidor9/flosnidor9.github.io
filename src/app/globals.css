@@ -526,6 +526,26 @@ body.after-roll-theme input.pc-color-field {
   color: var(--pc-character-color) !important;
 }
 
+.album-theme-color-picker::-webkit-color-swatch-wrapper {
+  padding: 0;
+  border-radius: 9999px;
+}
+
+.album-theme-color-picker::-webkit-color-swatch {
+  border: 0;
+  border-radius: 9999px;
+}
+
+.album-theme-color-picker::-moz-color-swatch {
+  border: 0;
+  border-radius: 9999px;
+}
+
+.album-theme-color-picker {
+  appearance: none;
+  overflow: hidden;
+}
+
 body.after-roll-theme input::placeholder,
 body.after-roll-theme textarea::placeholder {
   color: var(--atr-soft) !important;
@@ -2120,6 +2140,7 @@ body.after-roll-theme::after {
 
 /* Gallery albums: a small bound book, with an exposed spine and uneven paper edges. */
 .afterroll-desk > .grid > article.group {
+  --album-theme: #c87993;
   --album-page-offset: 0.62rem;
   --album-spine-width: 0.7rem;
   --album-depth: -0.7rem;
@@ -2145,14 +2166,14 @@ body.after-roll-theme::after {
 .afterroll-desk > .grid > article.group::before {
   z-index: -2;
   inset: var(--album-page-offset) calc(var(--album-page-offset) * -1) calc(var(--album-page-offset) * -1) 0;
-  border: 0.06rem solid rgba(139, 95, 108, 0.16);
+  border: 0.06rem solid color-mix(in srgb, var(--album-theme) 34%, transparent);
   border-radius: 0.12rem 0.38rem 0.38rem 0.12rem;
   background: repeating-linear-gradient(
     0deg,
-    #fffafa 0,
-    #fffafa 0.1rem,
-    #efdce1 0.12rem,
-    #fffafa 0.18rem
+    color-mix(in srgb, var(--album-theme) 6%, white) 0,
+    color-mix(in srgb, var(--album-theme) 6%, white) 0.1rem,
+    color-mix(in srgb, var(--album-theme) 17%, white) 0.12rem,
+    color-mix(in srgb, var(--album-theme) 6%, white) 0.18rem
   );
   transform: none;
   transform-origin: left center;
@@ -2164,9 +2185,9 @@ body.after-roll-theme::after {
   z-index: 2;
   inset: 0 auto 0 0;
   width: var(--album-spine-width);
-  border-right: 0.06rem solid rgba(115, 69, 82, 0.26);
+  border-right: 0.06rem solid color-mix(in srgb, var(--album-theme) 55%, #4c333d);
   border-radius: 0.18rem 0 0 0.18rem;
-  background: linear-gradient(90deg, rgba(104, 60, 73, 0.48), rgba(211, 145, 163, 0.55) 35%, rgba(255, 242, 246, 0.06));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--album-theme) 58%, #4c333d), color-mix(in srgb, var(--album-theme) 72%, white) 35%, color-mix(in srgb, var(--album-theme) 6%, transparent));
   box-shadow: 0.12rem 0 0.18rem rgba(76, 51, 61, 0.15);
   transform: none;
   transform-origin: left center;
@@ -2177,9 +2198,9 @@ body.after-roll-theme::after {
   position: relative;
   z-index: 1;
   overflow: hidden;
-  border: 0.06rem solid rgba(130, 76, 93, 0.32);
+  border: 0.06rem solid color-mix(in srgb, var(--album-theme) 42%, #734552);
   border-radius: 0.18rem 0.48rem 0.48rem 0.18rem;
-  background: linear-gradient(135deg, #fffafd, #f9e6eb);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--album-theme) 5%, white), color-mix(in srgb, var(--album-theme) 19%, white));
   box-shadow: inset -0.08rem 0 0 rgba(115, 69, 82, 0.1), inset 0 0.08rem 0 rgba(255, 255, 255, 0.76);
   transform: none;
   transform-origin: left center;
@@ -2191,13 +2212,29 @@ body.after-roll-theme::after {
   aspect-ratio: 3 / 4;
   margin: 0.48rem 0.48rem 0 0.82rem;
   overflow: hidden;
-  border: 0.06rem solid rgba(115, 69, 82, 0.18);
+  border: 0.06rem solid color-mix(in srgb, var(--album-theme) 32%, #734552);
   border-radius: 0.1rem 0.28rem 0.28rem 0.1rem;
   box-shadow: 0.12rem 0.14rem 0.28rem rgba(76, 51, 61, 0.15);
 }
 
 .afterroll-desk > .grid > article.group > button:first-child > div:last-child {
   padding: 0.56rem 0.68rem 0.72rem 0.82rem;
+}
+
+.afterroll-desk > .grid > article.group .album-cover::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  content: '';
+  pointer-events: none;
+  background: color-mix(in srgb, var(--album-theme) 18%, transparent);
+  mix-blend-mode: color;
+  opacity: 0.7;
+  transition: opacity 180ms ease;
+}
+
+.afterroll-desk > .grid > article.group:hover .album-cover::after {
+  opacity: 0.9;
 }
 
 .afterroll-desk > .grid > article.group:hover {
