@@ -17,6 +17,7 @@ import type { GalleryAlbum, GalleryPhoto } from '@/lib/data/gallery';
 
 const FIELD_CLASS = 'mt-[0.3rem] w-full rounded-[0.3rem] border border-[var(--atr-line)] bg-white px-[0.65rem] py-[0.45rem] text-[0.86rem] text-[var(--atr-text)]';
 const EMPTY_ALBUM: GalleryAlbum = { id: '', title: '', description: '', themeColor: DEFAULT_GALLERY_ALBUM_THEME_COLOR, photos: [], createdAt: '', updatedAt: '' };
+const PANORAMA_ASPECT_RATIO = 1.65;
 
 const makeId = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const now = () => new Date().toISOString();
@@ -46,22 +47,32 @@ export default function GalleryManagementActions({ album }: { album?: GalleryAlb
     setNewFiles([]); setToken(''); setStatus(''); setOpen(true);
   }
   function close() { if (!saving) setOpen(false); }
-  function addFiles(files: FileList | null) {
+  async function addFiles(files: FileList | null) {
     if (!files?.length) return;
-    const additions = Array.from(files).map((file) => {
+    const additions = await Promise.all(Array.from(files).map(async (file) => {
       const photoId = makeId();
+      const previewSrc = URL.createObjectURL(file);
+      const dimensions = await new Promise<{ width?: number; height?: number }>((resolve) => {
+        const image = new globalThis.Image();
+        image.onload = () => resolve({ width: image.naturalWidth || undefined, height: image.naturalHeight || undefined });
+        image.onerror = () => resolve({});
+        image.src = previewSrc;
+      });
+      const layout: GalleryPhoto['layout'] = dimensions.width && dimensions.height && dimensions.width / dimensions.height >= PANORAMA_ASPECT_RATIO ? 'spread' : 'single';
       return {
         file,
-        previewSrc: URL.createObjectURL(file),
+        previewSrc,
         photo: {
           id: photoId,
           src: galleryPhotoPath(draft.id, photoId, file),
           alt: draft.title || file.name,
           copyright: { name: '' },
           createdAt: now(),
+          layout,
+          ...dimensions,
         },
       };
-    });
+    }));
     setNewFiles((current) => [...current, ...additions]);
     setDraft((current) => ({ ...current, photos: [...current.photos, ...additions.map(({ photo }) => photo)] }));
   }

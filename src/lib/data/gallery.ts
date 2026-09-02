@@ -11,6 +11,11 @@ export type GalleryPhoto = {
   alt: string;
   copyright: GalleryCopyright;
   createdAt: string;
+  /** Stored at upload time so page layout never depends on image-load timing. */
+  width?: number;
+  height?: number;
+  /** A spread is an intentional two-page panorama, not merely a wide photo. */
+  layout?: 'single' | 'spread';
 };
 export type GalleryAlbum = {
   id: string;
