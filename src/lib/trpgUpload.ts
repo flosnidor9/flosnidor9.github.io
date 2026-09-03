@@ -450,7 +450,8 @@ async function createAtomicUploadCommit(token: string, files: UploadFile[], mess
     }
     tree.push({ path: file.path, mode: '100644', type: 'blob', sha: blob.sha });
   }
-  for (const path of removals) tree.push({ path, sha: null });
+  // GitHub requires mode and type even for a deletion entry (sha: null).
+  for (const path of removals) tree.push({ path, mode: '100644', type: 'blob', sha: null });
 
   const treeResponse = await fetch(githubApiUrl(TRPG_UPLOAD_REPOSITORY, '/git/trees'), {
     method: 'POST', headers, body: JSON.stringify({ base_tree: parent.tree.sha, tree }),
