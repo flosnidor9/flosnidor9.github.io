@@ -482,6 +482,38 @@ export async function commitTrpgUploadAtomically(token: string, draft: TrpgUploa
   throw new Error('다른 업로드와 충돌했습니다. 잠시 후 다시 시도해 주세요.');
 }
 
+async function getFilesInFolder(token: string, folderPath: string) {
+  const parentSha = await getOrCreateIncomingBranch(token);
+  const response = await fetch(githubApiUrl(TRPG_UPLOAD_REPOSITORY, `/git/trees/${parentSha}?recursive=1`), {
+    headers: githubHeaders(token),
+  });
+  const tree = (await response.json().catch(() => null)) as {
+    tree?: Array<{ path?: string; type?: string }>;
+    truncated?: boolean;
+  } | null;
+
+  if (!response.ok || !tree?.tree || tree.truncated) {
+    throw new Error('삭제할 로그 파일 목록을 불러오지 못했습니다. 토큰 권한을 확인해 주세요.');
+  }
+
+  const prefix = `${folderPath}/`;
+  return tree.tree
+    .filter((entry) => entry.type === 'blob' && entry.path?.startsWith(prefix))
+    .flatMap((entry) => entry.path ? [entry.path] : []);
+}
+
+export async function deleteTrpgLogAtomically(token: string, post: { folderSlug: string; slug: string }) {
+  const folderPath = `${TRPG_UPLOAD_ROOT}/${post.folderSlug}`;
+
+  for (let attempt = 0; attempt < UPLOAD_COMMIT_RETRIES; attempt += 1) {
+    const removals = await getFilesInFolder(token, folderPath);
+    if (removals.length === 0) throw new Error('삭제할 로그 파일을 찾을 수 없습니다.');
+    if (await createAtomicUploadCommit(token, [], `Delete TRPG log: ${post.slug}`, removals)) return;
+  }
+
+  throw new Error('다른 변경과 충돌했습니다. 잠시 뒤 다시 시도해 주세요.');
+}
+
 export async function resolveDeploymentUploadTitle(token: string, draft: DeploymentUploadDraft) {
   const year = draft.date.match(/^\d{4}/)?.[0] ?? new Date().getFullYear().toString();
   const baseTitle = safeSegment(draft.title, 'untitled-deployment');

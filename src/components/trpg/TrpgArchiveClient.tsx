@@ -7,6 +7,7 @@ import { LockClosedIcon } from '@heroicons/react/24/solid';
 import type { TrpgArchivePostMeta } from '@/lib/data/trpg';
 import { toGalleryPath } from '@/lib/galleryPath';
 import TrpgUploadButton from '@/components/trpg/TrpgUploadButton';
+import TrpgLogDeleteButton from '@/components/trpg/TrpgLogDeleteButton';
 
 type Props = {
   posts: TrpgArchivePostMeta[];
@@ -152,10 +153,10 @@ export default function TrpgArchiveClient({ posts, title, backHref, backLabel }:
 
                 <ul className="space-y-[0.75rem]">
                   {yearPosts.map((post) => (
-                    <li key={post.fullSlug}>
+                    <li key={post.fullSlug} className="relative">
                       <Link
                         href={`/afterTheRoll/archive/read/${toGalleryPath(post.fullSlug)}`}
-                        className="group relative grid gap-[0.65rem] border-l border-[var(--atr-line)] bg-[rgba(0,0,0,0.26)] px-[0.85rem] py-[0.75rem] transition duration-200 hover:border-[var(--atr-line-strong)] hover:bg-[rgba(88, 125, 163,0.07)] md:grid-cols-[minmax(0,1fr)_auto]"
+                        className="group relative grid gap-[0.65rem] border-l border-[var(--atr-line)] bg-[rgba(0,0,0,0.26)] px-[0.85rem] py-[0.75rem] pr-[4.5rem] transition duration-200 hover:border-[var(--atr-line-strong)] hover:bg-[rgba(88,125,163,0.07)] md:grid-cols-[minmax(0,1fr)_auto]"
                       >
                         <div className="relative z-[1] flex flex-col gap-[0.8rem] md:flex-row md:items-start md:justify-between md:gap-[1rem]">
                           <div className="min-w-0">
@@ -195,6 +196,9 @@ export default function TrpgArchiveClient({ posts, title, backHref, backLabel }:
                           </div>
                         ) : null}
                       </Link>
+                      <div className="absolute right-[0.75rem] top-[0.7rem]">
+                        <TrpgLogDeleteButton post={post} />
+                      </div>
                     </li>
                   ))}
                 </ul>
