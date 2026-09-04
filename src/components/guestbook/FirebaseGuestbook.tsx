@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp, Timestamp, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -11,6 +11,8 @@ type GuestbookEntry = {
   name: string;
   message: string;
   timestamp?: Timestamp;
+  parentId?: string;
+  authorRole?: 'admin' | 'guest';
 };
 
 type GuestbookTheme = 'glass' | 'afterroll';
@@ -21,7 +23,19 @@ type FirebaseGuestbookProps = {
   emptyMessage?: string;
   theme?: GuestbookTheme;
   canDeleteWhenSignedIn?: boolean;
+  threaded?: boolean;
 };
+
+const MAX_MESSAGE_LENGTH = 500;
+const MAX_NAME_LENGTH = 50;
+const REPLY_INDENT_PER_LEVEL = 1.25;
+const MAX_REPLY_INDENT = 5;
+const ADMIN_NAME = 'admin';
+const ADMIN_ROLE = 'admin';
+
+function isAdminEntry(entry: GuestbookEntry) {
+  return entry.authorRole === ADMIN_ROLE;
+}
 
 const THEME_STYLES = {
   glass: {
@@ -42,9 +56,11 @@ const THEME_STYLES = {
       border: '1px solid rgba(255, 255, 255, 0.1)',
     },
     nameClassName: 'font-medium text-[var(--color-text)]',
+    adminNameClassName: 'font-medium text-[var(--color-accent)]',
     timeClassName: 'text-[0.75rem] text-white/60',
     messageClassName: 'text-[0.95rem] text-[var(--color-text)]/90 leading-relaxed whitespace-pre-wrap',
     deleteButtonClassName: 'text-[0.75rem] text-white/55 transition-colors hover:text-red-300',
+    replyButtonClassName: 'text-[0.75rem] text-[var(--color-muted)] transition-colors hover:text-[var(--color-accent)]',
     emptyClassName: 'glass-card rounded-[1rem] p-[3rem] text-center',
     emptyStyle: {
       background: 'rgba(255, 255, 255, 0.02)',
@@ -64,14 +80,129 @@ const THEME_STYLES = {
     entryClassName: 'rounded-[0.45rem] border border-[var(--atr-line)] bg-white/65 px-[1rem] py-[0.85rem]',
     entryStyle: {},
     nameClassName: 'font-bold text-[var(--atr-text)]',
+    adminNameClassName: 'font-bold text-[var(--atr-accent)]',
     timeClassName: 'text-[0.72rem] text-[var(--atr-soft)]',
     messageClassName: 'text-[0.92rem] leading-[1.65] text-[var(--atr-muted)] whitespace-pre-wrap',
     deleteButtonClassName: 'text-[0.72rem] text-[var(--atr-soft)] transition-colors hover:text-[var(--atr-warn)]',
+    replyButtonClassName: 'text-[0.72rem] text-[var(--atr-soft)] transition-colors hover:text-[var(--atr-accent)]',
     emptyClassName: 'rounded-[0.45rem] border border-[var(--atr-line)] bg-white/55 p-[2rem] text-center',
     emptyStyle: {},
     emptyTextClassName: 'text-[var(--atr-muted)]',
   },
 } as const;
+
+type ThemeStyles = (typeof THEME_STYLES)[GuestbookTheme];
+
+type ThreadedEntryProps = {
+  entry: GuestbookEntry;
+  index: number;
+  depth: number;
+  indent: number;
+  replies: GuestbookEntry[];
+  isSubmitting: boolean;
+  isAdminWriter: boolean;
+  canDelete: boolean;
+  deletingId: string | null;
+  styles: ThemeStyles;
+  formatDate: (timestamp?: Timestamp) => string;
+  onDelete: (entryId: string) => Promise<void>;
+  onReplySubmit: (parentId: string, name: string, message: string) => Promise<boolean>;
+  renderReply: (entry: GuestbookEntry, index: number, depth: number) => React.ReactNode;
+};
+
+function ThreadedEntry({
+  entry,
+  index,
+  depth,
+  indent,
+  replies,
+  isSubmitting,
+  isAdminWriter,
+  canDelete,
+  deletingId,
+  styles,
+  formatDate,
+  onDelete,
+  onReplySubmit,
+  renderReply,
+}: ThreadedEntryProps) {
+  const [isReplying, setIsReplying] = useState(false);
+  const [name, setName] = useState('');
+  const [message, setMessage] = useState('');
+  const replyNameId = `reply-name-${entry.id}`;
+  const replyMessageId = `reply-message-${entry.id}`;
+  const isAdmin = isAdminEntry(entry);
+
+  const handleReply = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const didSubmit = await onReplySubmit(entry.id, name, message);
+    if (didSubmit) {
+      setMessage('');
+      setIsReplying(false);
+    }
+  };
+
+  return (
+    <div className={depth ? 'border-l border-[var(--atr-line)] pl-[0.75rem]' : undefined} style={depth ? { marginLeft: `${indent}rem` } : undefined}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: index * 0.05 }}
+        className={styles.entryClassName}
+        style={styles.entryStyle}
+      >
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-[0.5rem]">
+          <p className={isAdmin ? styles.adminNameClassName : styles.nameClassName}>
+            {entry.name}
+            {isAdmin && <span className="ml-[0.35rem] text-[0.68rem] font-bold tracking-[0.08em]">ADMIN</span>}
+          </p>
+          <div className="flex items-center gap-[0.6rem]">
+            <time className={styles.timeClassName}>{formatDate(entry.timestamp)}</time>
+            {canDelete && (
+              <button type="button" onClick={() => onDelete(entry.id)} disabled={deletingId === entry.id} className={styles.deleteButtonClassName}>
+                {deletingId === entry.id ? '삭제 중...' : '삭제'}
+              </button>
+            )}
+          </div>
+        </div>
+        <p className={styles.messageClassName}>{entry.message}</p>
+        <button type="button" onClick={() => setIsReplying((current) => !current)} className={`mt-[0.65rem] ${styles.replyButtonClassName}`} aria-expanded={isReplying}>
+          {isReplying ? '답글 취소' : '답글'}
+        </button>
+      </motion.div>
+
+      <AnimatePresence initial={false}>
+        {isReplying && (
+          <motion.form
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            onSubmit={handleReply}
+            className="overflow-hidden"
+          >
+            <div className="mt-[0.6rem] rounded-[0.45rem] border border-[var(--atr-line)] bg-white/50 p-[0.75rem]">
+              {isAdminWriter ? (
+                <p className={`${styles.adminNameClassName} text-[0.82rem]`}>admin으로 답글을 남깁니다.</p>
+              ) : (
+                <><label htmlFor={replyNameId} className={styles.labelClassName}>이름 (선택)</label><input id={replyNameId} type="text" value={name} onChange={(event) => setName(event.target.value)} placeholder="익명" maxLength={MAX_NAME_LENGTH} className={styles.inputClassName} /></>
+              )}
+              <label htmlFor={replyMessageId} className={`mt-[0.6rem] ${styles.labelClassName}`}>답글</label>
+              <textarea id={replyMessageId} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="답글을 남겨 주세요." maxLength={MAX_MESSAGE_LENGTH} rows={3} className={styles.textareaClassName} />
+              <div className="mt-[0.5rem] flex items-center justify-between gap-[0.75rem]">
+                <p className={styles.countClassName}>{message.length} / {MAX_MESSAGE_LENGTH}</p>
+                <button type="submit" disabled={isSubmitting} className="rounded-[0.35rem] border border-[var(--atr-line-strong)] bg-[rgba(232,169,186,0.2)] px-[0.75rem] py-[0.4rem] text-[0.78rem] font-bold text-[var(--atr-accent)] disabled:cursor-not-allowed disabled:opacity-50">
+                  {isSubmitting ? '등록 중...' : '답글 남기기'}
+                </button>
+              </div>
+            </div>
+          </motion.form>
+        )}
+      </AnimatePresence>
+
+      {replies.length > 0 && <div className="mt-[0.7rem] flex flex-col gap-[0.7rem]">{replies.map((reply, replyIndex) => renderReply(reply, replyIndex, depth + 1))}</div>}
+    </div>
+  );
+}
 
 export default function FirebaseGuestbook({
   collectionName = 'guestbook',
@@ -79,8 +210,9 @@ export default function FirebaseGuestbook({
   emptyMessage = '첫 번째 방문자가 되어주세요',
   theme = 'glass',
   canDeleteWhenSignedIn = false,
+  threaded = false,
 }: FirebaseGuestbookProps) {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [entries, setEntries] = useState<GuestbookEntry[]>([]);
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
@@ -94,7 +226,7 @@ export default function FirebaseGuestbook({
     try {
       const q = query(
         collection(db, collectionName),
-        orderBy('timestamp', 'desc'),
+        orderBy('timestamp', threaded ? 'asc' : 'desc'),
         limit(50)
       );
       const snapshot = await getDocs(q);
@@ -106,7 +238,7 @@ export default function FirebaseGuestbook({
     } catch (err) {
       console.error('Failed to load entries:', err);
     }
-  }, [collectionName]);
+  }, [collectionName, threaded]);
 
   // 방명록 불러오기
   useEffect(() => {
@@ -121,8 +253,8 @@ export default function FirebaseGuestbook({
       return;
     }
 
-    if (message.length > 500) {
-      setError('메시지는 500자 이하로 작성해주세요');
+    if (message.length > MAX_MESSAGE_LENGTH) {
+      setError(`메시지는 ${MAX_MESSAGE_LENGTH}자 이하로 작성해주세요`);
       return;
     }
 
@@ -131,9 +263,10 @@ export default function FirebaseGuestbook({
 
     try {
       await addDoc(collection(db, collectionName), {
-        name: name.trim() || '익명',
+        name: isAdmin ? ADMIN_NAME : name.trim() || '익명',
+        authorRole: isAdmin ? ADMIN_ROLE : 'guest',
         message: message.trim(),
-        timestamp: serverTimestamp()
+        timestamp: serverTimestamp(),
       });
 
       // 폼 초기화
@@ -180,6 +313,78 @@ export default function FirebaseGuestbook({
     }).format(date);
   };
 
+  const entriesByParent = useMemo(() => {
+    const grouped = new Map<string | null, GuestbookEntry[]>();
+    const entryIds = new Set(entries.map((entry) => entry.id));
+
+    entries.forEach((entry) => {
+      const parentKey = entry.parentId && entryIds.has(entry.parentId) ? entry.parentId : null;
+      const siblings = grouped.get(parentKey) ?? [];
+      siblings.push(entry);
+      grouped.set(parentKey, siblings);
+    });
+
+    return grouped;
+  }, [entries]);
+
+  const handleReplySubmit = async (parentId: string, replyName: string, replyMessage: string) => {
+    if (!replyMessage.trim()) {
+      setError('답글 내용을 입력해주세요');
+      return false;
+    }
+
+    if (replyMessage.length > MAX_MESSAGE_LENGTH) {
+      setError(`답글은 ${MAX_MESSAGE_LENGTH}자 이하로 작성해주세요`);
+      return false;
+    }
+
+    setIsSubmitting(true);
+    setError('');
+
+    try {
+      await addDoc(collection(db, collectionName), {
+        name: isAdmin ? ADMIN_NAME : replyName.trim() || '익명',
+        authorRole: isAdmin ? ADMIN_ROLE : 'guest',
+        message: replyMessage.trim(),
+        parentId,
+        timestamp: serverTimestamp(),
+      });
+      await loadEntries();
+      return true;
+    } catch (err) {
+      console.error('Failed to submit reply:', err);
+      setError('답글 전송에 실패했습니다. 다시 시도해주세요.');
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const renderEntry = (entry: GuestbookEntry, index: number, depth = 0): React.ReactNode => {
+    const replies = entriesByParent.get(entry.id) ?? [];
+    const indent = Math.min(depth * REPLY_INDENT_PER_LEVEL, MAX_REPLY_INDENT);
+
+    return (
+      <ThreadedEntry
+        key={entry.id}
+        entry={entry}
+        index={index}
+        depth={depth}
+        indent={indent}
+        replies={replies}
+        isSubmitting={isSubmitting}
+        isAdminWriter={isAdmin}
+        canDelete={canDelete}
+        deletingId={deletingId}
+        styles={styles}
+        formatDate={formatDate}
+        onDelete={handleDelete}
+        onReplySubmit={handleReplySubmit}
+        renderReply={renderEntry}
+      />
+    );
+  };
+
   return (
     <div className="flex flex-col gap-8">
       {/* 작성 폼 */}
@@ -193,20 +398,24 @@ export default function FirebaseGuestbook({
       >
         <div className="space-y-5">
           {/* 이름 입력 */}
-          <div>
-            <label htmlFor="name" className={styles.labelClassName}>
-              이름 (선택)
-            </label>
-            <input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="익명"
-              maxLength={50}
-              className={styles.inputClassName}
-            />
-          </div>
+          {isAdmin ? (
+            <p className={`${styles.adminNameClassName} text-[0.86rem]`}>admin으로 댓글을 남깁니다.</p>
+          ) : (
+            <div>
+              <label htmlFor="name" className={styles.labelClassName}>
+                이름 (선택)
+              </label>
+              <input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="익명"
+                maxLength={MAX_NAME_LENGTH}
+                className={styles.inputClassName}
+              />
+            </div>
+          )}
 
           {/* 메시지 입력 */}
           <div>
@@ -218,12 +427,12 @@ export default function FirebaseGuestbook({
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder={placeholder}
-              maxLength={500}
+              maxLength={MAX_MESSAGE_LENGTH}
               rows={4}
               className={styles.textareaClassName}
             />
             <p className={styles.countClassName}>
-              {message.length} / 500
+              {message.length} / {MAX_MESSAGE_LENGTH}
             </p>
           </div>
 
@@ -251,8 +460,9 @@ export default function FirebaseGuestbook({
 
       {/* 방명록 목록 */}
       <div className={styles.listClassName}>
-        <AnimatePresence mode="popLayout">
-          {entries.map((entry, index) => (
+          {!threaded && (
+          <AnimatePresence mode="popLayout">
+            {entries.map((entry, index) => (
             <motion.div
               key={entry.id}
               initial={{ opacity: 0, y: 20 }}
@@ -264,8 +474,9 @@ export default function FirebaseGuestbook({
             >
               {/* 헤더 */}
               <div className="flex flex-wrap items-baseline justify-between gap-[0.5rem] mb-3">
-                <p className={styles.nameClassName}>
+                <p className={isAdminEntry(entry) ? styles.adminNameClassName : styles.nameClassName}>
                   {entry.name}
+                  {isAdminEntry(entry) && <span className="ml-[0.35rem] text-[0.68rem] font-bold tracking-[0.08em]">ADMIN</span>}
                 </p>
                 <div className="flex items-center gap-[0.6rem]">
                   <time className={styles.timeClassName}>
@@ -289,8 +500,10 @@ export default function FirebaseGuestbook({
                 {entry.message}
               </p>
             </motion.div>
-          ))}
-        </AnimatePresence>
+            ))}
+          </AnimatePresence>
+        )}
+        {threaded && (entriesByParent.get(null) ?? []).map((entry, index) => renderEntry(entry, index))}
 
         {/* 빈 상태 */}
         {entries.length === 0 && (

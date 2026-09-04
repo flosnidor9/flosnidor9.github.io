@@ -25,5 +25,5 @@ if (target !== path.resolve(expectedSource)) {
   throw new Error(`The existing TRPG junction points elsewhere: ${target}`);
 }
 
-fs.rmdirSync(link);
+fs.unlinkSync(link);
 console.log('Removed the local TRPG junction for static export. npm run dev will recreate it.');
