@@ -2,10 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const workspaceRoot = process.cwd();
-const repositoryRoot = process.env.TRPG_LOGS_PATH
-  ? path.resolve(process.env.TRPG_LOGS_PATH)
-  : path.resolve(workspaceRoot, '..', 'Trpg-Logs');
-const expectedSource = path.join(repositoryRoot, 'public');
 const link = path.join(workspaceRoot, 'public', 'trpg-logs');
 
 let linkStat;
@@ -18,11 +14,6 @@ try {
 
 if (!linkStat.isSymbolicLink()) {
   throw new Error(`Expected a development junction at ${link}; refusing to remove an existing directory.`);
-}
-
-const target = path.resolve(path.dirname(link), fs.readlinkSync(link));
-if (target !== path.resolve(expectedSource)) {
-  throw new Error(`The existing TRPG junction points elsewhere: ${target}`);
 }
 
 fs.unlinkSync(link);
