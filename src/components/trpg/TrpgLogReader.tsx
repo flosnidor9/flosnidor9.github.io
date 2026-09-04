@@ -26,6 +26,7 @@ type LogEntry = {
   isAside: boolean;
   isWhisper: boolean;
   isNarrator?: boolean;
+  isRoll20Narration?: boolean;
   kind: 'chat' | 'media';
 };
 
@@ -51,7 +52,12 @@ function sanitizeHtml(html: string): string {
 
 function detectFormat(html: string): 'icecandy-roll20' | 'roll20' | 'ccfolia' | 'cca' {
   if (/class=["'][^"']*icecandy-export/.test(html) && /data-skin=["']roll20/.test(html)) return 'icecandy-roll20';
-  if (/class=["'][^"']*\bcca-wrap\b/.test(html) || (/class=["'][^"']*\br\s+row\b/.test(html) && /class=["'][^"']*\bc\b/.test(html))) return 'cca';
+  if (
+    /class=["'][^"']*\bcca-wrap\b/.test(html) ||
+    (/class=["'][^"']*\br(?:\s+row)?\b/.test(html) && /class=["'][^"']*\bc\b/.test(html))
+  ) {
+    return 'cca';
+  }
   if (/class="message\s/i.test(html)) return 'roll20';
   return 'ccfolia';
 }
@@ -82,10 +88,11 @@ function parseCcaEntries(
   avatarMap: Record<string, string>,
   whisperChannels: string[],
   gmName: string | undefined,
+  htmlUrl?: string,
 ): LogEntry[] {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<html><body>${html}</body></html>`, 'text/html');
-  const compressedRows = Array.from(doc.querySelectorAll<HTMLElement>('div.r.row'));
+  const compressedRows = Array.from(doc.querySelectorAll<HTMLElement>('div.r.row, div.r'));
   const compressedEntries = compressedRows
       .map((row, index): LogEntry | null => {
         const copy = row.querySelector<HTMLElement>('.c');
@@ -118,7 +125,7 @@ function parseCcaEntries(
           return {
             id: `cca-archive-${index}`,
             speaker,
-            avatarSrc: row.querySelector('img')?.getAttribute('src') ?? avatarMap[speaker] ?? null,
+            avatarSrc: resolveRoll20AssetUrl(row.querySelector('img')?.getAttribute('src') ?? avatarMap[speaker] ?? '', htmlUrl) || null,
             contentHtml: sanitizeHtml(diceBox.outerHTML),
             isAside: isCcaAsideTab(tabName) || row.closest('details') !== null,
             isWhisper,
@@ -136,7 +143,7 @@ function parseCcaEntries(
         return {
           id: `cca-archive-${index}`,
           speaker,
-          avatarSrc: row.querySelector('img')?.getAttribute('src') ?? avatarMap[speaker] ?? null,
+          avatarSrc: resolveRoll20AssetUrl(row.querySelector('img')?.getAttribute('src') ?? avatarMap[speaker] ?? '', htmlUrl) || null,
           contentHtml,
           isAside: isCcaAsideTab(tabName) || row.closest('details') !== null,
           isWhisper,
@@ -182,7 +189,7 @@ function parseCcaEntries(
       entries.push({
         id: `cca-${i}`,
         speaker,
-        avatarSrc: avatarMap[speaker] ?? null,
+        avatarSrc: resolveRoll20AssetUrl(article.querySelector('.portrait img')?.getAttribute('src') ?? avatarMap[speaker] ?? '', htmlUrl) || null,
         contentHtml: sanitizeHtml(diceBox.outerHTML),
         isAside,
         isWhisper,
@@ -197,7 +204,8 @@ function parseCcaEntries(
     if (!contentDiv) continue;
     const contentHtml = sanitizeHtml(contentDiv.innerHTML.trim());
     if (!contentHtml) continue;
-    const avatarSrc = article.querySelector('.portrait img')?.getAttribute('src') ?? avatarMap[speaker] ?? null;
+    const avatarSrc =
+      resolveRoll20AssetUrl(article.querySelector('.portrait img')?.getAttribute('src') ?? avatarMap[speaker] ?? '', htmlUrl) || null;
 
     entries.push({
       id: `cca-${i}`,
@@ -304,11 +312,17 @@ function getWhisperParticipants(node: Element, fallbackFrom: string): { from: st
 }
 
 function isAsideMessage(node: Element): boolean {
-  return Boolean(
-    node.querySelector(
-      'span[style*="color: rgb(170, 170, 170)"], span[style*="color:rgb(170,170,170)"]',
-    ),
+  if (node.classList.contains('aside') || node.classList.contains('ooc')) return true;
+
+  const channelName = normalizeChannel(
+    node.getAttribute('data-channel') || node.getAttribute('data-tab') || node.querySelector('.channel, .tab')?.textContent,
   );
+  if (channelName.includes('사담') || channelName.includes('잡담') || channelName.includes('ooc')) return true;
+
+  return Array.from(node.querySelectorAll<HTMLElement>('[style]')).some((element) => {
+    const style = (element.getAttribute('style') ?? '').replace(/\s/g, '').toLowerCase();
+    return /color:(?:rgb\(170,170,170\)|#aaa(?:aaa)?|rgba\(170,170,170,(?:0?\.\d+|1)\))/.test(style);
+  });
 }
 
 function getBackgroundImageSource(element: Element | null): string | null {
@@ -383,16 +397,35 @@ function parseIcecandyRoll20Entries(html: string): LogEntry[] {
     .filter((entry): entry is LogEntry => Boolean(entry));
 }
 
-function resolveSourceAssetUrls(node: HTMLElement, htmlUrl: string | undefined) {
-  if (!htmlUrl) return;
+function resolveRoll20AssetUrl(value: string, htmlUrl: string | undefined): string {
+  if (!htmlUrl) return value;
+
   const baseUrl = new URL(htmlUrl, window.location.origin);
+  const mediaMatch = value.match(/^\/images\/afterTheRoll\/.+?\/media\/(.+)$/i);
+
+  // Some Roll20 exports retain a mojibake folder name in absolute asset URLs.
+  // The log HTML itself is in the correct folder, so resolve its media folder
+  // from that trusted location instead of the corrupted path in the export.
+  if (mediaMatch) return new URL(`media/${mediaMatch[1]}`, baseUrl).toString();
+
+  if (/^(?:[a-z][a-z\d+.-]*:|\/|#)/i.test(value)) return value;
+  return new URL(value, baseUrl).toString();
+}
+
+function resolveSourceAssetUrls(node: HTMLElement, htmlUrl: string | undefined) {
   for (const element of Array.from(node.querySelectorAll<HTMLElement>('[src], [href]'))) {
     for (const attribute of ['src', 'href']) {
       const value = element.getAttribute(attribute);
-      if (!value || /^(?:[a-z][a-z\d+.-]*:|\/|#)/i.test(value)) continue;
-      element.setAttribute(attribute, new URL(value, baseUrl).toString());
+      if (!value) continue;
+      element.setAttribute(attribute, resolveRoll20AssetUrl(value, htmlUrl));
     }
   }
+}
+
+function markRoll20Results(node: HTMLElement) {
+  node.querySelectorAll<HTMLElement>('.inlinerollresult').forEach((result) => {
+    result.classList.add('trpg-roll-result');
+  });
 }
 
 function parseEntries(html: string, htmlUrl?: string): LogEntry[] {
@@ -401,18 +434,19 @@ function parseEntries(html: string, htmlUrl?: string): LogEntry[] {
   const nodes = Array.from(doc.querySelectorAll('.message.general, .message.desc, .message.private, .message.emote'));
   const parsed = nodes
     .map((node, index): LogEntry | null => {
-      const isMedia = node.classList.contains('desc') || node.classList.contains('emote');
       const isWhisper = node.classList.contains('private') || node.classList.contains('whisper');
       const originalSpeaker = normalizeSpeaker(node.querySelector('.by')?.textContent);
       const whisperParticipants = isWhisper ? getWhisperParticipants(node, originalSpeaker) : null;
       const speaker = whisperParticipants?.from || originalSpeaker;
-      const avatarSrc = getAvatarSource(node);
+      const avatarSrc = resolveRoll20AssetUrl(getAvatarSource(node) ?? '', htmlUrl) || null;
+      const isNarration = node.classList.contains('desc') || (node.classList.contains('emote') && !speaker && !avatarSrc);
       const clone = node.cloneNode(true) as HTMLElement;
       const isAside = isAsideMessage(node);
 
       resolveSourceAssetUrls(clone, htmlUrl);
+      markRoll20Results(clone);
 
-      clone.querySelectorAll('.avatar, .by, .spacer, br.Apple-interchange-newline').forEach((element) => {
+      clone.querySelectorAll('.avatar, .by, .tstamp, .spacer, br.Apple-interchange-newline').forEach((element) => {
         element.remove();
       });
 
@@ -428,14 +462,39 @@ function parseEntries(html: string, htmlUrl?: string): LogEntry[] {
         isWhisper,
         whisperFrom: whisperParticipants?.from,
         whisperTo: whisperParticipants?.to,
-        kind: isMedia ? 'media' : 'chat',
+        isRoll20Narration: isNarration,
+        kind: isNarration ? 'media' : 'chat',
       };
     })
     .filter((entry): entry is LogEntry => Boolean(entry));
 
-  // Keep each source message as an entry. Merging consecutive messages makes
-  // the page limit apply to speaker groups rather than to actual dialogue lines.
-  return parsed;
+  return parsed.reduce<LogEntry[]>((resolved, entry) => {
+    const previous = resolved.at(-1);
+    const isOmittedRoll20Continuation =
+      entry.kind === 'chat' &&
+      !entry.speaker &&
+      previous?.kind === 'chat' &&
+      !previous.isNarrator &&
+      Boolean(previous.speaker) &&
+      entry.isAside === previous.isAside &&
+      entry.isWhisper === previous.isWhisper &&
+      entry.whisperTo === previous.whisperTo;
+
+    if (!isOmittedRoll20Continuation) {
+      resolved.push(entry);
+      return resolved;
+    }
+
+    // Roll20 omits the avatar and name in consecutive messages from the
+    // same speaker. Restore them from the preceding compatible message.
+    resolved.push({
+      ...entry,
+      speaker: previous.speaker,
+      avatarSrc: entry.avatarSrc ?? previous.avatarSrc,
+      whisperFrom: previous.whisperFrom,
+    });
+    return resolved;
+  }, []);
 }
 
 function paginateEntries(entries: LogEntry[]): LogEntry[][] {
@@ -463,6 +522,31 @@ function paginateEntries(entries: LogEntry[]): LogEntry[][] {
   return pages;
 }
 
+function mergeConsecutiveCharacterEntries(entries: LogEntry[]): LogEntry[] {
+  return entries.reduce<LogEntry[]>((merged, entry) => {
+    const previous = merged.at(-1);
+    const isSameCharacter =
+      previous &&
+      entry.kind === 'chat' &&
+      previous.kind === 'chat' &&
+      !entry.isNarrator &&
+      !previous.isNarrator &&
+      Boolean(entry.speaker) &&
+      entry.speaker === previous.speaker &&
+      entry.isAside === previous.isAside &&
+      entry.isWhisper === previous.isWhisper &&
+      entry.whisperTo === previous.whisperTo;
+
+    if (!isSameCharacter) {
+      merged.push(entry);
+      return merged;
+    }
+
+    previous.contentHtml += `<div class="trpg-log-continuation">${entry.contentHtml}</div>`;
+    return merged;
+  }, []);
+}
+
 function wrapPortraitLogImage(img: HTMLImageElement) {
   if (img.closest('.trpg-portrait-frame')) return;
   if (!img.naturalWidth || !img.naturalHeight) return;
@@ -476,6 +560,7 @@ function wrapPortraitLogImage(img: HTMLImageElement) {
 
 export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc, gmName, cast, mainChannels = ['main'], whisperChannels = [] }: Props) {
   const [html, setHtml] = useState<string | null>(htmlContent ?? null);
+  const [isClient, setIsClient] = useState(false);
   const [pageIndex, setPageIndex] = useState(0);
   const [showAside, setShowAside] = useState(true);
   const [logFont, setLogFont] = useState<LogFontValue>('default');
@@ -487,6 +572,11 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
     () => buildAvatarMap(gmName, fallbackAvatarSrc, cast),
     [gmName, fallbackAvatarSrc, cast],
   );
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setIsClient(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   useEffect(() => {
     restoredPageRef.current = false;
@@ -527,6 +617,20 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
   }, [htmlUrl]);
 
   useEffect(() => {
+    if (htmlContent === undefined) return;
+
+    let cancelled = false;
+
+    expandCcaArchive(htmlContent).then((expandedHtml) => {
+      if (!cancelled) setHtml(expandedHtml);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [htmlContent]);
+
+  useEffect(() => {
     if (htmlContent !== undefined || !htmlUrl) return;
 
     const controller = new AbortController();
@@ -545,15 +649,21 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
   }, [htmlUrl, htmlContent]);
 
   const entries = useMemo(() => {
-    if (!html) return [];
+    if (!html || !isClient) return [];
     const format = detectFormat(html);
-    if (format === 'icecandy-roll20') return parseIcecandyRoll20Entries(html);
     const normalizedMainChannels = mainChannels.map(normalizeChannel);
     const normalizedWhisperChannels = whisperChannels.map(normalizeChannel);
-    if (format === 'cca') return parseCcaEntries(html, avatarMap, normalizedWhisperChannels, gmName);
-    if (format === 'ccfolia') return parseCcfoliaEntries(html, avatarMap, normalizedMainChannels, normalizedWhisperChannels);
-    return parseEntries(html, htmlUrl);
-  }, [html, avatarMap, mainChannels, whisperChannels, htmlUrl, gmName]);
+    const parsedEntries =
+      format === 'icecandy-roll20'
+        ? parseIcecandyRoll20Entries(html)
+        : format === 'cca'
+          ? parseCcaEntries(html, avatarMap, normalizedWhisperChannels, gmName, htmlUrl)
+          : format === 'ccfolia'
+            ? parseCcfoliaEntries(html, avatarMap, normalizedMainChannels, normalizedWhisperChannels)
+            : parseEntries(html, htmlUrl);
+
+    return mergeConsecutiveCharacterEntries(parsedEntries);
+  }, [html, isClient, avatarMap, mainChannels, whisperChannels, htmlUrl, gmName]);
   const visibleEntries = useMemo(
     () => (showAside ? entries : entries.filter((entry) => !entry.isAside)),
     [entries, showAside],
@@ -695,7 +805,9 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
             key={entry.id}
             className={
               entry.kind === 'media'
-                ? 'trpg-log-row trpg-log-media-row px-[0.25rem] py-[0.5rem] text-center md:px-[0.35rem] md:py-[0.6rem]'
+                ? `trpg-log-row trpg-log-media-row px-[0.25rem] py-[0.5rem] text-center md:px-[0.35rem] md:py-[0.6rem] ${
+                    entry.isRoll20Narration ? 'trpg-roll20-narration' : ''
+                  }`
                 : `trpg-log-row grid grid-cols-[3.75rem_minmax(0,1fr)] gap-[0.65rem] px-[0.25rem] py-[0.5rem] md:grid-cols-[4.1rem_minmax(0,1fr)] md:px-[0.35rem] md:py-[0.6rem] ${
                     entry.isAside ? 'trpg-log-row-aside' : ''
                   } ${entry.isWhisper ? 'trpg-log-row-whisper' : ''} ${entry.isNarrator ? 'trpg-log-row-cca-narrator' : ''}`
@@ -711,21 +823,20 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
             ) : (
               <>
                 <div className="relative z-[1] flex flex-col items-center justify-start pt-[0.1rem]">
-                  {entry.avatarSrc || fallbackAvatarSrc ? (
+                  {entry.avatarSrc ? (
                     <div className="h-[3.75rem] w-[3.75rem] overflow-hidden rounded-[0.2rem] border border-[rgba(87,67,48,0.18)] p-[0.12rem] md:h-[4.1rem] md:w-[4.1rem]">
                       {/* Roll20 avatar URLs are runtime external sources, so Next Image cannot optimize them safely. */}
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={entry.avatarSrc || fallbackAvatarSrc || ''}
+                        src={entry.avatarSrc}
                         alt={entry.speaker || 'Narration'}
                         className="h-full w-full scale-[1.08] rounded-[0.12rem] object-cover"
+                        onError={(event) => {
+                          event.currentTarget.parentElement?.classList.add('hidden');
+                        }}
                       />
                     </div>
-                  ) : (
-                    <div className="flex h-[3.75rem] w-[3.75rem] items-center justify-center rounded-[0.2rem] border border-[rgba(87,67,48,0.18)] text-[0.55rem] uppercase tracking-[0.08em] text-black/35 md:h-[4.1rem] md:w-[4.1rem]">
-                      Log
-                    </div>
-                  )}
+                  ) : null}
                 </div>
 
                 <div className="relative z-[1] flex min-h-full min-w-0 flex-col justify-center">
@@ -823,6 +934,36 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
         .trpg-log-reader .trpg-log-row-cca-narrator .trpg-entry-content * {
           font-weight: 400 !important;
           text-align: left !important;
+        }
+
+        .trpg-log-reader .trpg-roll-result {
+          display: inline-block !important;
+          padding: 0.05rem 0.2rem !important;
+          border: 0.1rem solid rgba(88, 125, 163, 0.58) !important;
+          border-radius: 0.18rem;
+          background: rgba(238, 244, 249, 0.92) !important;
+          color: #1f2933 !important;
+          font-family: var(--trpg-log-font-family) !important;
+          font-weight: 700 !important;
+          line-height: 1.3 !important;
+          text-shadow: none !important;
+          vertical-align: baseline;
+        }
+
+        .trpg-log-reader .trpg-roll-result.fullcrit,
+        .trpg-log-reader .trpg-roll-result.importantroll {
+          border-color: rgba(82, 128, 89, 0.72) !important;
+          background: rgba(225, 240, 221, 0.94) !important;
+        }
+
+        .trpg-log-reader .trpg-roll-result.fullfail {
+          border-color: rgba(163, 79, 79, 0.68) !important;
+          background: rgba(247, 226, 222, 0.94) !important;
+        }
+
+        .trpg-log-reader .trpg-roll20-narration .trpg-media-bubble,
+        .trpg-log-reader .trpg-roll20-narration .trpg-media-bubble * {
+          text-align: center !important;
         }
 
         .trpg-log-reader .trpg-log-row:first-child {

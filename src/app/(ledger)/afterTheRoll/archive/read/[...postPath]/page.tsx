@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import {
   getAllTrpgPostParams,
+  getLocalDecryptedTrpgPostHtml,
   getTrpgPost,
   getTrpgPostHtmlUrl,
 } from '@/lib/data/trpg';
@@ -67,6 +68,9 @@ export default async function TrpgReadPage({ params }: Props) {
   const htmlUrl = getTrpgPostHtmlUrl(resolved.folderSlug, resolved.postSlug);
   if (!post || !htmlUrl) notFound();
 
+  const localHtmlContent = post.encrypted
+    ? getLocalDecryptedTrpgPostHtml(resolved.folderSlug, resolved.postSlug)
+    : undefined;
   const shouldUseEncryptedReader = post.encrypted && process.env.NODE_ENV !== 'development';
 
   return (
@@ -131,6 +135,7 @@ export default async function TrpgReadPage({ params }: Props) {
           ) : (
             <TrpgLogReader
               htmlUrl={htmlUrl}
+              htmlContent={localHtmlContent ?? undefined}
               fallbackAvatarSrc={post.gmIconSrc}
               gmName={post.gmName}
               cast={post.cast}

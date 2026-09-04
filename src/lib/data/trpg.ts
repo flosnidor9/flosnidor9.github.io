@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { createDecipheriv, pbkdf2Sync } from 'crypto';
 import matter from 'gray-matter';
 import { getAllFolderSlugs } from '@/lib/data/folders';
 import { TRPG_ARCHIVE_ROOT, TRPG_ASSET_PREFIX, TRPG_PUBLIC_ROOT } from '@/lib/trpgSource';
@@ -85,6 +86,15 @@ function ensureCast(value: unknown): TrpgCastEntry[] {
     .filter((item): item is TrpgCastEntry => Boolean(item?.plName || item?.pcName));
 }
 
+function resolvePostMediaUrl(folderSlug: string, value: string): string {
+  const mediaMatch = value.match(/^\/images\/afterTheRoll\/.+?\/media\/(.+)$/i);
+  if (!mediaMatch) return value;
+
+  // Roll20 exports can retain a mojibake folder name in metadata. The post's
+  // actual folder is authoritative for its media assets.
+  return `${TRPG_ASSET_PREFIX}/afterTheRoll/${normalizeSlug(folderSlug)}/media/${mediaMatch[1]}`;
+}
+
 function parsePostMeta(folderSlug: string, fileName: string): TrpgPostMeta | null {
   const postSlug = path.basename(fileName, '.md');
   const raw = fs.readFileSync(path.join(toFolderAbs(folderSlug), fileName), 'utf8');
@@ -102,8 +112,11 @@ function parsePostMeta(folderSlug: string, fileName: string): TrpgPostMeta | nul
     date: ensureString(data.date),
     tags: ensureArray(data.tags),
     gmName: ensureString(data.gmName),
-    gmIconSrc: ensureString(data.gmIconSrc),
-    cast: ensureCast(data.cast),
+    gmIconSrc: resolvePostMediaUrl(folderSlug, ensureString(data.gmIconSrc)),
+    cast: ensureCast(data.cast).map((entry) => ({
+      ...entry,
+      iconSrc: resolvePostMediaUrl(folderSlug, entry.iconSrc),
+    })),
     htmlPath,
     htmlUrl: toTrpgPublicUrl(folderSlug, htmlPath),
     sourceFormat: (['roll20', 'ccfolia', 'cca'].includes(ensureString(data.sourceFormat)) ? data.sourceFormat : '') as TrpgPostMeta['sourceFormat'],
@@ -162,6 +175,75 @@ export function getTrpgPostHtml(folderSlug: string, postSlug: string): string | 
   const html = fs.readFileSync(htmlAbs, 'utf8');
   const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
   return bodyMatch ? bodyMatch[1] : html;
+}
+
+type EncryptedLogPayload = {
+  salt: string;
+  iv: string;
+  ciphertext: string;
+  authTag: string;
+};
+
+function isEncryptedLogPayload(value: unknown): value is EncryptedLogPayload {
+  if (!value || typeof value !== 'object') return false;
+  const payload = value as Record<string, unknown>;
+  return ['salt', 'iv', 'ciphertext', 'authTag'].every((key) => typeof payload[key] === 'string');
+}
+
+function getLocalTrpgPasswords(): Record<string, string> | null {
+  const plainPasswordsPath = path.join(process.cwd(), 'passwords.json');
+  const encryptedPasswordsPath = path.join(process.cwd(), 'passwords.enc.json');
+
+  try {
+    return JSON.parse(fs.readFileSync(plainPasswordsPath, 'utf8')) as Record<string, string>;
+  } catch {
+    // The local plaintext file is optional and may be intentionally absent.
+  }
+
+  const masterKey = process.env.TRPG_MASTER_KEY;
+  if (!masterKey || !fs.existsSync(encryptedPasswordsPath)) return null;
+
+  try {
+    const payload = JSON.parse(fs.readFileSync(encryptedPasswordsPath, 'utf8')) as unknown;
+    if (!isEncryptedLogPayload(payload)) return null;
+
+    const key = pbkdf2Sync(masterKey, Buffer.from(payload.salt, 'hex'), 100000, 32, 'sha256');
+    const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(payload.iv, 'hex'));
+    decipher.setAuthTag(Buffer.from(payload.authTag, 'hex'));
+    return JSON.parse(
+      Buffer.concat([decipher.update(Buffer.from(payload.ciphertext, 'hex')), decipher.final()]).toString('utf8'),
+    ) as Record<string, string>;
+  } catch {
+    return null;
+  }
+}
+
+export function getLocalDecryptedTrpgPostHtml(folderSlug: string, postSlug: string): string | null {
+  if (process.env.NODE_ENV !== 'development') return null;
+
+  const post = getTrpgPost(folderSlug, postSlug);
+  if (!post) return null;
+
+  const htmlAbs = resolvePublicHtmlAbs(folderSlug, post.htmlPath);
+  if (!htmlAbs) return null;
+
+  try {
+    const payload = JSON.parse(fs.readFileSync(htmlAbs, 'utf8')) as unknown;
+    if (!isEncryptedLogPayload(payload)) return fs.readFileSync(htmlAbs, 'utf8');
+
+    const passwords = getLocalTrpgPasswords();
+    if (!passwords) return null;
+    const passwordKey = `${normalizeSlug(folderSlug)}/${postSlug}`;
+    const password = passwords[passwordKey] ?? passwords[postSlug];
+    if (!password) return null;
+
+    const key = pbkdf2Sync(password, Buffer.from(payload.salt, 'hex'), 100000, 32, 'sha256');
+    const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(payload.iv, 'hex'));
+    decipher.setAuthTag(Buffer.from(payload.authTag, 'hex'));
+    return Buffer.concat([decipher.update(Buffer.from(payload.ciphertext, 'hex')), decipher.final()]).toString('utf8');
+  } catch {
+    return null;
+  }
 }
 
 export function getTrpgPostHtmlUrl(folderSlug: string, postSlug: string): string | null {

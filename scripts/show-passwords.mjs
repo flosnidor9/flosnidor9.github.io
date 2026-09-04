@@ -34,6 +34,12 @@ try {
 }
 
 const passwords = JSON.parse(decrypted);
+
+if (process.argv.includes('--restore')) {
+  fs.writeFileSync(path.join(rootDir, 'passwords.json'), `${JSON.stringify(passwords, null, 2)}\n`);
+  console.log('passwords.json restored');
+  process.exit(0);
+}
 console.log('\n📋 현재 로그별 비밀번호\n');
 for (const [slug, pw] of Object.entries(passwords)) {
   console.log(`  ${slug}`);
