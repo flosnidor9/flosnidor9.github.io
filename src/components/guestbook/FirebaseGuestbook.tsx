@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp, Timestamp, doc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp, Timestamp, doc, deleteDoc, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -13,6 +13,7 @@ type GuestbookEntry = {
   timestamp?: Timestamp;
   parentId?: string;
   authorRole?: 'admin' | 'guest';
+  likedBy?: string[];
 };
 
 type GuestbookTheme = 'glass' | 'afterroll';
@@ -24,6 +25,7 @@ type FirebaseGuestbookProps = {
   theme?: GuestbookTheme;
   canDeleteWhenSignedIn?: boolean;
   threaded?: boolean;
+  likesEnabled?: boolean;
 };
 
 const MAX_MESSAGE_LENGTH = 500;
@@ -32,9 +34,23 @@ const REPLY_INDENT_PER_LEVEL = 1.25;
 const MAX_REPLY_INDENT = 5;
 const ADMIN_NAME = 'admin';
 const ADMIN_ROLE = 'admin';
+const VISITOR_ID_STORAGE_KEY = 'guestbook-visitor-id';
 
 function isAdminEntry(entry: GuestbookEntry) {
   return entry.authorRole === ADMIN_ROLE;
+}
+
+function getLikeCount(entry: GuestbookEntry) {
+  return entry.likedBy?.length ?? 0;
+}
+
+function getVisitorId() {
+  const existingId = window.localStorage.getItem(VISITOR_ID_STORAGE_KEY);
+  if (existingId) return existingId;
+
+  const visitorId = window.crypto.randomUUID();
+  window.localStorage.setItem(VISITOR_ID_STORAGE_KEY, visitorId);
+  return visitorId;
 }
 
 const THEME_STYLES = {
@@ -61,6 +77,7 @@ const THEME_STYLES = {
     messageClassName: 'text-[0.95rem] text-[var(--color-text)]/90 leading-relaxed whitespace-pre-wrap',
     deleteButtonClassName: 'text-[0.75rem] text-white/55 transition-colors hover:text-red-300',
     replyButtonClassName: 'text-[0.75rem] text-[var(--color-muted)] transition-colors hover:text-[var(--color-accent)]',
+    reactionButtonClassName: 'text-[0.75rem] text-[var(--color-muted)] transition-colors hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-50',
     emptyClassName: 'glass-card rounded-[1rem] p-[3rem] text-center',
     emptyStyle: {
       background: 'rgba(255, 255, 255, 0.02)',
@@ -85,6 +102,7 @@ const THEME_STYLES = {
     messageClassName: 'text-[0.92rem] leading-[1.65] text-[var(--atr-muted)] whitespace-pre-wrap',
     deleteButtonClassName: 'text-[0.72rem] text-[var(--atr-soft)] transition-colors hover:text-[var(--atr-warn)]',
     replyButtonClassName: 'text-[0.72rem] text-[var(--atr-soft)] transition-colors hover:text-[var(--atr-accent)]',
+    reactionButtonClassName: 'text-[0.72rem] text-[var(--atr-soft)] transition-colors hover:text-[var(--atr-accent)] disabled:cursor-not-allowed disabled:opacity-50',
     emptyClassName: 'rounded-[0.45rem] border border-[var(--atr-line)] bg-white/55 p-[2rem] text-center',
     emptyStyle: {},
     emptyTextClassName: 'text-[var(--atr-muted)]',
@@ -101,12 +119,16 @@ type ThreadedEntryProps = {
   replies: GuestbookEntry[];
   isSubmitting: boolean;
   isAdminWriter: boolean;
+  likesEnabled: boolean;
+  reactingId: string | null;
+  visitorId: string | null;
   canDelete: boolean;
   deletingId: string | null;
   styles: ThemeStyles;
   formatDate: (timestamp?: Timestamp) => string;
   onDelete: (entryId: string) => Promise<void>;
   onReplySubmit: (parentId: string, name: string, message: string) => Promise<boolean>;
+  onLike: (entry: GuestbookEntry) => Promise<void>;
   renderReply: (entry: GuestbookEntry, index: number, depth: number) => React.ReactNode;
 };
 
@@ -118,12 +140,16 @@ function ThreadedEntry({
   replies,
   isSubmitting,
   isAdminWriter,
+  likesEnabled,
+  reactingId,
+  visitorId,
   canDelete,
   deletingId,
   styles,
   formatDate,
   onDelete,
   onReplySubmit,
+  onLike,
   renderReply,
 }: ThreadedEntryProps) {
   const [isReplying, setIsReplying] = useState(false);
@@ -166,9 +192,12 @@ function ThreadedEntry({
           </div>
         </div>
         <p className={styles.messageClassName}>{entry.message}</p>
-        <button type="button" onClick={() => setIsReplying((current) => !current)} className={`mt-[0.65rem] ${styles.replyButtonClassName}`} aria-expanded={isReplying}>
-          {isReplying ? '답글 취소' : '답글'}
-        </button>
+        <div className="mt-[0.65rem] flex items-center gap-[0.75rem]">
+          <button type="button" onClick={() => setIsReplying((current) => !current)} className={styles.replyButtonClassName} aria-expanded={isReplying}>
+            {isReplying ? '답글 취소' : '답글'}
+          </button>
+          {likesEnabled && <button type="button" onClick={() => void onLike(entry)} disabled={!visitorId || reactingId === entry.id} aria-pressed={visitorId ? entry.likedBy?.includes(visitorId) : false} className={styles.reactionButtonClassName}>{visitorId && entry.likedBy?.includes(visitorId) ? '👍' : '👍🏻'} {getLikeCount(entry)}</button>}
+        </div>
       </motion.div>
 
       <AnimatePresence initial={false}>
@@ -211,6 +240,7 @@ export default function FirebaseGuestbook({
   theme = 'glass',
   canDeleteWhenSignedIn = false,
   threaded = false,
+  likesEnabled = false,
 }: FirebaseGuestbookProps) {
   const { user, isAdmin } = useAuth();
   const [entries, setEntries] = useState<GuestbookEntry[]>([]);
@@ -218,6 +248,8 @@ export default function FirebaseGuestbook({
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [reactingId, setReactingId] = useState<string | null>(null);
+  const [visitorId, setVisitorId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const styles = THEME_STYLES[theme];
   const canDelete = canDeleteWhenSignedIn && !!user;
@@ -244,6 +276,10 @@ export default function FirebaseGuestbook({
   useEffect(() => {
     loadEntries();
   }, [loadEntries]);
+
+  useEffect(() => {
+    if (likesEnabled) setVisitorId(getVisitorId());
+  }, [likesEnabled]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -298,6 +334,29 @@ export default function FirebaseGuestbook({
       setError('방명록 삭제에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleLike = async (entry: GuestbookEntry) => {
+    if (!visitorId || reactingId) return;
+
+    setReactingId(entry.id);
+    try {
+      await runTransaction(db, async (transaction) => {
+        const entryRef = doc(db, collectionName, entry.id);
+        const snapshot = await transaction.get(entryRef);
+        if (!snapshot.exists()) return;
+
+        const likedBy = (snapshot.data().likedBy ?? []) as string[];
+        const hasLiked = likedBy.includes(visitorId);
+        transaction.update(entryRef, { likedBy: hasLiked ? likedBy.filter((id) => id !== visitorId) : [...likedBy, visitorId] });
+      });
+      await loadEntries();
+    } catch (err) {
+      console.error('Failed to update reaction:', err);
+      setError('반응을 저장하지 못했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setReactingId(null);
     }
   };
 
@@ -374,12 +433,16 @@ export default function FirebaseGuestbook({
         replies={replies}
         isSubmitting={isSubmitting}
         isAdminWriter={isAdmin}
+        likesEnabled={likesEnabled}
+        reactingId={reactingId}
+        visitorId={visitorId}
         canDelete={canDelete}
         deletingId={deletingId}
         styles={styles}
         formatDate={formatDate}
         onDelete={handleDelete}
         onReplySubmit={handleReplySubmit}
+        onLike={handleLike}
         renderReply={renderEntry}
       />
     );
