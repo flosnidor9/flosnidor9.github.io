@@ -1107,7 +1107,333 @@ export default function TrpgLogReader({ htmlUrl, htmlContent, fallbackAvatarSrc,
         }
 
         .trpg-log-reader .sheet-container {
-          font-size: 12px !important;
+          font-size: 0.75rem !important;
+        }
+
+        /* Preserve the visual hierarchy of the Shinobigami Roll20 templates.
+           They are part of the log itself, not ordinary chat copy. */
+        .trpg-log-reader .sheet-rolltemplate-ninpo,
+        .trpg-log-reader .sheet-rolltemplate-field,
+        .trpg-log-reader .sheet-rolltemplate-other {
+          display: block !important;
+          width: min(100%, 30rem) !important;
+          margin: 0.35rem 0 !important;
+          color: #182c4a !important;
+          font-family: var(--trpg-log-font-family) !important;
+          text-align: left !important;
+        }
+
+        .trpg-log-reader .sheet-rolltemplate-ninpo .sheet-container,
+        .trpg-log-reader .sheet-rolltemplate-field .sheet-container,
+        .trpg-log-reader .sheet-rolltemplate-other .sheet-container {
+          overflow: hidden !important;
+          border: 0.0625rem solid #182c4a !important;
+          border-radius: 0.18rem !important;
+          background: #ffffff !important;
+          box-shadow: 0 0.12rem 0.3rem rgba(24, 44, 74, 0.14) !important;
+        }
+
+        .trpg-log-reader .sheet-common {
+          overflow: hidden !important;
+          background: transparent !important;
+        }
+
+        .trpg-log-reader .sheet-title {
+          padding: 0.5rem 0.65rem 0.45rem !important;
+          border-bottom: 0.0625rem solid #182c4a !important;
+          background: #ffffff !important;
+          color: #182c4a !important;
+        }
+
+        .trpg-log-reader .sheet-character-name {
+          color: inherit !important;
+          font-size: 0.88rem !important;
+          font-weight: 400 !important;
+          letter-spacing: 0.01em !important;
+        }
+
+        .trpg-log-reader .sheet-character-name strong {
+          color: inherit !important;
+          font-weight: 700 !important;
+        }
+
+        .trpg-log-reader .sheet-suffix {
+          color: rgba(24, 44, 74, 0.72) !important;
+        }
+
+        .trpg-log-reader .sheet-field {
+          display: inline-block !important;
+          margin-top: 0.24rem !important;
+          padding: 0.14rem 0.32rem !important;
+          border: 0.0625rem solid #182c4a !important;
+          border-radius: 0.1rem !important;
+          background: #d8dbe6 !important;
+          color: #182c4a !important;
+          font-size: 0.76rem !important;
+          font-weight: 700 !important;
+        }
+
+        .trpg-log-reader .sheet-roll-wrapper {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 0.65rem !important;
+          padding: 0.55rem 0.65rem !important;
+          background: #ffffff !important;
+        }
+
+        .trpg-log-reader .sheet-roll-name {
+          min-width: 0 !important;
+          color: #182c4a !important;
+          font-size: 0.94rem !important;
+          font-weight: 700 !important;
+        }
+
+        .trpg-log-reader .sheet-dice {
+          display: flex !important;
+          flex: none !important;
+          gap: 0.2rem !important;
+        }
+
+        .trpg-log-reader .sheet-dice .inlinerollresult,
+        .trpg-log-reader .sheet-target .inlinerollresult {
+          min-width: 1.75rem !important;
+          padding: 0.18rem 0.35rem !important;
+          border: 0.0625rem solid #182c4a !important;
+          border-radius: 0.12rem !important;
+          background: transparent !important;
+          color: #182c4a !important;
+          font-size: 0.9rem !important;
+          font-weight: 700 !important;
+          line-height: 1.15 !important;
+          text-align: center !important;
+        }
+
+        .trpg-log-reader .sheet-dice .inlinerollresult.fullcrit {
+          border-color: #247305 !important;
+          background: transparent !important;
+          color: #247305 !important;
+        }
+
+        .trpg-log-reader .sheet-dice .inlinerollresult.fullfail {
+          border-color: #be202e !important;
+          background: transparent !important;
+          color: #be202e !important;
+        }
+
+        .trpg-log-reader .sheet-roll-result {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 0.5rem !important;
+          padding: 0.4rem 0.65rem !important;
+          border-top: 0.0625rem solid #d8dbe6 !important;
+          border-bottom: 0.0625rem solid #182c4a !important;
+          background: linear-gradient(to left, #ffffff, #d8dbe6) !important;
+        }
+
+        .trpg-log-reader .sheet-flex-row {
+          display: flex !important;
+          align-items: center !important;
+          gap: 0.35rem !important;
+          color: #182c4a !important;
+          font-size: 0.72rem !important;
+        }
+
+        .trpg-log-reader .sheet-target .inlinerollresult {
+          min-width: auto !important;
+          padding: 0.08rem 0.24rem !important;
+          background: transparent !important;
+        }
+
+        .trpg-log-reader .sheet-result {
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          min-width: 3.25rem !important;
+          padding: 0.18rem 0.4rem !important;
+          border-radius: 999rem !important;
+          background: #be202e !important;
+          color: #ffffff !important;
+          font-size: 0.76rem !important;
+          font-weight: 700 !important;
+          letter-spacing: 0.04em !important;
+        }
+
+        .trpg-log-reader .sheet-result[data-i18n='success'] {
+          background: #247305 !important;
+        }
+
+        .trpg-log-reader .sheet-content-wrapper {
+          padding: 0.55rem 0.65rem 0.65rem !important;
+          background: #ffffff !important;
+        }
+
+        .trpg-log-reader .sheet-flex-column {
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 0.3rem !important;
+        }
+
+        .trpg-log-reader .sheet-item-row {
+          display: flex !important;
+          flex-wrap: wrap !important;
+          gap: 0.28rem !important;
+          margin-top: 0.3rem !important;
+        }
+
+        .trpg-log-reader .sheet-item-wrapper {
+          display: inline-flex !important;
+          overflow: hidden !important;
+          border: 0.0625rem solid #182c4a !important;
+          border-radius: 0.12rem !important;
+          background: #ffffff !important;
+        }
+
+        .trpg-log-reader .sheet-type-item,
+        .trpg-log-reader .sheet-type-value {
+          padding: 0.15rem 0.3rem !important;
+          font-size: 0.68rem !important;
+          line-height: 1.25 !important;
+        }
+
+        .trpg-log-reader .sheet-type-item {
+          background: #d8dbe6 !important;
+          color: #182c4a !important;
+        }
+
+        .trpg-log-reader .sheet-type-value {
+          background: #ffffff !important;
+          color: #182c4a !important;
+          font-weight: 700 !important;
+        }
+
+        .trpg-log-reader .sheet-effect-wrapper {
+          width: 100% !important;
+          padding: 0.45rem 0.5rem !important;
+          border-left: 0.18rem solid #182c4a !important;
+          background: linear-gradient(to left, #ffffff, #d8dbe6) !important;
+          color: #182c4a !important;
+          font-size: 0.74rem !important;
+          line-height: 1.55 !important;
+        }
+
+        .trpg-log-reader .sheet-effect {
+          color: inherit !important;
+        }
+
+        .trpg-log-reader .sheet-effect-inner-wrapper {
+          margin-top: 0.28rem !important;
+          padding-top: 0.28rem !important;
+          border-top: 0.0625rem solid rgba(24, 44, 74, 0.2) !important;
+        }
+
+        .trpg-log-reader .sheet-italic {
+          font-style: italic !important;
+          opacity: 0.78 !important;
+        }
+
+        /* Call of Cthulhu Roll20 templates use a table rather than the
+           Shinobigami card markup. Keep their result values equally legible. */
+        .trpg-log-reader [class*='sheet-rolltemplate-coc'] {
+          display: block !important;
+          width: min(100%, 24rem) !important;
+          margin: 0.35rem 0 !important;
+          overflow: hidden !important;
+          border: 0.0625rem solid #1e3557 !important;
+          border-radius: 0.18rem !important;
+          background: #ffffff !important;
+          box-shadow: 0 0.12rem 0.3rem rgba(30, 53, 87, 0.14) !important;
+          color: #1e3557 !important;
+        }
+
+        .trpg-log-reader [class*='sheet-rolltemplate-coc'] table {
+          width: 100% !important;
+          border: 0 !important;
+          border-collapse: collapse !important;
+          background: #ffffff !important;
+        }
+
+        .trpg-log-reader [class*='sheet-rolltemplate-coc'] caption {
+          padding: 0.5rem 0.65rem !important;
+          background: #edf2f8 !important;
+          color: #1e3557 !important;
+          font-size: 0.92rem !important;
+          font-weight: 700 !important;
+          text-align: left !important;
+        }
+
+        .trpg-log-reader [class*='sheet-rolltemplate-coc'] tr,
+        .trpg-log-reader [class*='sheet-rolltemplate-coc'] tr[style] {
+          background: #ffffff !important;
+        }
+
+        .trpg-log-reader [class*='sheet-rolltemplate-coc'] td {
+          padding: 0.42rem 0.65rem !important;
+          border-top: 0.0625rem solid #d4dfec !important;
+          background: #ffffff !important;
+          color: #1e3557 !important;
+          font-size: 0.78rem !important;
+          line-height: 1.35 !important;
+        }
+
+        .trpg-log-reader [class*='sheet-rolltemplate-coc'] .sheet-template_label {
+          width: 34% !important;
+          background: #edf2f8 !important;
+          color: #425b7a !important;
+          font-weight: 700 !important;
+          white-space: nowrap !important;
+        }
+
+        .trpg-log-reader [class*='sheet-rolltemplate-coc'] .sheet-template_value {
+          color: #1e3557 !important;
+          font-weight: 600 !important;
+        }
+
+        .trpg-log-reader [class*='sheet-rolltemplate-coc'] .inlinerollresult {
+          display: inline-block !important;
+          min-width: 1.5rem !important;
+          padding: 0.08rem 0.22rem !important;
+          border: 0.0625rem solid #8da4be !important;
+          border-radius: 0.1rem !important;
+          background: #ffffff !important;
+          color: #1e3557 !important;
+          font-weight: 700 !important;
+          text-align: center !important;
+        }
+
+        .trpg-log-reader [class*='sheet-rolltemplate-coc'] .inlinerollresult.fullcrit {
+          border-color: #247305 !important;
+          color: #247305 !important;
+        }
+
+        .trpg-log-reader [class*='sheet-rolltemplate-coc'] .inlinerollresult.fullfail {
+          border-color: #be202e !important;
+          color: #be202e !important;
+        }
+
+        .trpg-log-reader [class*='sheet-rolltemplate-coc'] td.sheet-template_value[data-i18n] {
+          background: #247305 !important;
+          color: #ffffff !important;
+          font-weight: 700 !important;
+        }
+
+        .trpg-log-reader [class*='sheet-rolltemplate-coc'] td.sheet-template_value[data-i18n='hard'] {
+          background: #35783d !important;
+        }
+
+        .trpg-log-reader [class*='sheet-rolltemplate-coc'] td.sheet-template_value[data-i18n='extreme'] {
+          background: #1f5e8f !important;
+        }
+
+        .trpg-log-reader [class*='sheet-rolltemplate-coc'] td.sheet-template_value[data-i18n='critical'] {
+          background: #6f4e9b !important;
+        }
+
+        .trpg-log-reader [class*='sheet-rolltemplate-coc'] td.sheet-template_value[data-i18n='failure'],
+        .trpg-log-reader [class*='sheet-rolltemplate-coc'] td.sheet-template_value[data-i18n='fail'],
+        .trpg-log-reader [class*='sheet-rolltemplate-coc'] td.sheet-template_value[data-i18n='fumble'] {
+          background: #be202e !important;
         }
       `}</style>
     </section>
