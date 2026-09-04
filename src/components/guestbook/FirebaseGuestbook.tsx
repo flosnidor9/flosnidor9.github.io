@@ -32,7 +32,7 @@ const MAX_MESSAGE_LENGTH = 500;
 const MAX_NAME_LENGTH = 50;
 const REPLY_INDENT_PER_LEVEL = 1.25;
 const MAX_REPLY_INDENT = 5;
-const ADMIN_NAME = 'admin';
+const ADMIN_NAME = '✦';
 const ADMIN_ROLE = 'admin';
 const VISITOR_ID_STORAGE_KEY = 'guestbook-visitor-id';
 
@@ -179,8 +179,7 @@ function ThreadedEntry({
       >
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-[0.5rem]">
           <p className={isAdmin ? styles.adminNameClassName : styles.nameClassName}>
-            {entry.name}
-            {isAdmin && <span className="ml-[0.35rem] text-[0.68rem] font-bold tracking-[0.08em]">ADMIN</span>}
+            {isAdmin ? ADMIN_NAME : entry.name}
           </p>
           <div className="flex items-center gap-[0.6rem]">
             <time className={styles.timeClassName}>{formatDate(entry.timestamp)}</time>
@@ -210,9 +209,7 @@ function ThreadedEntry({
             className="overflow-hidden"
           >
             <div className="mt-[0.6rem] rounded-[0.45rem] border border-[var(--atr-line)] bg-white/50 p-[0.75rem]">
-              {isAdminWriter ? (
-                <p className={`${styles.adminNameClassName} text-[0.82rem]`}>admin으로 답글을 남깁니다.</p>
-              ) : (
+              {!isAdminWriter && (
                 <><label htmlFor={replyNameId} className={styles.labelClassName}>이름 (선택)</label><input id={replyNameId} type="text" value={name} onChange={(event) => setName(event.target.value)} placeholder="익명" maxLength={MAX_NAME_LENGTH} className={styles.inputClassName} /></>
               )}
               <label htmlFor={replyMessageId} className={`mt-[0.6rem] ${styles.labelClassName}`}>답글</label>
@@ -461,9 +458,7 @@ export default function FirebaseGuestbook({
       >
         <div className="space-y-5">
           {/* 이름 입력 */}
-          {isAdmin ? (
-            <p className={`${styles.adminNameClassName} text-[0.86rem]`}>admin으로 댓글을 남깁니다.</p>
-          ) : (
+          {!isAdmin && (
             <div>
               <label htmlFor="name" className={styles.labelClassName}>
                 이름 (선택)
@@ -538,8 +533,7 @@ export default function FirebaseGuestbook({
               {/* 헤더 */}
               <div className="flex flex-wrap items-baseline justify-between gap-[0.5rem] mb-3">
                 <p className={isAdminEntry(entry) ? styles.adminNameClassName : styles.nameClassName}>
-                  {entry.name}
-                  {isAdminEntry(entry) && <span className="ml-[0.35rem] text-[0.68rem] font-bold tracking-[0.08em]">ADMIN</span>}
+                  {isAdminEntry(entry) ? ADMIN_NAME : entry.name}
                 </p>
                 <div className="flex items-center gap-[0.6rem]">
                   <time className={styles.timeClassName}>
