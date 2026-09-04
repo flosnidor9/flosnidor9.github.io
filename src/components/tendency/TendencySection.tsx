@@ -76,9 +76,12 @@ function buildTwitterProfileUrl(handle: string) {
   return normalized ? `https://x.com/${normalized}` : 'https://x.com';
 }
 
-function buildTwitterAvatarUrl(handle: string) {
+function buildTwitterAvatarUrl(handle: string, cacheVersion?: number) {
   const normalized = normalizeTwitterHandle(handle);
-  return normalized ? `https://unavatar.io/x/${normalized}` : '';
+  if (!normalized) return '';
+
+  const avatarUrl = `https://unavatar.io/x/${normalized}`;
+  return cacheVersion ? `${avatarUrl}?v=${cacheVersion}` : avatarUrl;
 }
 
 function parseItems(value: string): TendencyItem[] {
@@ -173,7 +176,8 @@ function stringifyTriggers(items: TendencyTriggerItem[]) {
 function ProfileStamp({ profile }: { profile: TendencyProfile }) {
   const [imageFailed, setImageFailed] = useState(false);
   const handle = normalizeTwitterHandle(profile.handle);
-  const avatarSrc = buildTwitterAvatarUrl(handle) || profile.avatarUrl.trim();
+  const avatarCacheVersion = profile.updatedAt?.toMillis();
+  const avatarSrc = buildTwitterAvatarUrl(handle, avatarCacheVersion) || profile.avatarUrl.trim();
   const profileUrl = buildTwitterProfileUrl(handle || profile.handle);
 
   return (
